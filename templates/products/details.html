@@ -1,0 +1,22 @@
+{% extends 'master/base.html' %}
+{% block content %}
+<div class="product-detail-container">
+  <div class="product-detail-card">
+    <div class="product-image">
+      {% if product.image %}
+        <img src="{{ product.image.url }}" alt="{{ product.name }}">
+      {% else %}
+        <p><i>No image available</i></p>
+      {% endif %}
+    </div>
+    <div class="product-info">
+      <h2>{{ product.name }}</h2>
+      <p><strong>Description:</strong> {{ product.description }}</p>
+      <p><strong>Price:</strong> Rs. {{ product.price }}</p>
+      <p><strong>Stock:</strong> {{ product.stock }}</p>
+      <p><strong>Category:</strong> {{ product.category.name }}</p>
+      <a href="{% url 'product' %}" class="back-link">⬅️ Back to Products</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

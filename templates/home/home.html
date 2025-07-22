@@ -1,0 +1,15 @@
+{% extends 'master/base.html' %}
+{% block title %}Home{% endblock %}
+{% block content %}
+<h2> Our Products⬇️</h2>
+
+{% for product in products %}
+<div class="product-card">
+    <a href="{% url 'productDetails' product.id %}">
+        {{product.name}}
+    </a>
+    <p><strong>Price:</strong> Rs. {{ product.price }}</p>
+    <p><strong>Category:</strong> {{ product.category.name }}</p>
+    <p><strong>Stock:</strong> {{ product.stock }}</p>
+</div>
+{% endfor %}{% endblock %}

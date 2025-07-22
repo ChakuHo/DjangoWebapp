@@ -1,0 +1,15 @@
+{% extends 'master/base.html' %}
+{% block title %}{{ blog.name }} - Blog{% endblock %}
+
+{% block content %}
+  <div class="blog-detail-card">
+    <h2>{{ blog.name }}</h2>
+
+    <p><strong>Status:</strong> {{ blog.status|yesno:"✅ Active,❌ Inactive" }}</p>
+    <p><strong>Created:</strong> {{ blog.created_at|date:"F j, Y" }}</p>
+    <p><strong>Category:</strong> {{ blog.category.name }}</p>
+    <p>{{ blog.description }}</p>
+
+    <a href="{% url 'blog' %}" class="back-link">⬅️ Back to Blogs</a>
+  </div>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends 'master/base.html' %}
+{% block title %}Blog{% endblock %}
+{% block content %}
+  <h2>📝 Blog Posts</h2>
+
+  {% for blog in blogs %}
+    <div class="blog-post">
+      <h2>{{ blog.name }}</h2>
+      <p><strong>Category:</strong> {{ blog.category.name }}</p>
+      <p>{{ blog.description|truncatewords:30 }}</p>
+            {% comment %}30 words lai limit gareko paxi readmore button add garna parxa{% endcomment %} 
+      <p><strong>Status:</strong> {{ blog.status|yesno:"✅ Active,❌ Inactive" }}</p> 
+      <small>Posted on {{ blog.created_at|date:"F j, Y" }}</small>
+
+      <a href="{% url 'blog_details' blog.id %}" class="read-more-btn">📖 Read More</a>
+      <hr>
+    </div>
+  {% empty %}
+    <p>No blog posts found.</p>
+  {% endfor %}
+{% endblock %}

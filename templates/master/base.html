@@ -1,0 +1,28 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Islington Marketplace{% endblock %}</title>
+
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-container">
+      <a href="{% url 'home' %}" class="nav-logo">
+        <img src="{% static 'images/logo.png' %}" alt=""> Marketplace
+      </a>
+      <ul class="nav-links">
+        <li><a href="{% url 'home' %}">Home</a></li>
+        <li><a href="{% url 'product' %}">Products</a></li>
+        <li><a href="{% url 'blog' %}">Blog</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <h1>Welcome to the Marketplace</h1>
+  {% block content %}{% endblock %}
+</body>
+</html>

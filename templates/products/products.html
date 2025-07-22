@@ -1,0 +1,23 @@
+{% extends 'master/base.html' %}
+{% block content %}
+<h2>👜 Our Products</h2>
+
+<div class="product-list">
+  {% for product in products %}
+    <div class="product-card">
+      <div class="product-img-container">
+        {% if product.image %}
+          <img src="{{ product.image.url }}" alt="{{ product.name }}">
+        {% endif %}
+      </div>
+      <div class="product-card-content">
+        <a href="{% url 'productDetails' product.id %}">
+          <h3>{{ product.name }}</h3>
+        </a>
+        <p><strong>Price:</strong> Rs. {{ product.price }}</p>
+        <p><strong>Category:</strong> {{ product.category.name }}</p>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}
