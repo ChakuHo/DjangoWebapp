@@ -1,15 +1,57 @@
-{% extends 'master/base.html' %}
-{% block title %}Home{% endblock %}
-{% block content %}
-<h2> Our Products⬇️</h2>
+{% extends "master/base.html" %} {% load static %} {% block content %}
+<!-- ========================= SECTION MAIN ========================= -->
+<section class="section-intro padding-y-sm">
+  <div class="container">
+    <div class="intro-banner-wrap">
+      <img src="/static/images/banners/2.jpg" class="img-fluid rounded" />
+    </div>
+  </div>
+  <!-- container //  -->
+</section>
+<!-- ========================= SECTION MAIN END// ========================= -->
 
-{% for product in products %}
-<div class="product-card">
-    <a href="{% url 'productDetails' product.id %}">
-        {{product.name}}
-    </a>
-    <p><strong>Price:</strong> Rs. {{ product.price }}</p>
-    <p><strong>Category:</strong> {{ product.category.name }}</p>
-    <p><strong>Stock:</strong> {{ product.stock }}</p>
-</div>
-{% endfor %}{% endblock %}
+<!-- ========================= SECTION  ========================= -->
+<section class="section-name padding-y-sm">
+  <div class="container">
+    <header class="section-heading">
+      <a href="/store/" class="btn btn-outline-primary float-right">See all</a>
+      <h3 class="section-title">Popular products</h3>
+    </header>
+    <!-- sect-heading -->
+
+    <div class="row">
+      {% for product in products %}
+      <div class="col-md-3">
+        <div class="card card-product-grid">
+          <a
+            href="/store/category/{{ product.category.name|slugify }}/{{ product.slug }}/"
+            class="img-wrap"
+          >
+            {% if product.image %}
+            <img src="{{ product.image.url }}" />
+            {% else %}
+            <img src="https://via.placeholder.com/300x300?text=No+Image" />
+            {% endif %}
+          </a>
+          <figcaption class="info-wrap">
+            <a
+              href="/store/category/{{ product.category.name|slugify }}/{{ product.slug }}/"
+              class="title"
+            >
+              {{ product.name }}
+            </a>
+            <div class="price mt-1">Rs. {{ product.price }}</div>
+          </figcaption>
+        </div>
+      </div>
+      {% empty %}
+      <div class="col-12">
+        <p>No products found.</p>
+      </div>
+      {% endfor %}
+    </div>
+    <!-- row.// -->
+  </div>
+  <!-- container // -->
+</section>
+{% endblock %}

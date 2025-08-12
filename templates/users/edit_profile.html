@@ -1,0 +1,179 @@
+{% extends "master/base.html" %} {% load static %} {% block content %}
+
+<section class="section-conten padding-y bg">
+  <div class="container">
+    <div class="row">
+      <aside class="col-md-3">
+        <!--   SIDEBAR   -->
+        <ul class="list-group">
+          <a class="list-group-item" href="/dashboard/"> Dashboard </a>
+          <a class="list-group-item" href="/my-orders/"> My Orders </a>
+          <a class="list-group-item active" href="/edit-profile/">
+            Edit Profile
+          </a>
+          <a class="list-group-item" href="#"> My Selling Items </a>
+          <a class="list-group-item" href="#"> Received Orders </a>
+          <a class="list-group-item" href="/change-password/">
+            Change Password
+          </a>
+        </ul>
+        <br />
+        <a class="btn btn-light btn-block" href="/accounts/logout/">
+          <i class="fa fa-power-off"></i> <span class="text">Log out</span>
+        </a>
+        <!--   SIDEBAR .//END   -->
+      </aside>
+
+      <main class="col-md-9">
+        <article class="card">
+          <header class="card-header">
+            <strong class="d-inline-block mr-3">Edit your profile</strong>
+          </header>
+          <div class="card-body">
+            <div class="text-right">
+              {% if profile.profile_picture %}
+              <img
+                src="{{ profile.profile_picture.url }}"
+                alt="Profile Picture"
+                width="100"
+                style="border-radius: 50px"
+              />
+              {% else %}
+              <img
+                src="/static/images/default/default-user.png"
+                alt="Profile Picture"
+                width="100"
+                style="border-radius: 50px"
+              />
+              {% endif %}
+            </div>
+            <div class="row">
+              <div class="col-md-12">
+                <form
+                  action="{% url 'edit_profile' %}"
+                  method="POST"
+                  enctype="multipart/form-data"
+                >
+                  {% csrf_token %}
+                  <div class="form-row">
+                    <div class="form-group col-md-6">
+                      <label>First Name</label>
+                      <input
+                        type="text"
+                        name="first_name"
+                        value="{{ request.user.first_name }}"
+                        maxlength="50"
+                        class="form-control"
+                        required
+                        id="id_first_name"
+                      />
+                    </div>
+                    <div class="form-group col-md-6">
+                      <label>Last Name</label>
+                      <input
+                        type="text"
+                        name="last_name"
+                        value="{{ request.user.last_name }}"
+                        maxlength="50"
+                        class="form-control"
+                        required
+                        id="id_last_name"
+                      />
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group col-md-6">
+                      <label>Phone Number</label>
+                      <input
+                        type="text"
+                        name="phone_number"
+                        value="{{ profile.phone_number }}"
+                        maxlength="50"
+                        class="form-control"
+                        required
+                        id="id_phone_number"
+                      />
+                    </div>
+                    <div class="form-group col-md-6">
+                      <label>Profile Picture</label>
+                      <input
+                        type="file"
+                        name="profile_picture"
+                        accept="image/*"
+                        class="form-control"
+                        id="id_profile_picture"
+                      />
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label>Address Line 1</label>
+                    <input
+                      type="text"
+                      name="address_line_1"
+                      maxlength="100"
+                      value="{{ profile.address_line_1 }}"
+                      class="form-control"
+                      id="id_address_line_1"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label>Address Line 2</label>
+                    <input
+                      type="text"
+                      name="address_line_2"
+                      maxlength="100"
+                      value="{{ profile.address_line_2 }}"
+                      class="form-control"
+                      id="id_address_line_2"
+                    />
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group col-md-4">
+                      <label>City</label>
+                      <input
+                        type="text"
+                        name="city"
+                        value="{{ profile.city }}"
+                        maxlength="20"
+                        class="form-control"
+                        id="id_city"
+                      />
+                    </div>
+                    <div class="form-group col-md-4">
+                      <label>State</label>
+                      <input
+                        type="text"
+                        name="state"
+                        value="{{ profile.state }}"
+                        maxlength="20"
+                        class="form-control"
+                        id="id_state"
+                      />
+                    </div>
+                    <div class="form-group col-md-4">
+                      <label>Country</label>
+                      <input
+                        type="text"
+                        name="country"
+                        value="{{ profile.country }}"
+                        maxlength="20"
+                        class="form-control"
+                        id="id_country"
+                      />
+                    </div>
+                  </div>
+                  <input type="submit" value="Save" class="btn btn-primary" />
+                </form>
+              </div>
+            </div>
+            <!-- row.// -->
+          </div>
+          <!-- card-body .// -->
+        </article>
+        <!-- order-group.// -->
+      </main>
+    </div>
+    <!-- row.// -->
+  </div>
+</section>
+{% endblock %}

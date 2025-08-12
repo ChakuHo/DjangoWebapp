@@ -1,9 +1,11 @@
 from django.contrib import admin
-from . models import Page
-
+from . models import Page 
 # Register your models here.
+
 class PageAdmin(admin.ModelAdmin):
-    exclude = ('created_at',) # helps to exclude selecting date and time everytime adding product.
-    list_display = ('title', 'slug', 'content', 'created_at')
+    list_display = ('title', 'slug', 'created_at', 'updated_at')
+    prepopulated_fields = {'slug': ('title',)}
+    search_fields = ('title', 'content')
+    ordering = ('-created_at',)
 
 admin.site.register(Page, PageAdmin)

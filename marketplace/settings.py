@@ -43,6 +43,10 @@ INSTALLED_APPS = [
     'products.apps.ProductsConfig',
     'blog.apps.BlogConfig',
     'pages.apps.PagesConfig',
+    'sitesetting.apps.SitesettingConfig',
+    'cart.apps.CartConfig',
+    'users.apps.UsersConfig',
+    'orders.apps.OrdersConfig',
 ]
 
 MIDDLEWARE = [
@@ -53,6 +57,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
 
 ROOT_URLCONF = 'marketplace.urls'
@@ -67,6 +72,9 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'sitesetting.context_processors.site_settings',
+                'pages.context_processors.all_pages',
+                'products.context_processor.categories',
             ],
         },
     },
@@ -142,3 +150,7 @@ MEDIA_ROOT = BASE_DIR / 'media' # Where files are physically stored on disk
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+#yoo add gareko ho to use WhiteNoise for serving static files in production plus deploy garne ko step ho yo ni
+STATIC_ROOT = BASE_DIR / 'staticfiles'  # Directory where static files will be collected/destination for static files
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'  # Use WhiteNoise for static files storage

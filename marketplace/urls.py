@@ -27,7 +27,11 @@ urlpatterns = [
     path('', views.home, name ="home"),
     path('products/', include('products.urls')),
     path('blog/', include('blog.urls')),
-] 
+    path('store/', include('products.urls')),
+    path('cart/', include('cart.urls')),
+    path('users', include('users.urls')),
+    path('orders/', include('orders.urls')),
+] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 if settings.DEBUG: # Debug true vayo vane django development server le media files (images) lai urls /media/ bata suru garauxa.
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

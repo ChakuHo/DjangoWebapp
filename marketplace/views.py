@@ -5,13 +5,15 @@ from blog.models import Blog
 from pages.models import Page
 
 def home(request):
-    products = Product.objects.all()
+    products = Product.objects.all()[:8].filter(status=True)
     # return render(request, 'home/home.html' , {'products': products})
-    blogs = Blog.objects.all()[:3]
+    blogs = Blog.objects.all()[:3].filter(status=True)
     pages = Page.objects.all()
+    # banners= Banner.objects.all().filter(status = True) yo chai banner ko lagi
     return render(request, 'home/home.html', {
         'products':products,
         'blogs':blogs,
         'pages':pages,
+        # 'banners':banners,
     })
 
