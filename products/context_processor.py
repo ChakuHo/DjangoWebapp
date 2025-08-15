@@ -1,4 +1,4 @@
-from .models import ProductCategory
+from .models import Category
 
 def categories(request):
-    return {'categories': ProductCategory.objects.all()}
+    return {'categories': Category.objects.filter(status=True)}

@@ -1,4 +1,4 @@
-<!-- ========================= FOOTER ========================= -->
+<!-- ========================= FOOTER =========================
 <footer class="section-footer border-top">
   <div class="container">
     <section class="footer-bottom border-top row">
@@ -10,6 +10,111 @@
         <span class="px-2">9822342212</span>
         <span class="px-2">Kamalpokhari, Kathmandu, Nepal</span>
       </div>
+      <div class="col-md-2 text-md-right text-muted">
+        <i class="fab fa-lg fa-cc-visa"></i>
+        <i class="fab fa-lg fa-cc-paypal"></i>
+        <i class="fab fa-lg fa-cc-mastercard"></i>
+      </div>
+    </section>
+  </div>
+   //container -->
+<!---</footer> -->
+
+<!-- ========================= FOOTER ========================= -->
+<footer class="section-footer border-top">
+  <div class="container">
+    <section class="footer-top padding-y">
+      <div class="row">
+        <aside class="col-md-3 col-12">
+          <h6 class="title">About</h6>
+          <ul class="list-unstyled">
+            <li><a href="#">About us</a></li>
+            <li><a href="#">Services</a></li>
+            <li><a href="#">Rules and terms</a></li>
+            <li><a href="#">Privacy</a></li>
+          </ul>
+        </aside>
+        <aside class="col-md-3 col-12">
+          <h6 class="title">My account</h6>
+          <ul class="list-unstyled">
+            <li><a href="#">User Login</a></li>
+            <li><a href="#">User register</a></li>
+            <li><a href="#">Account Setting</a></li>
+            <li><a href="#">My Orders</a></li>
+          </ul>
+        </aside>
+        <aside class="col-md-3 col-12">
+          <h6 class="title">Support</h6>
+          <ul class="list-unstyled">
+            <li><a href="#">FAQ</a></li>
+            <li><a href="#">Contact us</a></li>
+            <li><a href="#">Live chat</a></li>
+          </ul>
+        </aside>
+        <aside class="col-md-3 col-12">
+          <h6 class="title">Store</h6>
+          <ul class="list-unstyled">
+            <li><a href="{% url 'product' %}">Our products</a></li>
+            <li><a href="#">Delivery</a></li>
+            <li><a href="#">Returns</a></li>
+            <li><a href="#">Help</a></li>
+          </ul>
+        </aside>
+      </div>
+    </section>
+    
+    <section class="footer-bottom border-top row">
+      <div class="col-md-2">
+        {% if site_settings and site_settings.logo %}
+        <img src="{{ site_settings.logo.url }}" class="logo" height="40" alt="Logo">
+        {% endif %}
+        <p class="text-muted">
+          &copy; 2025 
+          {% if site_settings and site_settings.site_title %}
+            {{ site_settings.site_title }}
+          {% else %}
+            Market Place
+          {% endif %}
+        </p>
+      </div>
+      
+      <div class="col-md-8 text-md-center">
+        {% if site_settings %}
+          {% if site_settings.website_url %}
+            <span class="px-2">
+              <a href="{{ site_settings.website_url }}" target="_blank" class="text-muted">
+                {{ site_settings.website_url }}
+              </a>
+            </span>
+          {% endif %}
+          
+          {% if site_settings.phone %}
+            <span class="px-2">
+              <a href="tel:{{ site_settings.phone }}" class="text-muted">
+                {{ site_settings.phone }}
+              </a>
+            </span>
+          {% endif %}
+          
+          {% if site_settings.address %}
+            <span class="px-2">{{ site_settings.address }}</span>
+          {% endif %}
+          
+          {% if site_settings.email %}
+            <span class="px-2">
+              <a href="mailto:{{ site_settings.email }}" class="text-muted">
+                {{ site_settings.email }}
+              </a>
+            </span>
+          {% endif %}
+        {% else %}
+          <!-- Fallback if no site settings -->
+          <span class="px-2">https://www.deploying.xyz/</span>
+          <span class="px-2">9822342212</span>
+          <span class="px-2">Kamalpokhari, Kathmandu, Nepal</span>
+        {% endif %}
+      </div>
+      
       <div class="col-md-2 text-md-right text-muted">
         <i class="fab fa-lg fa-cc-visa"></i>
         <i class="fab fa-lg fa-cc-paypal"></i>

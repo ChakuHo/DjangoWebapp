@@ -1,18 +1,19 @@
 from django.contrib import admin
-from . models import Product, ProductCategory
+from . models import Product, Category
 from django.utils.html import format_html
 
 # Register your models here.
 
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ('id','name')
-admin.site.register(ProductCategory, CategoryAdmin)
+    list_display = ('id','category_name')
+admin.site.register(Category, CategoryAdmin)
 
 class ProductAdmin(admin.ModelAdmin):
     exclude = ('created_at',)
     readonly_fields = ('slug',)
-    list_display = ('id', 'name', 'price', 'short_description', 'stock', 'status', 'category', 'created_at', 'show_image')
-    list_filter = ('status', 'category')
+    list_display = ('id', 'name', 'price', 'short_description', 'brand', 'stock', 'status', 'category', 'created_at', 'show_image')
+    list_filter = ('status', 'category', 'brand')
+    search_fields = ('name', 'brand', 'slug')
     
     def short_description(self, obj):
         return ' '.join(obj.description.split()[:6]) + '...'

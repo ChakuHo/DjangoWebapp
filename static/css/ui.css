@@ -1413,3 +1413,27 @@ a[class*=card]:hover .title {
 }
 
 /*# sourceMappingURL=ui.css.map */
+
+
+/* this lines are added  */
+.card-product-grid .img-wrap {
+  height: 300px; 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.card-product-grid .img-wrap img,
+.product-thumb {
+  max-height: 100%;
+  max-width: 100%;
+  width: auto;
+  object-fit: contain;
+}
+
+.card-product-grid .fix-height{
+  min-height: 120px;
+}

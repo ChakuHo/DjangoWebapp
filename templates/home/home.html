@@ -19,7 +19,7 @@
     </header>
     <!-- sect-heading -->
 
-    <div class="row">
+    <!-- <div class="row">
       {% for product in products %}
       <div class="col-md-3">
         <div class="card card-product-grid">
@@ -49,9 +49,40 @@
         <p>No products found.</p>
       </div>
       {% endfor %}
-    </div>
+    </div> -->
     <!-- row.// -->
+
+    <div class="row">
+      {% for product in products %}
+      <div class="col-md-3">
+        <div class="card card-product-grid">
+          {% if product.get_url %}
+          <a href="{{ product.get_url }}" class="img-wrap">
+            {% else %}
+            <a href="#" class="img-wrap disabled">
+              {% endif %} {% if product.image %}
+              <img src="{{ product.image.url }}" />
+              {% else %}
+              <img src="https://via.placeholder.com/300x300?text=No+Image" />
+              {% endif %}
+            </a>
+            <figcaption class="info-wrap">
+              <a href="{{ product.get_url }}" class="title">
+                {{ product.name }}
+              </a>
+              <div class="price mt-1">Rs. {{ product.price }}</div>
+            </figcaption>
+          </a>
+        </div>
+      </div>
+      {% empty %}
+      <div class="col-12">
+        <p>No products found.</p>
+      </div>
+      {% endfor %}
+    </div>
   </div>
+
   <!-- container // -->
 </section>
 {% endblock %}

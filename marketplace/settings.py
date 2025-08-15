@@ -75,6 +75,7 @@ TEMPLATES = [
                 'sitesetting.context_processors.site_settings',
                 'pages.context_processors.all_pages',
                 'products.context_processor.categories',
+                'cart.context_processor.counter',
             ],
         },
     },
