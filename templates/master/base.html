@@ -15,8 +15,8 @@
     />
 
     <title>
-      {% if site_settings.site_title %}{{ site_settings.site_title }}{% else
-      %}Islington MarketPlace{% endif %}
+      {% block title %}{{ site_setting.site_name|default:"Islington MarketPlace"
+      }}{% endblock %}
     </title>
     <meta
       name="description"
@@ -85,7 +85,8 @@
     </script>
   </head>
   <body>
-    {% include 'includes/navbar.html' %} {% block content %} {% endblock %} 
+    {% include 'includes/navbar.html' %} {% block content %}{% endblock %}
+    <!-- FIX: inside body -->
   </body>
   {% include 'includes/footer.html' %}
 </html>

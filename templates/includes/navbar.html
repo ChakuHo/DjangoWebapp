@@ -46,10 +46,19 @@
       <div class="row align-items-center">
         <div class="col-lg-2 col-md-3 col-6">
           <a href="/" class="brand-wrap">
+            {% if site_settings and site_settings.logo %}
             <img
               class="logo"
-              src="https://mohit-bucket.s3.us-east-1.amazonaws.com/media/photos/logos/Logo1_kc4V7Kq.PNG"
+              src="{{ site_settings.logo.url }}"
+              alt="{{ site_settings.site_title|default:'Islington MarketPlace' }}"
             />
+            {% else %}
+            <img
+              class="logo"
+              src="{% static 'images/logos/logo.png' %}"
+              alt="Islington MarketPlace"
+            />
+            {% endif %}
           </a>
           <!-- brand-wrap.// -->
         </div>
@@ -65,9 +74,12 @@
             <div class="dropdown-menu">
               <a class="dropdown-item" href="/store/">All Products</a>
               {% for category in categories %}
-              <a class="dropdown-item" href="/store/category/{% if category.slug %}{{ category.slug }}{% else %}{{ category.category_name|slugify }}{% endif %}/">
-{{ category.category_name }}
-</a>
+              <a
+                class="dropdown-item"
+                href="/store/category/{% if category.slug %}{{ category.slug }}{% else %}{{ category.category_name|slugify }}{% endif %}/"
+              >
+                {{ category.category_name }}
+              </a>
               {% endfor %}
             </div>
           </div>
@@ -76,13 +88,14 @@
         <!-- col.// -->
         <a href="{% url 'product' %}" class="btn btn-outline-primary">Store</a>
         <div class="col-lg col-md-6 col-sm-12 col">
-          <form action="{%url 'search' %}" class="search" method = "GET">
+          <form action="{%url 'search' %}" class="search" method="GET">
             <div class="input-group w-100">
               <input
                 type="text"
                 class="form-control"
                 style="width: 60%"
-                placeholder="Search" name="keyword"
+                placeholder="Search"
+                name="keyword"
               />
 
               <div class="input-group-append">
@@ -111,7 +124,9 @@
               <div class="icon icon-sm rounded-circle border">
                 <i class="fa fa-shopping-cart"></i>
               </div>
-              <span class="badge badge-pill badge-danger notify">{{cart_count}}</span>
+              <span class="badge badge-pill badge-danger notify"
+                >{{cart_count}}</span
+              >
             </a>
           </div>
           <!-- widgets-wrap.// -->

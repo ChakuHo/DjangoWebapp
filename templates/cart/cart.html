@@ -56,9 +56,10 @@
                       </p>
                       {% endif %}
                       <p class="text-muted small">
-                        Category: {{ cart_item.product.category.category_name
-                        }}<br />
-                        SKU: {{ cart_item.product.slug }}
+                        {% if cart_item.product.brand %} 
+                          Brand: {{ cart_item.product.brand }}<br />
+                          SKU: {{ cart_item.product.slug }} 
+                        {% endif %}
                       </p>
                     </figcaption>
                   </figure>

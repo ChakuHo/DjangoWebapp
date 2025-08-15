@@ -1,0 +1,96 @@
+{% load static %} {% if banners %}
+
+<div
+  id="siteCarousel"
+  class="carousel slide mb-4"
+  data-ride="carousel"
+  data-interval="10000"
+>
+  <ol class="carousel-indicators">
+    {% for b in banners %}
+    <li
+      data-target="#siteCarousel"
+      data-slide-to="{{ forloop.counter0 }}"
+      class="{% if forloop.first %}active{% endif %}"
+    ></li>
+    {% endfor %}
+  </ol>
+  <div class="carousel-inner rounded" style="overflow: hidden">
+    {% for b in banners %}
+    <div class="carousel-item {% if forloop.first %}active{% endif %}">
+      {% with href=b.target_href %} {% if href %}
+      <a
+        href="{{ href }}"
+      >
+        {% if b.image %}
+        <img
+          src="{{ b.image.url }}"
+          class="d-block w-100 img-fluid"
+          alt="{{ b.alt_text|default:b.title }}"
+          loading="lazy"
+          style="height: 300px !important; object-fit: cover; object-position: center;"
+        />
+        {% else %}
+        <img
+          src="{% static 'images/banners/placeholder.jpg' %}"
+          class="d-block w-100 img-fluid"
+          alt="Banner"
+          loading="lazy"
+        />
+        {% endif %}
+      </a>
+      {% else %} {% if b.image %}
+      <img
+        src="{{ b.image.url }}"
+        class="d-block w-100 img-fluid"
+        alt="{{ b.alt_text|default:b.title }}"
+        loading="lazy"
+      />
+      {% else %}
+      <img
+        src="{% static 'images/banners/placeholder.jpg' %}"
+        class="d-block w-100 img-fluid"
+        alt="Banner"
+        loading="lazy"
+      />
+      {% endif %} {% endif %} {% endwith %} {% if b.title or b.subtitle %}
+      <div class="carousel-caption d-none d-md-block">
+        {% if b.title %}
+        <h5>{{ b.title }}</h5>
+        {% endif %} {% if b.subtitle %}
+        <p>{{ b.subtitle }}</p>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  <a
+    class="carousel-control-prev"
+    href="#siteCarousel"
+    role="button"
+    data-slide="prev"
+  >
+    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+    <span class="sr-only">Previous</span>
+  </a>
+  <a
+    class="carousel-control-next"
+    href="#siteCarousel"
+    role="button"
+    data-slide="next"
+  >
+    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+    <span class="sr-only">Next</span>
+  </a>
+</div>
+{% else %}
+<div class="intro-banner-wrap mb-4">
+  <img
+    src="{% static 'banners/homepage.jpg' %}"
+    class="img-fluid rounded"
+    alt="Banner"
+  />
+  <!-- FIX: static path -->
+</div>
+{% endif %}

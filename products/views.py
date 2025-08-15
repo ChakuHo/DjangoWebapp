@@ -1,5 +1,5 @@
 from django.shortcuts import render, get_object_or_404
-from django.db.models import Q  # ✅ Added missing import
+from django.db.models import Q  
 from .models import Category, Product
 from django.http import Http404
 from cart.models import CartItem
@@ -26,11 +26,17 @@ def product(request, category_slug=None):
 
     cats = Category.objects.filter(status=True)
 
+    in_cart_ids = list(
+        CartItem.objects.filter(cart__cart_id=_cart_id(request))
+        .values_list('product_id', flat=True)
+    )
+
     context = {
         'products': paged_products,
         'product_count': product_count,
         'categories': cats,    # sidebar category lists
-        'links': cats,  # navbar categories
+        'links': cats,          # navbar categories
+        'in_cart_ids': in_cart_ids,  
     }
     return render(request, 'products/products.html', context)
 

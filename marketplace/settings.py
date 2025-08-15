@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'cart.apps.CartConfig',
     'users.apps.UsersConfig',
     'orders.apps.OrdersConfig',
+    'banners.apps.BannersConfig',
 ]
 
 MIDDLEWARE = [
@@ -76,6 +77,7 @@ TEMPLATES = [
                 'pages.context_processors.all_pages',
                 'products.context_processor.categories',
                 'cart.context_processor.counter',
+                'banners.context_processors.active_banners',
             ],
         },
     },

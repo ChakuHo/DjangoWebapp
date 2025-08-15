@@ -14,27 +14,22 @@ def _cart_id(request):
 
 def add_cart(request, product_id):
     product = get_object_or_404(Product, id=product_id)
-
     try:
         cart = Cart.objects.get(cart_id=_cart_id(request))
     except Cart.DoesNotExist:
-        cart = Cart.objects.create(
-            cart_id = _cart_id(request)
-        )
-    cart.save()
+        cart = Cart.objects.create(cart_id=_cart_id(request))
+        cart.save()
 
     try:
         cart_item = CartItem.objects.get(product=product, cart=cart)
-        cart_item.quantity += 1 #cart item ko quantity lai cart item ko quantity xnga +1 gareko
-        cart_item.save()
-    except CartItem.DoesNotExist:
-        cart_item = CartItem.objects.create(
-            product = product,
-            quantity = 1,
-            cart = cart  #saving cart
-        )
-        cart_item.save()
-    
+        if cart_item.quantity < product.stock:  # FIX: hard cap at stock
+            cart_item.quantity += 1
+            cart_item.save()
+    # else: already at max, do nothing
+    except CartItem.DoesNotExist:  # FIX: correct exception
+        if product.stock > 0:       # FIX: only add if stock available
+            CartItem.objects.create(product=product, quantity=1, cart=cart)
+
     return redirect('cart')
 
 

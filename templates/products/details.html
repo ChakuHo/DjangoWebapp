@@ -83,19 +83,15 @@
             <hr />
             {% if product.stock <= 0 %}
             <button class="btn btn-danger" disabled>Out of Stock</button>
-            {% elif product.stock <= 5 %}
+            {% else %} {% if product.stock <= 5 %}
             <p class="text-warning">Only {{ product.stock }} left in stock!</p>
-            <a href="{% url 'add_cart' product.id %}" class="btn btn-primary">
-              <span class="text">Add to cart</span>
-              <i class="fas fa-shopping-cart"></i>
-            </a>
-            {% else %} {% if in_cart %}
-            <a href="#" class="btn btn-success">
+            {% endif %} {% if in_cart %}
+            <a class="btn btn-success" disabled>
               <span class="text">Added to Cart</span>
               <i class="fas fa-check"></i>
             </a>
             <a href="{% url 'cart' %}" class="btn btn-outline-primary">
-              <span class="text">View CArt</span>
+              <span class="text">View Cart</span>
               <i class="fa fa-shopping-cart"></i>
             </a>
             {% else %}
@@ -130,18 +126,19 @@
               class="img-xs icon rounded-circle"
             />
             <div class="text">
-              <span class="date text-muted float-md-right">{{ review.created_at|date:"d.m.Y" }}</span>
+              <span class="date text-muted float-md-right"
+                >{{ review.created_at|date:"d.m.Y" }}</span
+              >
               <h6 class="mb-1">
                 {{ review.user.first_name }} {{ review.user.last_name }}
               </h6>
               <div class="rating-star">
-                {% for i in "12345"|make_list %}
+                {% for i in "12345"|make_list %} 
                   {% if forloop.counter <= review.rating %}
                     <i class="fa fa-star text-warning"></i>
                   {% else %}
                     <i class="fa fa-star text-muted"></i>
-                  {% endif %}
-                {% endfor %}
+                {% endif %} {% endfor %}
               </div>
             </div>
           </div>
