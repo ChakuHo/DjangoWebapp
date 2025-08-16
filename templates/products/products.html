@@ -140,7 +140,9 @@
       <main class="col-md-9">
         <header class="border-bottom mb-4 pb-3">
           <div class="form-inline">
-            <span class="mr-md-auto">{{ products.paginator.count }} Items found</span>
+            <span class="mr-md-auto"
+              >{{ products.paginator.count }} Items found</span
+            >
             <!--I think this should be also dynamic like from the database how many items are there instead od manually typing 8 items found.-->
           </div>
         </header>
@@ -156,19 +158,17 @@
                   <img src="{{product.image.url}}" />
                 </a>
                 {% else %}
-                <img src="{% static 'images/placeholder.png' %}" /> 
+                <img src="{% static 'images/placeholder.png' %}" />
                 {% endif %}
               </div>
               <figcaption class="info-wrap">
                 <div class="fix-height">
                   <a href="{{ product.get_url }}" class="title">
-                    <!-- this needs to be changed to products_by_Category that is defined in views.py reference is in stickynotes-->
                     {{ product.name }}
                   </a>
                   <div class="price-wrap mt-2">
                     <span class="price">Rs.{{product.price}}</span>
                     <del class="price-old">Rs.{{product.price}}</del>
-                    <!-- # gotta make this discounted price -->
                   </div>
                   {% if product.stock and product.stock < 6 %}
                   <p class="text-warning small mb-1">
@@ -176,11 +176,21 @@
                   </p>
                   {% endif %}
                 </div>
+                {% if product.stock <= 0 %}
+                <button class="btn btn-block btn-danger" disabled>
+                  Out of Stock
+                </button>
+                {% elif product.id in in_cart_ids %}
+                <button class="btn btn-block btn-success" disabled>
+                  <i class="fa fa-check"></i> In Cart
+                </button>
+                {% else %}
                 <a
                   href="{% url 'add_cart' product.id %}"
                   class="btn btn-block btn-primary"
                   >Add to cart</a
                 >
+                {% endif %}
                 <a href="{{product.get_url}}" class="btn btn-block btn-primary"
                   >View Details
                 </a>

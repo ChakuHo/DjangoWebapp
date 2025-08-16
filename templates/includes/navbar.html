@@ -24,12 +24,12 @@
         </ul>
         <ul class="navbar-nav">
           <li>
-            <a href="#" class="nav-link">
-              <i class="fa fa-envelope"></i> Email
+            <a href="{% url 'contact' %}" class="nav-link">
+              <i class="fa fa-envelope"></i> Contact
             </a>
           </li>
           <li>
-            <a href="#" class="nav-link">
+            <a href="tel:+977-1-4567890" class="nav-link">
               <i class="fa fa-phone"></i> Call us
             </a>
           </li>
@@ -45,7 +45,7 @@
     <div class="container">
       <div class="row align-items-center">
         <div class="col-lg-2 col-md-3 col-6">
-          <a href="/" class="brand-wrap">
+          <a href="{% url 'home' %}" class="brand-wrap">
             {% if site_settings and site_settings.logo %}
             <img
               class="logo"
@@ -72,11 +72,13 @@
               <i class="fa fa-bars"></i> All category
             </button>
             <div class="dropdown-menu">
-              <a class="dropdown-item" href="/store/">All Products</a>
+              <a class="dropdown-item" href="{% url 'products:product' %}"
+                >All Products</a
+              >
               {% for category in categories %}
               <a
                 class="dropdown-item"
-                href="/store/category/{% if category.slug %}{{ category.slug }}{% else %}{{ category.category_name|slugify }}{% endif %}/"
+                href="{% url 'products:products_by_category' category.slug %}"
               >
                 {{ category.category_name }}
               </a>
@@ -86,9 +88,15 @@
           <!-- category-wrap.// -->
         </div>
         <!-- col.// -->
-        <a href="{% url 'product' %}" class="btn btn-outline-primary">Store</a>
+        <a href="{% url 'products:product' %}" class="btn btn-outline-primary"
+          >Store</a
+        >
         <div class="col-lg col-md-6 col-sm-12 col">
-          <form action="{%url 'search' %}" class="search" method="GET">
+          <form
+            action="{% url 'products:search' %}"
+            class="search"
+            method="GET"
+          >
             <div class="input-group w-100">
               <input
                 type="text"
@@ -111,14 +119,27 @@
         <div class="col-lg-3 col-sm-6 col-8 order-2 order-lg-3">
           <div class="d-flex justify-content-end mb-3 mb-lg-0">
             <div class="widget-header">
+              {% if user.is_authenticated %}
+              <!-- User is logged in -->
+              <small class="title text-muted"
+                >Welcome {{ user.get_full_name|default:user.username }}!</small
+              >
+              <div>
+                <a href="{% url 'dashboard' %}">Dashboard</a>
+                <span class="dark-transp"> | </span>
+                <a href="/orders/my-orders/">My Orders</a>
+                <span class="dark-transp"> | </span>
+                <a href="{% url 'logout' %}" onclick="return confirm('Are you sure you want to logout?')">Logout</a>
+              </div>
+              {% else %}
+              <!-- User is not logged in -->
               <small class="title text-muted">Welcome guest!</small>
               <div>
-                <a href="/login/">Login</a>
+                <a href="{% url 'login' %}">Login</a>
                 <span class="dark-transp"> | </span>
-                <a href="/register/"> Register</a>
-                <span class="dark-transp"> | </span>
-                <a href="/dashboard/"> Dashboard</a>
+                <a href="{% url 'register' %}">Register</a>
               </div>
+              {% endif %}
             </div>
             <a href="{% url 'cart' %}" class="widget-header pl-3 ml-3">
               <div class="icon icon-sm rounded-circle border">

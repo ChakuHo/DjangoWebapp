@@ -2,303 +2,677 @@
 
 <section class="section-content padding-y bg">
   <div class="container">
-    <!-- ============================ COMPONENT 2 ================================= -->
-    <div class="row">
-      <main class="col-md-8">
-        <article class="card mb-4">
-          <div class="card-body">
-            <h4 class="card-title mb-4">Review cart</h4>
-            <div class="row">
-              <div class="col-md-6">
-                <figure class="itemside mb-4">
-                  <div class="aside">
-                    <img
-                      src="/static/images/items/1.jpg"
-                      class="border img-sm"
-                    />
-                  </div>
-                  <figcaption class="info">
-                    <p>Apple iPad (2019) 32Gb Wi-Fi gold</p>
-                    <span class="text-muted">2x = $560 </span>
-                  </figcaption>
-                </figure>
-              </div>
-              <!-- col.// -->
-              <div class="col-md-6">
-                <figure class="itemside mb-4">
-                  <div class="aside">
-                    <img
-                      src="/static/images/items/2.jpg"
-                      class="border img-sm"
-                    />
-                  </div>
-                  <figcaption class="info">
-                    <p>Apple iPad (2019) 32Gb Wi-Fi gold</p>
-                    <span class="text-muted">2x = $560 </span>
-                  </figcaption>
-                </figure>
-              </div>
-              <!-- col.// -->
-              <div class="col-md-6">
-                <figure class="itemside mb-4">
-                  <div class="aside">
-                    <img
-                      src="/static/images/items/3.jpg"
-                      class="border img-sm"
-                    />
-                  </div>
-                  <figcaption class="info">
-                    <p>Apple iPad (2019) 32Gb Wi-Fi gold</p>
-                    <span class="text-muted">2x = $560 </span>
-                  </figcaption>
-                </figure>
-              </div>
-              <!-- col.// -->
-              <div class="col-md-6">
-                <figure class="itemside mb-4">
-                  <div class="aside">
-                    <img
-                      src="/static/images/items/4.jpg"
-                      class="border img-sm"
-                    />
-                  </div>
-                  <figcaption class="info">
-                    <p>Apple iPad (2019) 32Gb Wi-Fi gold</p>
-                    <span class="text-muted">2x = $560 </span>
-                  </figcaption>
-                </figure>
-              </div>
-              <!-- col.// -->
-            </div>
-            <!-- row.// -->
-          </div>
-          <!-- card-body.// -->
-        </article>
-        <!-- card.// -->
-
-        <article class="card mb-4">
-          <div class="card-body">
-            <h4 class="card-title mb-4">Contact info</h4>
-            <form action="">
-              <div class="row">
-                <div class="form-group col-sm-6">
-                  <label>Frst name</label>
-                  <input
-                    type="text"
-                    placeholder="Type here"
-                    class="form-control"
-                  />
-                </div>
-                <div class="form-group col-sm-6">
-                  <label>Last name</label>
-                  <input
-                    type="text"
-                    placeholder="Type here"
-                    class="form-control"
-                  />
-                </div>
-                <div class="form-group col-sm-6">
-                  <label>Phone</label>
-                  <input type="text" value="+998" class="form-control" />
-                </div>
-                <div class="form-group col-sm-6">
-                  <label>Email</label>
-                  <input
-                    type="email"
-                    placeholder="example@gmail.com"
-                    class="form-control"
-                  />
-                </div>
-              </div>
-              <!-- row.// -->
-            </form>
-          </div>
-          <!-- card-body.// -->
-        </article>
-        <!-- card.// -->
-
-        <article class="card mb-4">
-          <div class="card-body">
-            <h4 class="card-title mb-4">Delivery info</h4>
-            <form action="">
+    <form method="POST" action="{% url 'place_order' %}" id="checkout-form">
+      {% csrf_token %}
+      <!-- ============================ COMPONENT 2 ================================= -->
+      <div class="row">
+        <main class="col-md-8">
+          <!-- Cart Review Section -->
+          <article class="card mb-4">
+            <div class="card-body">
+              <h4 class="card-title mb-4">
+                <i class="fa fa-shopping-cart text-primary"></i> Review Cart
+              </h4>
               <div class="row">
                 {% for item in items %}
-                <div class="col-md-6">
-                  <figure class="itemside mb-4">
+                <div class="col-md-6 mb-3">
+                  <figure class="itemside">
                     <div class="aside">
                       {% if item.product.image %}
                       <img
                         src="{{ item.product.image.url }}"
-                        class="border img-sm"
+                        class="border img-sm rounded"
+                        style="width: 80px; height: 80px; object-fit: cover;"
                       />
                       {% else %}
                       <img
-                        src="https://via.placeholder.com/100x100?text=No+Image"
-                        class="border img-sm"
+                        src="https://via.placeholder.com/80x80?text=No+Image"
+                        class="border img-sm rounded"
+                        style="width: 80px; height: 80px; object-fit: cover;"
                       />
                       {% endif %}
                     </div>
-                    <figcaption class="info">
-                      <p>{{ item.product.name }}</p>
-                      <span class="text-muted"
-                        >{{ item.quantity }}x = ${{
-                        item.product.price|floatformat:2 }}</span
-                      >
+                    <figcaption class="info ml-3">
+                      <p class="font-weight-bold">{{ item.product.name }}</p>
+                      <small class="text-muted">Qty: {{ item.quantity }}</small><br>
+                      <span class="text-success font-weight-bold">
+                        Rs. {{ item.product.price|floatformat:2 }}
+                      </span>
                     </figcaption>
                   </figure>
                 </div>
                 {% empty %}
-                <div class="col-12">Your cart is empty.</div>
+                <div class="col-12">
+                  <div class="text-center py-4">
+                    <i class="fa fa-shopping-cart fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">Your cart is empty.</p>
+                    <a href="{% url 'products:product' %}" class="btn btn-primary">
+                      Continue Shopping
+                    </a>
+                  </div>
+                </div>
                 {% endfor %}
               </div>
-              <!-- row.// -->
-            </form>
-          </div>
-          <!-- card-body.// -->
-        </article>
-        <!-- card.// -->
+            </div>
+          </article>
 
-        <article class="accordion" id="accordion_pay">
-          <div class="card">
-            <header class="card-header">
-              <img
-                src="/static/images/misc/payment-paypal.png"
-                class="float-right"
-                height="24"
-              />
-              <label
-                class="form-check collapsed"
-                data-toggle="collapse"
-                data-target="#pay_paynet"
-              >
+          <!-- Contact Information -->
+          <article class="card mb-4">
+            <div class="card-body">
+              <h4 class="card-title mb-4">
+                <i class="fa fa-user text-primary"></i> Contact Information
+              </h4>
+              <div class="row">
+                <div class="form-group col-sm-6">
+                  <label for="first_name">First Name *</label>
+                  <input
+                    type="text"
+                    name="first_name"
+                    id="first_name"
+                    placeholder="Enter first name"
+                    class="form-control"
+                    value="{{ user.first_name }}"
+                    required
+                  />
+                </div>
+                <div class="form-group col-sm-6">
+                  <label for="last_name">Last Name *</label>
+                  <input
+                    type="text"
+                    name="last_name"
+                    id="last_name"
+                    placeholder="Enter last name"
+                    class="form-control"
+                    value="{{ user.last_name }}"
+                    required
+                  />
+                </div>
+                <div class="form-group col-sm-6">
+                  <label for="phone">Phone Number *</label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    id="phone"
+                    value="{% if user.profile.phone_number %}{{ user.profile.phone_number }}{% else %}+977{% endif %}"
+                    class="form-control"
+                    pattern="[\+]?[\d\s\-]{7,15}"
+                    required
+                  />
+                </div>
+                <div class="form-group col-sm-6">
+                  <label for="email">Email *</label>
+                  <input
+                    type="email"
+                    name="email"
+                    id="email"
+                    placeholder="example@gmail.com"
+                    class="form-control"
+                    value="{{ user.email }}"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <!-- Delivery Information -->
+          <article class="card mb-4">
+            <div class="card-body">
+              <h4 class="card-title mb-4">
+                <i class="fa fa-map-marker-alt text-primary"></i> Delivery Information
+              </h4>
+              <div class="row">
+                <div class="form-group col-sm-12">
+                  <label for="address">Delivery Address *</label>
+                  <input
+                    type="text"
+                    name="address"
+                    id="address"
+                    placeholder="Enter your full delivery address"
+                    class="form-control"
+                    value="{{ user.profile.address_line_1 }}"
+                    required
+                  />
+                </div>
+                <div class="form-group col-sm-6">
+                  <label for="city">City *</label>
+                  <input
+                    type="text"
+                    name="city"
+                    id="city"
+                    placeholder="Your city"
+                    class="form-control"
+                    value="{{ user.profile.city }}"
+                    required
+                  />
+                </div>
+                <div class="form-group col-sm-6">
+                  <label for="country">Country *</label>
+                  <select name="country" id="country" class="form-control" required>
+                    <option value="Nepal" {% if user.profile.country == 'Nepal' %}selected{% endif %}>Nepal</option>
+                    <option value="India" {% if user.profile.country == 'India' %}selected{% endif %}>India</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div class="form-group col-sm-6">
+                  <label for="zip">ZIP/Postal Code</label>
+                  <input
+                    type="text"
+                    name="zip"
+                    id="zip"
+                    placeholder="ZIP code"
+                    class="form-control"
+                  />
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <!-- Payment Methods -->
+<article class="card mb-4">
+  <div class="card-body">
+    <h4 class="card-title mb-4">
+      <i class="fa fa-credit-card text-primary"></i> Payment Method
+    </h4>
+    <div class="accordion" id="accordion_pay">
+      <!-- eSewa Payment -->
+      <div class="card border mb-2">
+        <div class="card-header p-0" id="heading-esewa">
+          <label class="payment-option esewa-option w-100 p-3 mb-0 cursor-pointer" data-toggle="collapse" data-target="#pay_esewa">
+            <div class="row align-items-center">
+              <div class="col-2">
                 <input
-                  class="form-check-input"
-                  name="payment-option"
+                  type="radio"
+                  class="payment-radio"
+                  name="payment_method"
+                  value="eSewa"
                   checked
-                  type="radio"
-                  value="option2"
                 />
-                <h6 class="form-check-label">Paypal</h6>
-              </label>
-            </header>
-            <div
-              id="pay_paynet"
-              class="collapse show"
-              data-parent="#accordion_pay"
-            >
-              <div class="card-body">
-                <p class="text-center text-muted">
-                  Connect your PayPal account and use it to pay your bills.
-                  You'll be redirected to PayPal to add your billing
-                  information.
-                </p>
-                <p class="text-center">
-                  <a href="#"
-                    ><img src="/static/images/misc/btn-paypal.png" height="32"
-                  /></a>
-                  <br /><br />
-                </p>
               </div>
-              <!-- card body .// -->
-            </div>
-            <!-- collapse .// -->
-          </div>
-          <!-- card.// -->
-          <div class="card">
-            <header class="card-header">
-              <img
-                src="/static/images/misc/payment-card.png"
-                class="float-right"
-                height="24"
-              />
-              <label
-                class="form-check"
-                data-toggle="collapse"
-                data-target="#pay_payme"
-              >
-                <input
-                  class="form-check-input"
-                  name="payment-option"
-                  type="radio"
-                  value="option2"
-                />
-                <h6 class="form-check-label">Credit Card</h6>
-              </label>
-            </header>
-            <div id="pay_payme" class="collapse" data-parent="#accordion_pay">
-              <div class="card-body">
-                <p class="alert alert-success">
-                  Some information or instruction
-                </p>
-                <form class="form-inline">
-                  <input
-                    type="text"
-                    class="form-control mr-2"
-                    placeholder="xxxx-xxxx-xxxx-xxxx"
-                    name=""
-                  />
-                  <input
-                    type="text"
-                    class="form-control mr-2"
-                    style="width: 100px"
-                    placeholder="dd/yy"
-                    name=""
-                  />
-                  <input
-                    type="number"
-                    maxlength="3"
-                    class="form-control mr-2"
-                    style="width: 100px"
-                    placeholder="cvc"
-                    name=""
-                  />
-                  <button class="btn btn btn-success">Button</button>
-                </form>
+              <div class="col-6">
+                <div class="payment-info">
+                  <h6 class="mb-1 font-weight-bold">eSewa Digital Wallet</h6>
+                  <small class="text-muted">Quick & Secure Payment</small>
+                </div>
               </div>
-              <!-- card body .// -->
+              <div class="col-4 text-right">
+                <div class="esewa-logo">
+                  <i class="fa fa-wallet text-white"></i>
+                  <span class="logo-text">eSewa</span>
+                </div>
+              </div>
             </div>
-            <!-- collapse .// -->
-          </div>
-          <!-- card.// -->
-        </article>
-        <!-- accordion end.// -->
-      </main>
-      <!-- col.// -->
-      <aside class="col-md-4">
-        <div class="card">
-          <div class="card-body">
-            <dl class="dlist-align">
-              <dt>Total price:</dt>
-              <dd class="text-right">${{ total|floatformat:2 }}</dd>
-            </dl>
-            <dl class="dlist-align">
-              <dt>Tax:</dt>
-              <dd class="text-right">${{ tax|floatformat:2 }}</dd>
-            </dl>
-            <dl class="dlist-align">
-              <dt>Total:</dt>
-              <dd class="text-right text-dark b">
-                <strong>${{ grand_total|floatformat:2 }}</strong>
-              </dd>
-            </dl>
-            <hr />
-            <p class="text-center mb-3">
-              <img src="/static/images/misc/payments.png" height="26" />
-            </p>
-            <a href="/place-order/" class="btn btn-primary btn-block">
-              Place Order
-            </a>
-          </div>
-          <!-- card-body.// -->
+          </label>
         </div>
-        <!-- card.// -->
-      </aside>
-      <!-- col.// -->
-    </div>
-    <!-- row.// -->
+        <div id="pay_esewa" class="collapse show" data-parent="#accordion_pay">
+          <div class="card-body bg-light">
+            <div class="alert alert-info border-left-success">
+              <i class="fa fa-shield-check text-success"></i>
+              <strong>Instant Payment</strong> - You'll be redirected to eSewa for secure payment processing.
+            </div>
+          </div>
+        </div>
+      </div>
 
-    <!-- ============================ COMPONENT 2 END//  ================================= -->
+      <!-- Khalti Payment -->
+      <div class="card border mb-2">
+        <div class="card-header p-0" id="heading-khalti">
+          <label class="payment-option khalti-option w-100 p-3 mb-0 cursor-pointer" data-toggle="collapse" data-target="#pay_khalti">
+            <div class="row align-items-center">
+              <div class="col-2">
+                <input
+                  type="radio"
+                  class="payment-radio"
+                  name="payment_method"
+                  value="Khalti"
+                />
+              </div>
+              <div class="col-6">
+                <div class="payment-info">
+                  <h6 class="mb-1 font-weight-bold">Khalti Digital Wallet</h6>
+                  <small class="text-muted">Mobile & PIN Authentication</small>
+                </div>
+              </div>
+              <div class="col-4 text-right">
+                <div class="khalti-logo">
+                  <i class="fa fa-mobile-alt text-white"></i>
+                  <span class="logo-text">Khalti</span>
+                </div>
+              </div>
+            </div>
+          </label>
+        </div>
+        <div id="pay_khalti" class="collapse" data-parent="#accordion_pay">
+          <div class="card-body bg-light">
+            <div class="alert alert-info border-left-primary">
+              <i class="fa fa-shield-alt text-primary"></i>
+              <strong>Bank-Level Security</strong> - Pay using your mobile number and secure PIN.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cash on Delivery -->
+      <div class="card border mb-2">
+        <div class="card-header p-0" id="heading-cod">
+          <label class="payment-option cod-option w-100 p-3 mb-0 cursor-pointer" data-toggle="collapse" data-target="#pay_cod">
+            <div class="row align-items-center">
+              <div class="col-2">
+                <input
+                  type="radio"
+                  class="payment-radio"
+                  name="payment_method"
+                  value="Cash on Delivery"
+                />
+              </div>
+              <div class="col-6">
+                <div class="payment-info">
+                  <h6 class="mb-1 font-weight-bold">Cash on Delivery</h6>
+                  <small class="text-muted">Pay when you receive</small>
+                </div>
+              </div>
+              <div class="col-4 text-right">
+                <div class="cod-logo">
+                  <i class="fa fa-money-bill-wave text-success fa-2x"></i>
+                </div>
+              </div>
+            </div>
+          </label>
+        </div>
+        <div id="pay_cod" class="collapse" data-parent="#accordion_pay">
+          <div class="card-body bg-light">
+            <div class="alert alert-warning border-left-warning">
+              <i class="fa fa-truck text-warning"></i>
+              <strong>Delivery Payment</strong> - Pay with cash when your order arrives. Additional charges may apply.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
-  <!-- container .//  -->
+</article>
+        </main>
+
+        <!-- Order Summary Sidebar -->
+        <aside class="col-md-4">
+          <div class="card sticky-top" style="top: 20px;">
+            <div class="card-header">
+              <h5 class="mb-0">
+                <i class="fa fa-file-invoice text-primary"></i> Order Summary
+              </h5>
+            </div>
+            <div class="card-body">
+              <dl class="row">
+                <dt class="col-7">Subtotal:</dt>
+                <dd class="col-5 text-right">Rs. {{ total|floatformat:2 }}</dd>
+                
+                <dt class="col-7">Tax (13%):</dt>
+                <dd class="col-5 text-right">Rs. {{ tax|floatformat:2 }}</dd>
+                
+                <dt class="col-7 border-top pt-2"><strong>Grand Total:</strong></dt>
+                <dd class="col-5 text-right border-top pt-2">
+                  <strong class="text-primary">Rs. {{ grand_total|floatformat:2 }}</strong>
+                </dd>
+              </dl>
+
+              <div class="text-center mb-3">
+                <small class="text-muted">
+                  <i class="fa fa-shield-alt text-success"></i>
+                  SSL Secured Payment
+                </small>
+              </div>
+
+              {% if items %}
+              <button type="submit" class="btn btn-success btn-block btn-lg" id="place-order-btn">
+                <i class="fa fa-check-circle"></i> Place Order
+              </button>
+              <div class="text-center mt-2">
+                <small class="text-muted">
+                  By placing order, you agree to our terms & conditions
+                </small>
+              </div>
+              {% else %}
+              <a href="{% url 'products:product' %}" class="btn btn-secondary btn-block">
+                Continue Shopping
+              </a>
+              {% endif %}
+            </div>
+          </div>
+        </aside>
+      </div>
+    </form>
+  </div>
 </section>
+
+<style>
+.card.sticky-top {
+  z-index: 1020;
+}
+
+@media (max-width: 768px) {
+  .card.sticky-top {
+    position: relative !important;
+  }
+}
+
+/* Enhanced Payment Options Styling */
+.payment-option {
+  border-radius: 12px;
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+  cursor: pointer;
+  border: 2px solid #e9ecef;
+  background: #ffffff;
+  position: relative;
+  overflow: hidden;
+}
+
+.payment-option::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  transition: left 0.6s;
+}
+
+.payment-option:hover::before {
+  left: 100%;
+}
+
+.payment-option:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+  border-color: #007bff;
+}
+
+.payment-radio:checked ~ .payment-option,
+.payment-option:has(.payment-radio:checked) {
+  border-color: #007bff;
+  background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
+  box-shadow: 0 5px 15px rgba(0,123,255,0.2);
+}
+
+/* eSewa Enhanced Styling */
+.esewa-option {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fffe 100%);
+  border: 2px solid #e8f5e8;
+}
+
+.esewa-option:hover {
+  background: linear-gradient(135deg, #e8f9e8 0%, #f0fdf0 100%);
+  border-color: #22c55e;
+  box-shadow: 0 8px 25px rgba(34, 197, 94, 0.25);
+}
+
+.esewa-option:has(.payment-radio:checked) {
+  background: linear-gradient(135deg, #dcfce7 0%, #f0fdf4 100%);
+  border-color: #16a34a;
+  box-shadow: 0 5px 15px rgba(34, 197, 94, 0.3);
+}
+
+.esewa-logo {
+  background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+  padding: 10px 18px;
+  border-radius: 25px;
+  color: white;
+  font-weight: 700;
+  box-shadow: 0 4px 15px rgba(34, 197, 94, 0.4);
+  position: relative;
+  overflow: hidden;
+}
+
+.esewa-logo::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, #22c55e, #16a34a, #15803d);
+  border-radius: 25px;
+  z-index: -1;
+  animation: esewa-glow 3s ease-in-out infinite alternate;
+}
+
+@keyframes esewa-glow {
+  0% { opacity: 0.8; transform: scale(1); }
+  100% { opacity: 1; transform: scale(1.05); }
+}
+
+.esewa-logo .logo-text {
+  margin-left: 6px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+/* Khalti Enhanced Styling */
+.khalti-option {
+  background: linear-gradient(135deg, #ffffff 0%, #fefffe 100%);
+  border: 2px solid #f3e8ff;
+}
+
+.khalti-option:hover {
+  background: linear-gradient(135deg, #f3e8ff 0%, #faf5ff 100%);
+  border-color: #a855f7;
+  box-shadow: 0 8px 25px rgba(168, 85, 247, 0.25);
+}
+
+.khalti-option:has(.payment-radio:checked) {
+  background: linear-gradient(135deg, #ede9fe 0%, #f5f3ff 100%);
+  border-color: #7c3aed;
+  box-shadow: 0 5px 15px rgba(124, 58, 237, 0.3);
+}
+
+.khalti-logo {
+  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+  padding: 10px 18px;
+  border-radius: 25px;
+  color: white;
+  font-weight: 700;
+  box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4);
+  position: relative;
+  overflow: hidden;
+}
+
+.khalti-logo::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, #a855f7, #7c3aed, #6d28d9);
+  border-radius: 25px;
+  z-index: -1;
+  animation: khalti-glow 3s ease-in-out infinite alternate;
+}
+
+@keyframes khalti-glow {
+  0% { opacity: 0.8; transform: scale(1); }
+  100% { opacity: 1; transform: scale(1.05); }
+}
+
+.khalti-logo .logo-text {
+  margin-left: 6px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+/* Cash on Delivery Enhanced Styling */
+.cod-option {
+  background: linear-gradient(135deg, #ffffff 0%, #fffffe 100%);
+  border: 2px solid #fef3c7;
+}
+
+.cod-option:hover {
+  background: linear-gradient(135deg, #fef3c7 0%, #fffbeb 100%);
+  border-color: #f59e0b;
+  box-shadow: 0 8px 25px rgba(245, 158, 11, 0.25);
+}
+
+.cod-option:has(.payment-radio:checked) {
+  background: linear-gradient(135deg, #fed7aa 0%, #fef3c7 100%);
+  border-color: #d97706;
+  box-shadow: 0 5px 15px rgba(217, 119, 6, 0.3);
+}
+
+.cod-logo {
+  background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+  padding: 12px 15px;
+  border-radius: 50%;
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+  position: relative;
+  overflow: hidden;
+}
+
+.cod-logo::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, #fbbf24, #f59e0b, #d97706);
+  border-radius: 50%;
+  z-index: -1;
+  animation: cod-glow 3s ease-in-out infinite alternate;
+}
+
+@keyframes cod-glow {
+  0% { opacity: 0.8; transform: scale(1); }
+  100% { opacity: 1; transform: scale(1.05); }
+}
+
+/* Payment Radio Buttons */
+.payment-radio {
+  width: 22px;
+  height: 22px;
+  accent-color: #007bff;
+  margin-right: 10px;
+}
+
+/* Enhanced Payment Info */
+.payment-info h6 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 4px;
+}
+
+.payment-info small {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+/* Alert Styling */
+.border-left-success {
+  border-left: 5px solid #22c55e !important;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+}
+
+.border-left-primary {
+  border-left: 5px solid #3b82f6 !important;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+}
+
+.border-left-warning {
+  border-left: 5px solid #f59e0b !important;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+}
+
+/* Enhanced Icons */
+.fa-wallet, .fa-mobile-alt, .fa-money-bill-wave {
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+}
+
+/* Responsive Enhancements */
+@media (max-width: 768px) {
+  .esewa-logo, .khalti-logo {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+  
+  .payment-info h6 {
+    font-size: 14px;
+  }
+  
+  .payment-info small {
+    font-size: 11px;
+  }
+  
+  .payment-option {
+    border-radius: 8px;
+  }
+}
+
+/* Loading Animation for Selected Payment */
+.payment-option.selected {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 5px 15px rgba(0,123,255,0.2); }
+  50% { box-shadow: 0 5px 25px rgba(0,123,255,0.4); }
+  100% { box-shadow: 0 5px 15px rgba(0,123,255,0.2); }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Form validation
+    const form = document.getElementById('checkout-form');
+    const placeOrderBtn = document.getElementById('place-order-btn');
+    
+    form.addEventListener('submit', function(e) {
+        placeOrderBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Processing...';
+        placeOrderBtn.disabled = true;
+    });
+    
+    // Phone number validation
+    const phoneInput = document.getElementById('phone');
+    phoneInput.addEventListener('input', function() {
+        const phone = this.value.trim();
+        if (phone && !/^[\+]?[\d\s\-]{7,15}$/.test(phone)) {
+            this.setCustomValidity('Please enter a valid phone number');
+        } else {
+            this.setCustomValidity('');
+        }
+    });
+    
+    // Enhanced payment option interaction
+    document.querySelectorAll('.payment-option').forEach(option => {
+        option.addEventListener('click', function() {
+            const radio = this.querySelector('.payment-radio');
+            if (radio) {
+                // Remove selected class from all options
+                document.querySelectorAll('.payment-option').forEach(opt => {
+                    opt.classList.remove('selected');
+                });
+                
+                // Add selected class and check radio
+                radio.checked = true;
+                this.classList.add('selected');
+                
+                // Add a subtle success animation
+                this.style.animation = 'none';
+                setTimeout(() => {
+                    this.style.animation = 'pulse 0.6s ease-in-out';
+                }, 10);
+            }
+        });
+    });
+    
+    // Set initial selected state
+    const checkedRadio = document.querySelector('.payment-radio:checked');
+    if (checkedRadio) {
+        checkedRadio.closest('.payment-option').classList.add('selected');
+    }
+});
+</script>
+
 {% endblock %}

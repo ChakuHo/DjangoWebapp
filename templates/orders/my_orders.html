@@ -7,98 +7,210 @@
       <aside class="col-md-3">
         <!--   SIDEBAR   -->
         <ul class="list-group">
-          <a class="list-group-item" href="/dashboard/"> Dashboard </a>
-          <a class="list-group-item active" href="/my-orders/"> My Orders </a>
-          <a class="list-group-item" href="/edit-profile/"> Edit Profile </a>
-          <a class="list-group-item" href="#"> My Selling Items </a>
-          <a class="list-group-item" href="#"> Received Orders </a>
-          <a class="list-group-item" href="/change-password/">
+          <a class="list-group-item" href="{% url 'dashboard' %}">
+            Dashboard
+          </a>
+          <a class="list-group-item active" href="/orders/my-orders/">
+            My Orders
+          </a>
+          <a class="list-group-item" href="{% url 'edit_profile' %}">
+            Edit Profile
+          </a>
+          <a class="list-group-item" href="{% url 'my_selling_items' %}">
+            My Selling Items
+          </a>
+          <a class="list-group-item" href="{% url 'received_orders' %}">
+            Received Orders
+          </a>
+          <a class="list-group-item" href="{% url 'change_password' %}">
             Change Password
           </a>
         </ul>
         <br />
-        <a class="btn btn-light btn-block" href="/accounts/logout/">
+        <a
+          class="btn btn-light btn-block"
+          href="{% url 'logout' %}"
+          onclick="return confirm('Are you sure you want to logout?')"
+        >
           <i class="fa fa-power-off"></i> <span class="text">Log out</span>
         </a>
         <!--   SIDEBAR .//END   -->
       </aside>
+
       <main class="col-md-9">
-        {% for order in orders %}
-        <article class="card">
+        {% if orders %} {% for order in orders %}
+        <article class="card mb-4">
           <header class="card-header">
-            <strong class="d-inline-block mr-3"
-              >Order ID: {{ order.id }}</strong
-            >
-            <span>Order Date: {{ order.created_at|date:"d M Y" }}</span>
-          </header>
-          <div class="card-body">
             <div class="row">
               <div class="col-md-8">
-                <h6 class="text-muted">Delivery to</h6>
+                <strong class="d-inline-block mr-3"
+                  >Order ID: #{{ order.id }}</strong
+                >
+                <span>Order Date: {{ order.created_at|date:"d M Y" }}</span>
+              </div>
+              <div class="col-md-4 text-right">
+                {% if order.status|lower == 'pending' %}
+                <span class="badge badge-warning"
+                  >{{ order.status|upper }}</span
+                >
+                {% elif order.status|lower == 'delivered' %}
+                <span class="badge badge-success"
+                  >{{ order.status|upper }}</span
+                >
+                {% elif order.status|lower == 'shipped' %}
+                <span class="badge badge-info">{{ order.status|upper }}</span>
+                {% else %}
+                <span class="badge badge-secondary"
+                  >{{ order.status|upper }}</span
+                >
+                {% endif %}
+              </div>
+            </div>
+          </header>
+          <div class="card-body">
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <h6 class="text-muted">Delivery Address</h6>
                 <p>
-                  {{ order.user.get_full_name }}<br />
-                  Phone: {{ order.user.profile.phone }}<br />
-                  Email: {{ order.user.email }}<br />
-                  Address: {{ order.address }}, {{ order.city }}, {{
-                  order.country }}, {{ order.zip }}
+                  {{ order.user.get_full_name|default:order.user.username }}<br />
+                  {{ order.address }}<br />
+                  {{ order.city }}, {{ order.country }} - {{ order.zip }}
                 </p>
               </div>
-              <div class="col-md-4">
-                <h6 class="text-muted">Payment</h6>
-                <span class="text-success">
-                  <i class="fab fa-lg fa-cc-visa"></i>
-                  {{ order.payment_method }}
-                </span>
+              <div class="col-md-6">
+                <h6 class="text-muted">Payment & Total</h6>
                 <p>
-                  Subtotal: ${{ order.total|floatformat:2 }}<br />
-                  Tax: ${{ order.tax|floatformat:2 }}<br />
-                  <span class="b"
-                    >Total: ${{ order.grand_total|floatformat:2 }}</span
-                  >
+                  <strong>Payment Method:</strong> {{ order.payment_method }}<br />
+                  <strong>Total Amount:</strong> Rs. {{ order.total|add:order.tax|floatformat:2 }}<br />
+                  <strong>Transaction ID:</strong> {{ order.transaction_id }}
                 </p>
               </div>
             </div>
-          </div>
-          <div class="table-responsive">
-            <table class="table table-hover">
-              {% for item in order.items.all %}
-              <tr>
-                <td width="65">
-                  {% if item.product.image %}
-                  <img
-                    src="{{ item.product.image.url }}"
-                    class="img-xs border"
-                  />
-                  {% else %}
-                  <img
-                    src="https://via.placeholder.com/65x65?text=No+Image"
-                    class="img-xs border"
-                  />
-                  {% endif %}
-                </td>
-                <td>
-                  <p class="title mb-0">{{ item.product.name }}</p>
-                  <var class="price text-muted"
-                    >USD {{ item.price|floatformat:2 }}</var
-                  >
-                </td>
-                <td>
-                  Seller <br />
-                  {{ item.product.seller|default:"-" }}
-                </td>
-                <td width="250">
-                  <a href="#" class="btn btn-outline-primary">Track order</a>
-                  <a href="#" class="btn btn-light"> Details </a>
-                </td>
-              </tr>
-              {% endfor %}
-            </table>
+
+            <!-- Order Items -->
+            <h6 class="text-muted mb-3">Ordered Items</h6>
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th width="80">Image</th>
+                    <th>Product</th>
+                    <th width="100">Price</th>
+                    <th width="80">Qty</th>
+                    <th width="120">Total</th>
+                    <th width="150">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for item in order.items.all %}
+                  <tr>
+                    <td>
+                      {% if item.product.image %}
+                      <img
+                        src="{{ item.product.image.url }}"
+                        class="img-xs border rounded"
+                        style="width: 60px; height: 60px; object-fit: cover"
+                      />
+                      {% else %}
+                      <img
+                        src="https://via.placeholder.com/60x60?text=No+Image"
+                        class="img-xs border rounded"
+                        style="width: 60px; height: 60px; object-fit: cover"
+                      />
+                      {% endif %}
+                    </td>
+                    <td>
+                      <div>
+                        <strong>{{ item.product.name }}</strong><br />
+                        <small class="text-muted"
+                          >{{ item.product.brand|default:"" }}</small
+                        >
+                      </div>
+                    </td>
+                    <td>Rs. {{ item.product.price|floatformat:2 }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td><strong>Rs. {{ item.price|floatformat:2 }}</strong></td>
+                    <td>
+                      <a
+                        href="{{ item.product.get_url }}"
+                        class="btn btn-outline-primary btn-sm"
+                      >
+                        View Product
+                      </a>
+                      {% if order.status|lower == 'delivered' %}
+                      <a href="#" class="btn btn-outline-success btn-sm mt-1">
+                        Review
+                      </a>
+                      {% endif %}
+                    </td>
+                  </tr>
+                  {% empty %}
+                  <tr>
+                    <td colspan="6" class="text-center">
+                      No items found in this order.
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <th colspan="4" class="text-right">Subtotal:</th>
+                    <th>Rs. {{ order.total|floatformat:2 }}</th>
+                    <th></th>
+                  </tr>
+                  <tr>
+                    <th colspan="4" class="text-right">Tax (13%):</th>
+                    <th>Rs. {{ order.tax|floatformat:2 }}</th>
+                    <th></th>
+                  </tr>
+                  <tr>
+                    <th colspan="4" class="text-right">Grand Total:</th>
+                    <th>
+                      <strong>Rs. {{ order.total|add:order.tax|floatformat:2 }}</strong>
+                    </th>
+                    <th></th>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            <!-- Order Actions -->
+            <div class="text-right mt-3">
+              <a
+                href="{% url 'order_complete' order.id %}"
+                class="btn btn-primary btn-sm"
+              >
+                View Invoice
+              </a>
+              {% if order.status|lower == 'pending' %}
+              <button
+                class="btn btn-outline-danger btn-sm"
+                onclick="alert('Contact support to cancel this order')"
+              >
+                Cancel Order
+              </button>
+              {% endif %}
+            </div>
           </div>
         </article>
-        {% endfor %}
+        {% endfor %} {% else %}
+        <!-- Show this when no orders -->
+        <div class="card">
+          <div class="card-body text-center">
+            <i
+              class="fa fa-shopping-bag"
+              style="font-size: 48px; color: #ccc; margin-bottom: 20px"
+            ></i>
+            <h4>No Orders Yet</h4>
+            <p>You haven't placed any orders yet.</p>
+            <a href="{% url 'products:product' %}" class="btn btn-primary"
+              >Start Shopping</a
+            >
+          </div>
+        </div>
+        {% endif %}
       </main>
     </div>
-    <!-- row.// -->
   </div>
 </section>
 {% endblock %}

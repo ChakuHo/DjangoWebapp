@@ -10,7 +10,7 @@
   <h2 class="text-center">Payment Successful</h2>
   <br />
   <div class="text-center">
-    <a href="/store/" class="btn btn-success">Shop more</a>
+    <a href="{% url 'products:product' %}" class="btn btn-success">Shop more</a>
   </div>
 </div>
 
@@ -37,19 +37,19 @@
               <!-- col-lg-6 start here -->
               <div class="invoice-logo">
                 <img
-                  src="/static/images/logo1.png"
-                  alt="Invoice logo"
-                  style="max-height: 40px"
+                  src="/media/site_logos/islingtonmarketplacefavicon.PNG"
+                  alt="Islington Marketplace"
+                  style="max-height: 60px; max-width: 200px; object-fit: contain;"
                 />
               </div>
             </div>
             <!-- col-lg-6 end here -->
             <div class="col-lg-6">
-              <!-- col-lg-6 start here -->
+              <!-- col-lg-6 start here - THIS WAS MISSING -->
               <div class="invoice-from">
                 <ul class="list-unstyled text-right">
                   <li><strong>Invoiced To</strong></li>
-                  <li>{{ order.user.get_full_name }}</li>
+                  <li>{{ order.user.get_full_name|default:order.user.username }}</li>
                   <li>{{ order.address }}</li>
                   <li>{{ order.city }}, {{ order.zip }}</li>
                   <li>{{ order.country }}</li>
@@ -67,10 +67,10 @@
                       <strong>Transaction</strong> #{{ order.transaction_id }}
                     </li>
                     <li>
-                      <strong>Order Date:</strong> {{ order.created_at|date:"l,
-                      F jS, Y" }}
+                      <strong>Order Date:</strong> {{ order.created_at|date:"l, F jS, Y" }}
                     </li>
                     <li><strong>Status:</strong> {{ order.status|upper }}</li>
+                    <li><strong>Payment Method:</strong> {{ order.payment_method }}</li>
                   </ul>
                 </div>
               </div>
@@ -95,7 +95,7 @@
                         <td>{{ item.product.name }}</td>
                         <td class="text-center">{{ item.quantity }}</td>
                         <td class="text-center">
-                          ${{ item.price|floatformat:2 }}
+                          Rs. {{ item.price|floatformat:2 }}
                         </td>
                       </tr>
                       {% endfor %}
@@ -104,27 +104,49 @@
                       <tr>
                         <th colspan="2" class="text-right">Sub Total:</th>
                         <th class="text-center">
-                          ${{ order.total|floatformat:2 }}
+                          Rs. {{ order.total|floatformat:2 }}
                         </th>
                       </tr>
                       <tr>
                         <th colspan="2" class="text-right">Tax:</th>
                         <th class="text-center">
-                          ${{ order.tax|floatformat:2 }}
+                          Rs. {{ order.tax|floatformat:2 }}
                         </th>
                       </tr>
                       <tr>
                         <th colspan="2" class="text-right">Grand Total:</th>
                         <th class="text-center">
-                          ${{ order.grand_total|floatformat:2 }}
+                          Rs. {{ order.grand_total|floatformat:2 }}
                         </th>
                       </tr>
                     </tfoot>
                   </table>
                 </div>
               </div>
+              
+              <!-- Payment Method Info -->
+              {% if order.payment_method != 'Cash on Delivery' %}
               <div class="invoice-footer mt25">
+                <div class="alert alert-success text-center">
+                  <i class="fa fa-check-circle"></i>
+                  Payment completed via {{ order.payment_method }}
+                </div>
+              </div>
+              {% else %}
+              <div class="invoice-footer mt25">
+                <div class="alert alert-info text-center">
+                  <i class="fa fa-money-bill-alt"></i>
+                  Payment will be collected on delivery
+                </div>
+              </div>
+              {% endif %}
+              
+              <div class="invoice-footer">
                 <p class="text-center">Thank you for shopping with us!</p>
+                <div class="text-center mt-3">
+                  <a href="{% url 'products:product' %}" class="btn btn-primary mr-2">Continue Shopping</a>
+                  <a href="/orders/my-orders/" class="btn btn-outline-primary">View My Orders</a>
+                </div>
               </div>
             </div>
             <!-- col-lg-12 end here -->
@@ -137,4 +159,19 @@
     <!-- col-lg-12 end here -->
   </div>
 </div>
+
+<!-- Print Styles -->
+<style>
+@media print {
+  .btn, .alert {
+    display: none;
+  }
+  .container {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}
+</style>
+
 {% endblock %}

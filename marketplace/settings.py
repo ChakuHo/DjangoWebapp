@@ -157,3 +157,9 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 #yoo add gareko ho to use WhiteNoise for serving static files in production plus deploy garne ko step ho yo ni
 STATIC_ROOT = BASE_DIR / 'staticfiles'  # Directory where static files will be collected/destination for static files
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'  # Use WhiteNoise for static files storage
+
+
+# Session settings - cart will persist for 3 days
+SESSION_COOKIE_AGE = 259200  # 3 days in seconds (3 * 24 * 60 * 60)
+SESSION_SAVE_EVERY_REQUEST = True
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False

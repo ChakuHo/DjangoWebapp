@@ -23,5 +23,10 @@ def home(request):
         # 'blogs':blogs,
         # 'pages':pages,
         # 'banners':banners,
-    
+
+def contact(request):
+    return render(request, 'contact.html')
+
+def about(request):
+    return render(request, 'about.html')  
 

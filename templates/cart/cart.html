@@ -6,7 +6,7 @@
     <h2 class="text-center">Your Shopping Cart is Empty</h2>
     <br />
     <div class="text-center">
-      <a href="{% url 'product' %}" class="btn btn-primary"
+      <a href="{% url 'products:product' %}" class="btn btn-primary"
         >Continue Shopping</a
       >
     </div>
@@ -150,8 +150,8 @@
             <p class="text-center mb-3">
               <img src="/static/images/misc/payments.png" height="26" />
             </p>
-            <a href="/checkout/" class="btn btn-primary btn-block">Checkout</a>
-            <a href="{% url 'product' %}" class="btn btn-light btn-block"
+            <a href="{% url 'checkout' %}" class="btn btn-primary btn-block">Checkout</a>
+            <a href="{% url 'products:product' %}" class="btn btn-light btn-block"
               >Continue Shopping</a
             >
           </div>

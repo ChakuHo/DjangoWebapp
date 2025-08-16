@@ -6,25 +6,48 @@
       <aside class="col-md-3">
         <!--   SIDEBAR   -->
         <ul class="list-group">
-          <a class="list-group-item" href="/dashboard/"> Dashboard </a>
-          <a class="list-group-item" href="/my-orders/"> My Orders </a>
-          <a class="list-group-item active" href="/edit-profile/">
+          <a class="list-group-item" href="{% url 'dashboard' %}"> Dashboard </a>
+          <a class="list-group-item" href="/orders/my-orders/"> My Orders </a>
+          <a class="list-group-item active" href="{% url 'edit_profile' %}">
             Edit Profile
           </a>
-          <a class="list-group-item" href="#"> My Selling Items </a>
-          <a class="list-group-item" href="#"> Received Orders </a>
-          <a class="list-group-item" href="/change-password/">
+          <a class="list-group-item" href="{% url 'my_selling_items' %}"> My Selling Items </a>
+          <a class="list-group-item" href="{% url 'received_orders' %}"> Received Orders </a>
+          <a class="list-group-item" href="{% url 'change_password' %}">
             Change Password
           </a>
         </ul>
         <br />
-        <a class="btn btn-light btn-block" href="/accounts/logout/">
+        <a class="btn btn-light btn-block" href="{% url 'logout' %}"
+           onclick="return confirm('Are you sure you want to logout?')">
           <i class="fa fa-power-off"></i> <span class="text">Log out</span>
         </a>
         <!--   SIDEBAR .//END   -->
       </aside>
 
       <main class="col-md-9">
+        <!-- Display Messages -->
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+              {{ message }}
+              <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+          {% endfor %}
+        {% endif %}
+
+        <!-- Display Errors -->
+        {% if error %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+          {{ error }}
+          <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        {% endif %}
+
         <article class="card">
           <header class="card-header">
             <strong class="d-inline-block mr-3">Edit your profile</strong>
@@ -36,14 +59,14 @@
                 src="{{ profile.profile_picture.url }}"
                 alt="Profile Picture"
                 width="100"
-                style="border-radius: 50px"
+                style="border-radius: 50%; object-fit: cover; height: 100px;"
               />
               {% else %}
               <img
-                src="/static/images/default/default-user.png"
+                src="{% static 'images/default/default-user.png' %}"
                 alt="Profile Picture"
                 width="100"
-                style="border-radius: 50px"
+                style="border-radius: 50%; object-fit: cover; height: 100px;"
               />
               {% endif %}
             </div>
@@ -53,11 +76,15 @@
                   action="{% url 'edit_profile' %}"
                   method="POST"
                   enctype="multipart/form-data"
+                  novalidate
                 >
                   {% csrf_token %}
+                  
+                  <!-- Basic Information -->
+                  <h6 class="mt-4 mb-3 text-muted">Basic Information</h6>
                   <div class="form-row">
                     <div class="form-group col-md-6">
-                      <label>First Name</label>
+                      <label for="id_first_name">First Name *</label>
                       <input
                         type="text"
                         name="first_name"
@@ -66,10 +93,11 @@
                         class="form-control"
                         required
                         id="id_first_name"
+                        placeholder="Enter your first name"
                       />
                     </div>
                     <div class="form-group col-md-6">
-                      <label>Last Name</label>
+                      <label for="id_last_name">Last Name *</label>
                       <input
                         type="text"
                         name="last_name"
@@ -78,24 +106,33 @@
                         class="form-control"
                         required
                         id="id_last_name"
+                        placeholder="Enter your last name"
                       />
                     </div>
                   </div>
+                  
+                  <!-- Contact Information -->
+                  <h6 class="mt-4 mb-3 text-muted">Contact Information</h6>
                   <div class="form-row">
                     <div class="form-group col-md-6">
-                      <label>Phone Number</label>
+                      <label for="id_phone_number">Phone Number</label>
                       <input
-                        type="text"
+                        type="tel"
                         name="phone_number"
                         value="{{ profile.phone_number }}"
-                        maxlength="50"
+                        maxlength="20"
                         class="form-control"
-                        required
                         id="id_phone_number"
+                        placeholder="+977-98XXXXXXXX"
+                        pattern="[\+]?[\d\s\-]{7,15}"
+                        title="Enter a valid phone number (7-15 digits, can include +, spaces, or hyphens)"
                       />
+                      <small class="form-text text-muted">
+                        Example: +977-9812345678 or 9812345678
+                      </small>
                     </div>
                     <div class="form-group col-md-6">
-                      <label>Profile Picture</label>
+                      <label for="id_profile_picture">Profile Picture</label>
                       <input
                         type="file"
                         name="profile_picture"
@@ -103,10 +140,16 @@
                         class="form-control"
                         id="id_profile_picture"
                       />
+                      <small class="form-text text-muted">
+                        JPG, PNG files only. Max size: 5MB
+                      </small>
                     </div>
                   </div>
+                  
+                  <!-- Address Information -->
+                  <h6 class="mt-4 mb-3 text-muted">Address Information</h6>
                   <div class="form-group">
-                    <label>Address Line 1</label>
+                    <label for="id_address_line_1">Address Line 1</label>
                     <input
                       type="text"
                       name="address_line_1"
@@ -114,10 +157,11 @@
                       value="{{ profile.address_line_1 }}"
                       class="form-control"
                       id="id_address_line_1"
+                      placeholder="Street address, house number"
                     />
                   </div>
                   <div class="form-group">
-                    <label>Address Line 2</label>
+                    <label for="id_address_line_2">Address Line 2</label>
                     <input
                       type="text"
                       name="address_line_2"
@@ -125,44 +169,58 @@
                       value="{{ profile.address_line_2 }}"
                       class="form-control"
                       id="id_address_line_2"
+                      placeholder="Apartment, suite, floor (optional)"
                     />
                   </div>
                   <div class="form-row">
                     <div class="form-group col-md-4">
-                      <label>City</label>
+                      <label for="id_city">City</label>
                       <input
                         type="text"
                         name="city"
                         value="{{ profile.city }}"
-                        maxlength="20"
+                        maxlength="30"
                         class="form-control"
                         id="id_city"
+                        placeholder="Your city"
                       />
                     </div>
                     <div class="form-group col-md-4">
-                      <label>State</label>
+                      <label for="id_state">State/Province</label>
                       <input
                         type="text"
                         name="state"
                         value="{{ profile.state }}"
-                        maxlength="20"
+                        maxlength="30"
                         class="form-control"
                         id="id_state"
+                        placeholder="Your state/province"
                       />
                     </div>
                     <div class="form-group col-md-4">
-                      <label>Country</label>
-                      <input
-                        type="text"
-                        name="country"
-                        value="{{ profile.country }}"
-                        maxlength="20"
-                        class="form-control"
-                        id="id_country"
-                      />
+                      <label for="id_country">Country</label>
+                      <select name="country" class="form-control" id="id_country">
+                        <option value="">Select Country</option>
+                        <option value="Nepal" {% if profile.country == 'Nepal' %}selected{% endif %}>Nepal</option>
+                        <option value="India" {% if profile.country == 'India' %}selected{% endif %}>India</option>
+                        <option value="USA" {% if profile.country == 'USA' %}selected{% endif %}>United States</option>
+                        <option value="UK" {% if profile.country == 'UK' %}selected{% endif %}>United Kingdom</option>
+                        <option value="Canada" {% if profile.country == 'Canada' %}selected{% endif %}>Canada</option>
+                        <option value="Australia" {% if profile.country == 'Australia' %}selected{% endif %}>Australia</option>
+                        <option value="Other" {% if profile.country and profile.country not in 'Nepal,India,USA,UK,Canada,Australia' %}selected{% endif %}>Other</option>
+                      </select>
                     </div>
                   </div>
-                  <input type="submit" value="Save" class="btn btn-primary" />
+
+                  <!-- Action Buttons -->
+                  <div class="form-group mt-4">
+                    <button type="submit" class="btn btn-primary">
+                      <i class="fa fa-save"></i> Save Changes
+                    </button>
+                    <a href="{% url 'dashboard' %}" class="btn btn-secondary ml-2">
+                      <i class="fa fa-times"></i> Cancel
+                    </a>
+                  </div>
                 </form>
               </div>
             </div>
@@ -176,4 +234,40 @@
     <!-- row.// -->
   </div>
 </section>
+
+<!-- Client-side Validation -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const phoneInput = document.getElementById('id_phone_number');
+    const form = document.querySelector('form');
+    
+    // Phone number validation
+    phoneInput.addEventListener('input', function() {
+        const phone = this.value.trim();
+        if (phone) {
+            const cleanPhone = phone.replace(/[\s\-\+]/g, '');
+            if (!/^\d{7,15}$/.test(cleanPhone)) {
+                this.setCustomValidity('Phone number should be 7-15 digits');
+            } else {
+                this.setCustomValidity('');
+            }
+        } else {
+            this.setCustomValidity('');
+        }
+    });
+    
+    // File size validation
+    const fileInput = document.getElementById('id_profile_picture');
+    fileInput.addEventListener('change', function() {
+        if (this.files[0]) {
+            const fileSize = this.files[0].size / 1024 / 1024; // in MB
+            if (fileSize > 5) {
+                alert('File size should be less than 5MB');
+                this.value = '';
+            }
+        }
+    });
+});
+</script>
+
 {% endblock %}
