@@ -23,7 +23,7 @@ def login_view(request):
         if user:
             login(request, user)
             
-            # Import and call the merge function
+            # Import and calling the merge function
             from cart.views import merge_session_cart_to_user
             merge_session_cart_to_user(request)
             
@@ -39,7 +39,7 @@ def register_view(request):
         first_name = request.POST.get('first_name')
         last_name = request.POST.get('last_name')
         email = request.POST.get('email')
-        username = request.POST.get('username', email)  # Use email as username if no username
+        username = request.POST.get('username', email)  # Use email as username if no username so no error message shows
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password')
         city = request.POST.get('city')
@@ -56,7 +56,7 @@ def register_view(request):
             return render(request, 'users/register.html', {'error': 'Email already registered'})
         
         try:
-            # Create user
+            # Creating user
             user = User.objects.create_user(
                 username=username,
                 password=password,
@@ -65,7 +65,7 @@ def register_view(request):
                 last_name=last_name
             )
             
-            # Update profile with additional info
+            # Updating the profile with additional info
             profile = user.profile  # This will be created automatically by signal
             profile.city = city
             profile.country = country
@@ -104,7 +104,7 @@ def edit_profile(request):
         profile = Profile.objects.create(user=request.user)
     
     if request.method == 'POST':
-        # Update user fields
+        # Updates user fields
         request.user.first_name = request.POST.get('first_name', '')
         request.user.last_name = request.POST.get('last_name', '')
         request.user.save()
@@ -159,7 +159,7 @@ def logout_view(request):
             user_cart = Cart.objects.get(user=request.user)
             user_cart_items = CartItem.objects.filter(cart=user_cart, is_active=True)
             
-            # Store the items we want to preserve
+            # Store the items we want to preserve i.e. products_id and qunatity
             for item in user_cart_items:
                 cart_items_to_preserve.append({
                     'product_id': item.product.id,
@@ -168,7 +168,7 @@ def logout_view(request):
         except Cart.DoesNotExist:
             pass
     
-    # Now logout (this clears the session)
+
     logout(request)
     
     # Recreate cart items in new session
@@ -183,11 +183,11 @@ def logout_view(request):
         # Get cart_id - use session key directly to avoid None
         cart_id = request.session.session_key
         
-        # Make sure cart_id is not None before creating
+        # Making sure cart_id is not None before creating
         if cart_id:
             session_cart = Cart.objects.create(cart_id=cart_id)
             
-            # Add the preserved items to session cart
+            # Adding preserved items to session cart
             for item_data in cart_items_to_preserve:
                 try:
                     product = Product.objects.get(id=item_data['product_id'])

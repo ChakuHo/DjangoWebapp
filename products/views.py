@@ -57,7 +57,7 @@ def product_detail(request, category_slug, product_slug):
     try:
         product = Product.objects.get(category__slug=category_slug, slug=product_slug)
         
-        # Fix: Handle both authenticated and anonymous users for in_cart check
+
         if request.user.is_authenticated:
             # For authenticated users, check user-based cart
             in_cart = CartItem.objects.filter(cart__user=request.user, product=product).exists()

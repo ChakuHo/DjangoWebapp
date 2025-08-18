@@ -19,13 +19,13 @@ class Banner(models.Model):
     end_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
-    class Meta:  # This needs to be indented inside Banner class
+    class Meta:  
         ordering = ['order', '-created_at']
     
-    def __str__(self):  # This needs to be indented inside Banner class
+    def __str__(self):  
         return self.title or f"Banner #{self.pk}"
     
-    def is_live(self):  # This needs to be indented inside Banner class
+    def is_live(self):  
         now = timezone.now()
         if not self.is_active:
             return False
@@ -36,14 +36,10 @@ class Banner(models.Model):
         return True
     
     def target_href(self):
-    # If there's a custom link_url, use it
         if self.link_url:
             return self.link_url
-    
-    # If there's a category, link to products filtered by that category
+
         if self.category:
-        # Check what URL name you have in products/urls.py for category filtering
-        # Replace 'products_by_category' with your actual URL name
             try:
                 return f"/products/category/{self.category.slug}/"  # Direct URL path
             except:

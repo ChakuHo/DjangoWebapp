@@ -18,7 +18,7 @@ def checkout(request):
         
         # Calculate totals
         total = sum(item.product.price * item.quantity for item in items)
-        tax = total * 0.1  # 10% tax
+        tax = total * 0.13  # 13% tax
         grand_total = total + tax
         
         context = {
@@ -47,7 +47,7 @@ def place_order(request):
             
             # Calculate totals
             total = sum(item.product.price * item.quantity for item in items)
-            tax = total * 0.1  # 10% tax
+            tax = total * 0.13  # 13% tax
             grand_total = total + tax
             
             # Create order
@@ -57,7 +57,7 @@ def place_order(request):
                 city=request.POST.get('city', ''),
                 country=request.POST.get('country', ''),
                 zip=request.POST.get('zip', ''),
-                payment_method=request.POST.get('payment_method', 'PayPal'),
+                payment_method=request.POST.get('payment_method', 'eSwea'),
                 total=total,
                 tax=tax,
                 grand_total=grand_total,
@@ -104,7 +104,7 @@ def place_order(request):
                 total=total,
                 tax=tax,
                 grand_total=grand_total,
-                payment_method='PayPal'  # Default
+                payment_method='eSwea'  # Default
             )
             
             context = {
