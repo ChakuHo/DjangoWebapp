@@ -15,4 +15,10 @@ urlpatterns = [
     
     # Search - /products/search/
     path('search/', views.search, name="search"),
+
+    # Review
+    path('review/submit/<int:product_id>/', views.submit_review, name='submit_review'),
+
+    # Seller path 
+    path('seller/<int:seller_id>/', views.seller_products, name='seller_products'),
 ]

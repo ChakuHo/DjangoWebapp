@@ -1,0 +1,386 @@
+<!-- Replace your entire add_product.html template -->
+
+{% extends "master/base.html" %} {% load static %} {% block content %}
+
+<section class="section-content padding-y bg">
+  <div class="container">
+    <div class="card">
+      <div class="card-header">
+        <h4><i class="fa fa-plus text-primary"></i> Add New Product</h4>
+        <p class="text-muted mb-0">Fill in the details below to list your product</p>
+      </div>
+      
+      <div class="card-body">
+        <form method="POST" action="{% url 'add_product' %}" enctype="multipart/form-data" id="add-product-form">
+          {% csrf_token %}
+          
+          {% if messages %}
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                {{ message }}
+                <button type="button" class="close" data-dismiss="alert">
+                  <span>&times;</span>
+                </button>
+              </div>
+            {% endfor %}
+          {% endif %}
+
+          <div class="row">
+            <!-- Left Column - Basic Info -->
+            <div class="col-md-6">
+              <h6 class="text-muted mb-3">📝 Basic Information</h6>
+              
+              <div class="form-group">
+                <label for="name">Product Name *</label>
+                <input type="text" name="name" id="name" class="form-control" required maxlength="255">
+              </div>
+
+              <div class="form-group">
+                <label for="description">Description *</label>
+                <textarea name="description" id="description" class="form-control" rows="4" required></textarea>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group col-md-6">
+                  <label for="price">Price (Rs.) *</label>
+                  <input type="number" name="price" id="price" class="form-control" step="0.01" min="0" required>
+                </div>
+                <div class="form-group col-md-6">
+                  <label for="stock">Stock Quantity *</label>
+                  <input type="number" name="stock" id="stock" class="form-control" min="0" required>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="category">Category *</label>
+                <select name="category" id="category" class="form-control" required onchange="updateVariationDisplay()">
+                  <option value="">Select a category</option>
+                  {% for category in categories %}
+                    <option value="{{ category.id }}">{{ category.category_name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="brand">Brand</label>
+                <input type="text" name="brand" id="brand" class="form-control" maxlength="100">
+              </div>
+
+              <div class="form-group">
+                <label for="spec">Specifications</label>
+                <input type="text" name="spec" id="spec" class="form-control" maxlength="255">
+              </div>
+
+              <div class="form-group">
+                <label for="image">Main Product Image</label>
+                <input type="file" name="image" id="image" class="form-control-file" accept="image/*">
+                <small class="form-text text-muted">Upload main product image</small>
+              </div>
+            </div>
+
+            <!-- Right Column - Variations -->
+            <div class="col-md-6">
+              <h6 class="text-muted mb-3">🎨 Product Variations</h6>
+              
+              <!-- NEW: Variation Type Selection -->
+              <div class="card mb-4" id="variation-type-selection">
+                <div class="card-header">
+                  <h6 class="mb-0">Select Variation Types</h6>
+                  <small class="text-muted">Choose which variations customers can select for this product</small>
+                </div>
+                <div class="card-body">
+                  <div class="variation-types-list">
+                    {% for vtype in variation_types %}
+                      <div class="custom-control custom-checkbox mb-2">
+                        <input type="checkbox" 
+                               name="enabled_variation_types" 
+                               value="{{ vtype.id }}" 
+                               class="custom-control-input variation-type-checkbox" 
+                               id="vtype_{{ vtype.id }}"
+                               onchange="updateVariationDisplay()">
+                        <label class="custom-control-label" for="vtype_{{ vtype.id }}">
+                          <strong>{{ vtype.display_name }}</strong>
+                          <small class="text-muted d-block">
+                            {% if vtype.name == "Color" %}
+                              Allow customers to choose from different colors
+                            {% elif vtype.name == "Size" %}
+                              Allow customers to choose from different sizes
+                            {% elif vtype.name == "Storage" %}
+                              Allow customers to choose storage capacity
+                            {% else %}
+                              Allow customers to choose from different {{ vtype.name|lower }} options
+                            {% endif %}
+                          </small>
+                        </label>
+                      </div>
+                    {% endfor %}
+                  </div>
+                  
+                  <div class="alert alert-info mt-3">
+                    <i class="fa fa-info-circle"></i>
+                    <strong>Note:</strong> Select the variation types first, then configure specific options below.
+                  </div>
+                </div>
+              </div>
+
+              <!-- Enhanced Variations Configuration -->
+              <div id="variations-section">
+                <p class="text-muted">Select variation types above to configure options</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Submit Button -->
+          <div class="form-group mt-4">
+            <div class="row">
+              <div class="col-md-6">
+                <button type="submit" class="btn btn-primary btn-block btn-lg">
+                  <i class="fa fa-paper-plane"></i> Submit for Review
+                </button>
+              </div>
+              <div class="col-md-6">
+                <a href="{% url 'my_selling_items' %}" class="btn btn-outline-secondary btn-block btn-lg">
+                  <i class="fa fa-times"></i> Cancel
+                </a>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+/* Enhanced styling */
+.variation-types-list {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 15px;
+  background: #f8f9fa;
+}
+
+.custom-control-label strong {
+  color: #495057;
+}
+
+.variation-group {
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 15px;
+  background: #ffffff;
+}
+
+.variation-group h6 {
+  color: #495057;
+  border-bottom: 1px solid #e9ecef;
+  padding-bottom: 8px;
+  margin-bottom: 15px;
+}
+
+.variation-fields {
+  background: #f8f9fa;
+  padding: 10px;
+  border-radius: 6px;
+  border-left: 3px solid #007bff;
+}
+
+.card-header h6 {
+  color: #495057;
+  font-weight: 600;
+}
+</style>
+
+<script>
+// Enhanced variation management
+const categoryVariations = {{ category_variations|safe }};
+let selectedVariationTypes = new Set();
+
+function updateVariationDisplay() {
+    const categoryId = document.getElementById('category').value;
+    const variationsSection = document.getElementById('variations-section');
+    
+    // Get selected variation types
+    selectedVariationTypes.clear();
+    document.querySelectorAll('.variation-type-checkbox:checked').forEach(cb => {
+        selectedVariationTypes.add(parseInt(cb.value));
+    });
+    
+    if (!categoryId) {
+        variationsSection.innerHTML = '<p class="text-muted">Select a category first</p>';
+        return;
+    }
+    
+    if (selectedVariationTypes.size === 0) {
+        variationsSection.innerHTML = '<p class="text-muted">Select variation types above to configure options</p>';
+        return;
+    }
+    
+    if (!categoryVariations[categoryId] || categoryVariations[categoryId].length === 0) {
+        variationsSection.innerHTML = '<p class="text-muted">No variations available for this category</p>';
+        return;
+    }
+    
+    let html = '<div class="alert alert-success"><i class="fa fa-check-circle"></i> Configure your selected variations</div>';
+    
+    // Filter category variations to only show selected types
+    const filteredVariations = categoryVariations[categoryId].filter(catVar => 
+        selectedVariationTypes.has(catVar.variation_type.id)
+    );
+    
+    if (filteredVariations.length === 0) {
+        variationsSection.innerHTML = '<div class="alert alert-warning"><i class="fa fa-exclamation-triangle"></i> Selected variation types are not available for this category</div>';
+        return;
+    }
+    
+    filteredVariations.forEach(catVar => {
+        const varType = catVar.variation_type;
+        html += `
+            <div class="variation-group">
+                <h6>${varType.display_name} ${catVar.is_required ? '*' : ''}</h6>
+                <div class="variation-options">
+        `;
+        
+        varType.options.forEach(option => {
+            html += `
+                <div class="card mb-2">
+                    <div class="card-body p-3">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" 
+                                   name="variation_${varType.id}_${option.id}_selected" 
+                                   value="1" id="var_${varType.id}_${option.id}"
+                                   onchange="toggleVariationFields(${varType.id}, ${option.id})">
+                            <label class="form-check-label" for="var_${varType.id}_${option.id}">
+                                <strong>${option.get_display_value || option.value}</strong>
+                                ${option.color_code ? `<span class="color-indicator" style="background-color: ${option.color_code}; width: 20px; height: 20px; display: inline-block; border-radius: 50%; margin-left: 10px; border: 1px solid #ddd;"></span>` : ''}
+                            </label>
+                        </div>
+                        
+                        <div id="fields_${varType.id}_${option.id}" class="variation-fields mt-3" style="display: none;">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label>Stock Quantity</label>
+                                    <input type="number" name="variation_${varType.id}_${option.id}_stock" 
+                                           class="form-control form-control-sm" min="0" value="0"
+                                           placeholder="Available quantity">
+                                </div>
+                                <div class="col-md-4">
+                                    <label>Price Adjustment (Rs.)</label>
+                                    <input type="number" name="variation_${varType.id}_${option.id}_price_adjustment" 
+                                           class="form-control form-control-sm" step="0.01" value="0"
+                                           placeholder="Additional cost">
+                                </div>
+                                <div class="col-md-4">
+                                    <label>SKU (Optional)</label>
+                                    <input type="text" name="variation_${varType.id}_${option.id}_sku" 
+                                           class="form-control form-control-sm"
+                                           placeholder="Product code">
+                                </div>
+                            </div>
+                            
+                            <div class="row mt-2">
+                                <div class="col-md-4">
+                                    <label>Image 1</label>
+                                    <input type="file" name="variation_${varType.id}_${option.id}_image1" 
+                                           class="form-control-file form-control-sm" accept="image/*">
+                                </div>
+                                <div class="col-md-4">
+                                    <label>Image 2</label>
+                                    <input type="file" name="variation_${varType.id}_${option.id}_image2" 
+                                           class="form-control-file form-control-sm" accept="image/*">
+                                </div>
+                                <div class="col-md-4">
+                                    <label>Image 3</label>
+                                    <input type="file" name="variation_${varType.id}_${option.id}_image3" 
+                                           class="form-control-file form-control-sm" accept="image/*">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += `
+                </div>
+            </div>
+        `;
+    });
+    
+    variationsSection.innerHTML = html;
+}
+
+function toggleVariationFields(varTypeId, optionId) {
+    const checkbox = document.getElementById(`var_${varTypeId}_${optionId}`);
+    const fields = document.getElementById(`fields_${varTypeId}_${optionId}`);
+    
+    if (checkbox.checked) {
+        fields.style.display = 'block';
+        // Auto-focus on stock field
+        const stockField = fields.querySelector('input[type="number"]');
+        if (stockField) {
+            setTimeout(() => stockField.focus(), 100);
+        }
+    } else {
+        fields.style.display = 'none';
+        // Clear values when unchecked
+        fields.querySelectorAll('input').forEach(input => {
+            if (input.type === 'number') {
+                input.value = '0';
+            } else {
+                input.value = '';
+            }
+        });
+    }
+}
+
+// Form validation
+document.getElementById('add-product-form').addEventListener('submit', function(e) {
+    let isValid = true;
+    const requiredFields = ['name', 'description', 'category', 'price', 'stock'];
+    
+    requiredFields.forEach(field => {
+        const input = document.querySelector(`[name="${field}"]`);
+        if (!input.value.trim()) {
+            isValid = false;
+            input.classList.add('is-invalid');
+        } else {
+            input.classList.remove('is-invalid');
+        }
+    });
+    
+    if (!isValid) {
+        e.preventDefault();
+        alert('Please fill in all required fields.');
+        return;
+    }
+    
+    // Check if variations are properly configured
+    if (selectedVariationTypes.size > 0) {
+        let hasConfiguredVariations = false;
+        selectedVariationTypes.forEach(typeId => {
+            const checkboxes = document.querySelectorAll(`input[name^="variation_${typeId}_"]:checked`);
+            if (checkboxes.length > 0) {
+                hasConfiguredVariations = true;
+            }
+        });
+        
+        if (!hasConfiguredVariations) {
+            if (!confirm('You selected variation types but haven\'t configured any specific options. Continue without variations?')) {
+                e.preventDefault();
+                return;
+            }
+        }
+    }
+});
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    updateVariationDisplay();
+});
+</script>
+
+{% endblock %}

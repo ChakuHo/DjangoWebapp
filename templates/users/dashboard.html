@@ -16,12 +16,26 @@
           <a class="list-group-item" href="{% url 'edit_profile' %}">
             Edit Profile
           </a>
+          
+          <!-- SELLER NAVIGATION - Show only if approved seller -->
+          {% if user.profile.seller_status == 'approved' %}
           <a class="list-group-item" href="{% url 'my_selling_items' %}"> 
-            My Selling Items 
+            <i class="fa fa-store text-primary"></i> My Selling Items 
           </a>
           <a class="list-group-item" href="{% url 'received_orders' %}"> 
-            Received Orders 
+            <i class="fa fa-shopping-bag text-success"></i> Received Orders 
           </a>
+          {% else %}
+          <a class="list-group-item text-muted" href="#" onclick="return false;"> 
+            <i class="fa fa-lock"></i> My Selling Items 
+            <small class="text-muted d-block">Seller approval required</small>
+          </a>
+          <a class="list-group-item text-muted" href="#" onclick="return false;"> 
+            <i class="fa fa-lock"></i> Received Orders 
+            <small class="text-muted d-block">Seller approval required</small>
+          </a>
+          {% endif %}
+          
           <a class="list-group-item" href="{% url 'change_password' %}">
             Change Password
           </a>
@@ -35,10 +49,11 @@
       </aside>
 
       <main class="col-md-9">
-        <article class="card">
+        <!-- User Welcome Section -->
+        <article class="card mb-4">
           <header class="card-header">
-            <strong class="d-inline-block mr-3">Logged in as:</strong>
-            <span>{% if user.get_full_name %}{{ user.get_full_name }}{% else %}{{ user.username }}{% endif %}</span>
+            <strong class="d-inline-block mr-3">Welcome back,</strong>
+            <span>{% if user.get_full_name %}{{ user.get_full_name }}{% else %}{{ user.username }}{% endif %}!</span>
           </header>
           <div class="card-body">
             <div class="row">
@@ -46,11 +61,11 @@
                 <div class="card" style="text-align: center">
                   <div class="card-body">
                     <h5 class="card-title">Total Orders</h5>
-                    <h4>{{ orders_count }}</h4>
+                    <h4 class="text-primary">{{ orders_count }}</h4>
                     {% if orders_count > 0 %}
-                      <a href="/orders/my-orders/">View Orders</a>
+                      <a href="/orders/my-orders/" class="btn btn-outline-primary btn-sm">View Orders</a>
                     {% else %}
-                      <a href="{% url 'products:product' %}">Start Shopping</a>
+                      <a href="{% url 'products:product' %}" class="btn btn-primary btn-sm">Start Shopping</a>
                     {% endif %}
                   </div>
                 </div>
@@ -59,54 +74,193 @@
                 <div class="card" style="text-align: center">
                   <div class="card-body">
                     <h5 class="card-title">Received Orders</h5>
-                    <h4>0</h4>
-                    <a href="{% url 'received_orders' %}">View Orders</a>
+                    <h4 class="text-success">0</h4>
+                    {% if user.profile.seller_status == 'approved' %}
+                      <a href="{% url 'received_orders' %}" class="btn btn-outline-success btn-sm">View Orders</a>
+                    {% else %}
+                      <small class="text-muted">Become a seller to receive orders</small>
+                    {% endif %}
                   </div>
                 </div>
               </div>
             </div>
-            
-            <!-- User Info Section -->
-            <div class="row mt-4">
-              <div class="col-md-12">
-                <div class="card">
-                  <div class="card-body">
-                    <h5 class="card-title">Account Information</h5>
-                    <div class="row">
-                      <div class="col-md-6">
-                        <p><strong>Username:</strong> {{ user.username }}</p>
-                        <p><strong>Email:</strong> {{ user.email }}</p>
-                        <p><strong>Member since:</strong> {{ user.date_joined|date:"M d, Y" }}</p>
-                      </div>
-                      <div class="col-md-6">
-                        {% if profile.phone_number %}
-                          <p><strong>Phone:</strong> {{ profile.phone_number }}</p>
-                        {% endif %}
-                        {% if profile.city %}
-                          <p><strong>City:</strong> {{ profile.city }}</p>
-                        {% endif %}
-                        {% if profile.country %}
-                          <p><strong>Country:</strong> {{ profile.country }}</p>
-                        {% endif %}
-                      </div>
-                    </div>
-                    <a href="{% url 'edit_profile' %}" class="btn btn-outline-primary btn-sm">
-                      <i class="fa fa-edit"></i> Edit Profile
-                    </a>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <!-- row.// -->
           </div>
-          <!-- card-body .// -->
         </article>
-        <!-- order-group.// -->
+
+        <!-- SELLER WORKFLOW SECTION -->
+        {% if user.profile.seller_status == 'not_applied' %}
+          <!-- Not Applied - Show Become Seller CTA -->
+          <article class="card mb-4 border-primary">
+            <div class="card-body text-center">
+              <i class="fa fa-store fa-4x text-primary mb-3"></i>
+              <h4 class="text-primary">Start Selling on Our Platform</h4>
+              <p class="lead">Turn your products into profit. Join thousands of sellers worldwide.</p>
+              <div class="row mt-4">
+                <div class="col-md-4">
+                  <div class="mb-3">
+                    <i class="fa fa-upload fa-2x text-success mb-2"></i>
+                    <h6>List Products</h6>
+                    <small class="text-muted">Upload and manage your inventory</small>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="mb-3">
+                    <i class="fa fa-shopping-cart fa-2x text-info mb-2"></i>
+                    <h6>Get Orders</h6>
+                    <small class="text-muted">Receive orders from customers</small>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="mb-3">
+                    <i class="fa fa-money-bill-wave fa-2x text-warning mb-2"></i>
+                    <h6>Earn Money</h6>
+                    <small class="text-muted">Get paid for your sales</small>
+                  </div>
+                </div>
+              </div>
+              <a href="{% url 'become_seller' %}" class="btn btn-primary btn-lg">
+                <i class="fa fa-plus"></i> Become a Seller
+              </a>
+            </div>
+          </article>
+
+        {% elif user.profile.seller_status == 'pending' %}
+          <!-- Pending Approval -->
+          <article class="card mb-4 border-warning">
+            <div class="card-body text-center">
+              <i class="fa fa-clock fa-3x text-warning mb-3"></i>
+              <h4 class="text-warning">Seller Application Under Review</h4>
+              <p>We're reviewing your seller application. This usually takes 1-2 business days.</p>
+              <div class="alert alert-info">
+                <strong>Application Details:</strong><br>
+                <strong>Business Name:</strong> {{ user.profile.business_name }}<br>
+                <strong>Applied on:</strong> {{ user.profile.seller_application_date|date:"M d, Y" }}<br>
+                <strong>Status:</strong> <span class="badge badge-warning">Pending Review</span>
+              </div>
+              <p class="text-muted">You'll receive an email notification once your application is processed.</p>
+            </div>
+          </article>
+
+        {% elif user.profile.seller_status == 'approved' %}
+          <!-- Approved Seller Dashboard -->
+          <article class="card mb-4 border-success">
+            <header class="card-header bg-success text-white">
+              <i class="fa fa-check-circle"></i> <strong>Seller Dashboard</strong>
+              <span class="badge badge-light text-success ml-2">Verified Seller</span>
+            </header>
+            <div class="card-body">
+              <!-- Seller Stats -->
+              <div class="row mb-4">
+                <div class="col-md-3">
+                  <div class="card text-center border-primary">
+                    <div class="card-body">
+                      <h3 class="text-primary">{{ seller_stats.total_products|default:0 }}</h3>
+                      <small class="text-muted">Total Products</small>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card text-center border-warning">
+                    <div class="card-body">
+                      <h3 class="text-warning">{{ seller_stats.pending_products|default:0 }}</h3>
+                      <small class="text-muted">Pending Approval</small>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card text-center border-success">
+                    <div class="card-body">
+                      <h3 class="text-success">{{ seller_stats.approved_products|default:0 }}</h3>
+                      <small class="text-muted">Live Products</small>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card text-center border-danger">
+                    <div class="card-body">
+                      <h3 class="text-danger">{{ seller_stats.rejected_products|default:0 }}</h3>
+                      <small class="text-muted">Rejected</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Quick Actions -->
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <a href="{% url 'add_product' %}" class="btn btn-primary btn-block btn-lg">
+                    <i class="fa fa-plus"></i> Add New Product
+                  </a>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <a href="{% url 'my_selling_items' %}" class="btn btn-outline-primary btn-block btn-lg">
+                    <i class="fa fa-list"></i> Manage Products
+                  </a>
+                </div>
+              </div>
+
+              <!-- Business Info -->
+              <div class="card bg-light mt-3">
+                <div class="card-body">
+                  <h6 class="card-title">Your Business</h6>
+                  <p><strong>Business Name:</strong> {{ user.profile.business_name }}</p>
+                  {% if user.profile.business_description %}
+                    <p><strong>Description:</strong> {{ user.profile.business_description }}</p>
+                  {% endif %}
+                  <p><strong>Seller Since:</strong> {{ user.profile.seller_approved_date|date:"M d, Y" }}</p>
+                </div>
+              </div>
+            </div>
+          </article>
+
+        {% elif user.profile.seller_status == 'rejected' %}
+          <!-- Rejected Application -->
+          <article class="card mb-4 border-danger">
+            <div class="card-body text-center">
+              <i class="fa fa-times-circle fa-3x text-danger mb-3"></i>
+              <h4 class="text-danger">Seller Application Rejected</h4>
+              <p>Unfortunately, your seller application was not approved at this time.</p>
+              <div class="alert alert-danger">
+                <strong>You can reapply after 30 days.</strong><br>
+                Please review our seller guidelines and try again.
+              </div>
+              <a href="#" class="btn btn-outline-danger">View Guidelines</a>
+            </div>
+          </article>
+
+        {% endif %}
+        
+        <!-- Account Information Section (keeping your existing code) -->
+        <article class="card">
+          <header class="card-header">
+            <strong>Account Information</strong>
+          </header>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-6">
+                <p><strong>Username:</strong> {{ user.username }}</p>
+                <p><strong>Email:</strong> {{ user.email }}</p>
+                <p><strong>Member since:</strong> {{ user.date_joined|date:"M d, Y" }}</p>
+              </div>
+              <div class="col-md-6">
+                {% if profile.phone_number %}
+                  <p><strong>Phone:</strong> {{ profile.phone_number }}</p>
+                {% endif %}
+                {% if profile.city %}
+                  <p><strong>City:</strong> {{ profile.city }}</p>
+                {% endif %}
+                {% if profile.country %}
+                  <p><strong>Country:</strong> {{ profile.country }}</p>
+                {% endif %}
+              </div>
+            </div>
+            <a href="{% url 'edit_profile' %}" class="btn btn-outline-primary btn-sm">
+              <i class="fa fa-edit"></i> Edit Profile
+            </a>
+          </div>
+        </article>
       </main>
     </div>
-    <!-- row.// -->
   </div>
 </section>
-
-<!-- ========================= SECTION CONTENT END// ========================= -->
 {% endblock %}

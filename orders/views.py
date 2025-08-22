@@ -14,7 +14,7 @@ def checkout(request):
         
         if not items.exists():
             messages.error(request, 'Your cart is empty!')
-            return redirect('cart_detail')  # Redirect to cart page
+            return redirect('cart')  # Redirect to cart page
         
         # Calculate totals
         total = sum(item.product.price * item.quantity for item in items)
@@ -31,7 +31,7 @@ def checkout(request):
     
     except Cart.DoesNotExist:
         messages.error(request, 'Your cart is empty!')
-        return redirect('cart_detail')
+        return redirect('cart')
 
 @login_required
 def place_order(request):
@@ -64,13 +64,14 @@ def place_order(request):
                 transaction_id=str(uuid.uuid4())[:16]  # Generate transaction ID
             )
             
-            # Create order items
+            # Create order items with the seller info
             for cart_item in items:
                 OrderItem.objects.create(
                     order=order,
                     product=cart_item.product,
                     quantity=cart_item.quantity,
-                    price=cart_item.product.price * cart_item.quantity
+                    price=cart_item.product.price * cart_item.quantity,
+                    seller=cart_item.product.seller 
                 )
             
             # Clear the cart
@@ -95,7 +96,7 @@ def place_order(request):
             
             # For GET request, create a temporary order object for display
             total = sum(item.product.price * item.quantity for item in items)
-            tax = total * 0.1
+            tax = total * 0.13
             grand_total = total + tax
             
             # Create a temporary order object (not saved to database)

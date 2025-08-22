@@ -4,32 +4,181 @@
   <div class="container">
     <div class="row">
       <aside class="col-md-3">
-        <!--   SIDEBAR   -->
         <ul class="list-group">
-          <a class="list-group-item" href="{% url 'dashboard' %}"> Dashboard </a>
-          <a class="list-group-item" href="/orders/my-orders/"> My Orders </a>
-          <a class="list-group-item" href="{% url 'edit_profile' %}"> Edit Profile </a>
-          <a class="list-group-item active" href="{% url 'my_selling_items' %}"> My Selling Items </a>
-          <a class="list-group-item" href="{% url 'received_orders' %}"> Received Orders </a>
-          <a class="list-group-item" href="{% url 'change_password' %}"> Change Password </a>
+          <a class="list-group-item" href="{% url 'dashboard' %}">
+            Dashboard
+          </a>
+          <a class="list-group-item" href="/orders/my-orders/">
+            My Orders
+          </a>
+          <a class="list-group-item" href="{% url 'edit_profile' %}">
+            Edit Profile
+          </a>
+          <a class="list-group-item active" href="{% url 'my_selling_items' %}"> 
+            My Selling Items 
+          </a>
+          <a class="list-group-item" href="{% url 'received_orders' %}"> 
+            Received Orders 
+          </a>
+          <a class="list-group-item" href="{% url 'change_password' %}">
+            Change Password
+          </a>
         </ul>
         <br />
         <a class="btn btn-light btn-block" href="{% url 'logout' %}">
           <i class="fa fa-power-off"></i> <span class="text">Log out</span>
         </a>
-        <!--   SIDEBAR .//END   -->
       </aside>
       
       <main class="col-md-9">
-        <div class="card">
-          <div class="card-body text-center">
-            <h4>My Selling Items</h4>
-            <p>This feature is coming soon! You'll be able to list and manage your products here.</p>
-            <a href="{% url 'products:product' %}" class="btn btn-primary">Browse Products</a>
+        <div class="card mb-4">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fa fa-store text-primary"></i> My Products</h5>
+            <a href="{% url 'add_product' %}" class="btn btn-primary">
+              <i class="fa fa-plus"></i> Add Product
+            </a>
+          </div>
+          <div class="card-body">
+            <div class="row text-center">
+              <div class="col-md-3">
+                <h4 class="text-primary">{{ total_products }}</h4>
+                <small class="text-muted">Total Products</small>
+              </div>
+              <div class="col-md-3">
+                <h4 class="text-warning">{{ pending_products }}</h4>
+                <small class="text-muted">Pending</small>
+              </div>
+              <div class="col-md-3">
+                <h4 class="text-success">{{ approved_products }}</h4>
+                <small class="text-muted">Approved</small>
+              </div>
+              <div class="col-md-3">
+                <h4 class="text-danger">{{ rejected_products }}</h4>
+                <small class="text-muted">Rejected</small>
+              </div>
+            </div>
           </div>
         </div>
+
+        {% if products %}
+          {% for product in products %}
+          <div class="card mb-3">
+            <div class="card-body">
+              <div class="row align-items-center">
+                <div class="col-md-2">
+                  {% if product.image %}
+                    <img src="{{ product.image.url }}" class="img-thumbnail" style="width: 80px; height: 80px; object-fit: cover;">
+                  {% else %}
+                    <img src="https://via.placeholder.com/80x80?text=No+Image" class="img-thumbnail">
+                  {% endif %}
+                </div>
+                
+                <div class="col-md-4">
+                  <h6 class="mb-1">{{ product.name }}</h6>
+                  <p class="text-muted small mb-1">{{ product.description|truncatewords:10 }}</p>
+                  <span class="text-primary font-weight-bold">Rs. {{ product.price }}</span>
+                </div>
+                
+                <div class="col-md-2">
+                  <small class="text-muted">Stock</small><br>
+                  <strong>{{ product.stock }}</strong>
+                </div>
+                
+                <div class="col-md-2">
+                  <small class="text-muted">Status</small><br>
+                  {% if product.approval_status == 'pending' %}
+                    <span class="badge badge-warning">Pending Review</span>
+                  {% elif product.approval_status == 'approved' %}
+                    <span class="badge badge-success">Approved</span>
+                  {% elif product.approval_status == 'rejected' %}
+                    <span class="badge badge-danger">Rejected</span>
+                  {% endif %}
+                </div>
+                
+                <div class="col-md-2">
+                  <div class="btn-group-vertical btn-group-sm w-100">
+                    <a href="{{ product.get_url }}" class="btn btn-outline-primary btn-sm mb-1">
+                      <i class="fa fa-eye"></i> View
+                    </a>
+                    <button class="btn btn-outline-secondary btn-sm mb-1" onclick="editProduct({{ product.id }})">
+                      <i class="fa fa-edit"></i> Edit
+                    </button>
+                    {% if product.approval_status == 'rejected' %}
+                      <button 
+                        class="btn btn-outline-info btn-sm" 
+                        onclick="showRejectionReason()"
+                        data-reason="{{ product.rejection_reason|default:'No reason provided'|escapejs }}"
+                      >
+                        <i class="fa fa-info-circle"></i> Why?
+                      </button>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+              
+              {% if product.approval_status == 'rejected' and product.rejection_reason %}
+                <div class="row mt-2">
+                  <div class="col-12">
+                    <div class="alert alert-danger">
+                      <strong>Rejection Reason:</strong> {{ product.rejection_reason }}
+                    </div>
+                  </div>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="card">
+            <div class="card-body text-center py-5">
+              <i class="fa fa-box-open fa-4x text-muted mb-3"></i>
+              <h5>No Products Yet</h5>
+              <p class="text-muted">You haven't added any products to sell yet.</p>
+              <a href="{% url 'add_product' %}" class="btn btn-primary">
+                <i class="fa fa-plus"></i> Add Your First Product
+              </a>
+            </div>
+          </div>
+        {% endif %}
       </main>
     </div>
   </div>
 </section>
+
+<div class="modal fade" id="rejectionModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fa fa-info-circle text-danger"></i> Rejection Reason
+        </h5>
+        <button type="button" class="close" data-dismiss="modal">
+          <span>&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p id="rejection-reason-text"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    window.editProduct = function(productId) {
+        alert('Edit functionality coming soon! Product ID: ' + productId);
+    };
+
+    window.showRejectionReason = function() {
+        const button = event.target.closest('button');
+        const reason = button.getAttribute('data-reason');
+        document.getElementById('rejection-reason-text').textContent = reason;
+        $('#rejectionModal').modal('show');
+    };
+});
+</script>
+
 {% endblock %}

@@ -1,144 +1,286 @@
-{% extends "master/base.html" %} {% load static %} {% block content %}
+{% extends "master/base.html" %}
+{% load static %}
+{% block content %}
 
 <section class="section-content padding-y bg">
   <div class="container">
-    <!-- ============================ COMPONENT 1 ================================= -->
     <div class="card">
       <div class="row no-gutters">
+        <!-- ENHANCED IMAGE GALLERY SECTION -->
         <aside class="col-md-6">
           <article class="gallery-wrap">
+            <!-- Main Image Display -->
             <div class="img-big-wrap">
-              <a href="#">
-                {% if product.image %}
-                <img src="{{ product.image.url }}" alt="{{ product.name }}" />
-                {% else %}
+              <div class="main-image-container">
                 <img
-                  src="https://via.placeholder.com/300x300?text=No+Image"
-                  alt="No Image"
+                  id="main-product-image"
+                  src="{% if product.image %}{{ product.image.url }}{% else %}https://via.placeholder.com/500x500?text=No+Image{% endif %}"
+                  alt="{{ product.name }}"
+                  class="main-product-img"
                 />
-                {% endif %}
-              </a>
+                <div class="image-overlay">
+                  <button class="zoom-btn" onclick="openImageModal()">
+                    <i class="fa fa-search-plus"></i>
+                  </button>
+                </div>
+              </div>
             </div>
-            <!-- img-big-wrap.// -->
+
+            <!-- Thumbnail Gallery -->
+            <div class="thumbnail-gallery" id="thumbnail-gallery">
+              <!-- Default product image -->
+              {% if product.image %}
+              <div class="thumbnail-item active" onclick="changeMainImage('{{ product.image.url }}', this)">
+                <img src="{{ product.image.url }}" alt="Default" class="thumbnail-img" />
+              </div>
+              {% endif %}
+            </div>
           </article>
-          <!-- gallery-wrap .end// -->
         </aside>
+
+        <!-- PRODUCT INFO SECTION -->
         <main class="col-md-6 border-left">
           <article class="content-body">
             <h2 class="title">{{ product.name }}</h2>
 
             <div class="mb-3">
-              <var class="price h4">Rs.{{ product.price }}</var>
+              <var class="price h4" id="product-price">Rs.{{ product.price }}</var>
             </div>
 
             <p>{{ product.description }}</p>
 
+            <!-- SMART PRODUCT VARIATIONS SECTION -->
+            {% if product.has_variations %}
             <hr />
-            <div class="row">
-              <div class="item-option-select">
-                <h6>Choose Color</h6>
-                <div
-                  class="btn-group btn-group-sm btn-group-toggle"
-                  data-toggle="buttons"
-                >
-                  <label class="btn btn-light">
-                    <input type="radio" name="radio_color" /> Silver
-                  </label>
-                  <label class="btn btn-light">
-                    <input type="radio" name="radio_color" /> Gray
-                  </label>
-                  <label class="btn btn-light active">
-                    <input type="radio" name="radio_color checked" /> Gold
-                  </label>
-                  <label class="btn btn-light">
-                    <input type="radio" name="radio_color" /> Black
-                  </label>
+            <div class="product-variations">
+              <form id="variation-form">
+                {% for variation_type, variation_data in product.get_available_variations.items %}
+                <div class="row mb-3">
+                  <div class="col-12">
+                    <div class="item-option-select">
+                      <h6>
+                        {{ variation_data.type.display_name }}
+                        {% if variation_data.is_required %} *{% endif %}
+                      </h6>
+
+                      {% if variation_type.name == 'Color' %}
+                        <!-- Color Swatches -->
+                        <div class="color-options d-flex flex-wrap">
+                          {% for option in variation_data.options %}
+                            {% with pv=option.product_variations.first %}
+                            <label class="color-option mr-2 mb-2">
+                              <input
+                                type="radio"
+                                name="variation_{{ variation_type.id }}"
+                                value="{{ option.id }}"
+                                data-variation-type="{{ variation_type.name }}"
+                                data-variation-value="{{ option.value }}"
+                                data-price-adjustment="{% if pv %}{{ pv.price_adjustment }}{% else %}0{% endif %}"
+                                {% if variation_data.is_required %}required{% endif %}
+                                onchange="updateVariation()"
+                              />
+                              <span
+                                class="color-swatch"
+                                data-color="{% if option.color_code %}{{ option.color_code }}{% else %}{{ option.value|lower }}{% endif %}"
+                                title="{{ option.get_display_value }}"
+                              ></span>
+                              <small class="color-name">{{ option.get_display_value }}</small>
+                            </label>
+                            {% endwith %}
+                          {% endfor %}
+                        </div>
+
+                      {% elif variation_type.name == 'Size' %}
+                        <!-- Size Buttons -->
+                        <div class="btn-group btn-group-sm btn-group-toggle" data-toggle="buttons">
+                          {% for option in variation_data.options %}
+                            {% with pv=option.product_variations.first %}
+                            <label class="btn btn-outline-primary">
+                              <input
+                                type="radio"
+                                name="variation_{{ variation_type.id }}"
+                                value="{{ option.id }}"
+                                data-variation-type="{{ variation_type.name }}"
+                                data-variation-value="{{ option.value }}"
+                                data-price-adjustment="{% if pv %}{{ pv.price_adjustment }}{% else %}0{% endif %}"
+                                {% if variation_data.is_required %}required{% endif %}
+                                onchange="updateVariation()"
+                              />
+                              {{ option.get_display_value }}
+                            </label>
+                            {% endwith %}
+                          {% endfor %}
+                        </div>
+
+                      {% else %}
+                        <!-- Dropdown for other variations -->
+                        <select
+                          name="variation_{{ variation_type.id }}"
+                          class="form-control"
+                          style="max-width: 200px"
+                          data-variation-type="{{ variation_type.name }}"
+                          {% if variation_data.is_required %}required{% endif %}
+                          onchange="updateVariation()"
+                        >
+                          <option value="">Choose {{ variation_type.display_name }}</option>
+                          {% for option in variation_data.options %}
+                            {% with pv=option.product_variations.first %}
+                            <option
+                              value="{{ option.id }}"
+                              data-variation-value="{{ option.value }}"
+                              data-price-adjustment="{% if pv %}{{ pv.price_adjustment }}{% else %}0{% endif %}"
+                            >
+                              {{ option.get_display_value }}
+                            </option>
+                            {% endwith %}
+                          {% endfor %}
+                        </select>
+                      {% endif %}
+                    </div>
+                  </div>
                 </div>
-              </div>
+                {% endfor %}
+              </form>
             </div>
-            <!-- row.// -->
-            <div class="row">
-              <div class="item-option-select">
-                <h6>Select Size</h6>
-                <div
-                  class="btn-group btn-group-sm btn-group-toggle"
-                  data-toggle="buttons"
-                >
-                  <label class="btn btn-light">
-                    <input type="radio" name="radio_color" /> S
-                  </label>
-                  <label class="btn btn-light active">
-                    <input type="radio" name="radio_color" checked /> M
-                  </label>
-                  <label class="btn btn-light">
-                    <input type="radio" name="radio_color" /> L
-                  </label>
-                  <label class="btn btn-light">
-                    <input type="radio" name="radio_color" /> XL
-                  </label>
-                </div>
-              </div>
-            </div>
-            <!-- row.// -->
             <hr />
+            {% endif %}
+            <!-- END SMART VARIATIONS -->
+
+            <!-- ADD TO CART SECTION -->
             {% if product.stock <= 0 %}
             <button class="btn btn-danger" disabled>Out of Stock</button>
-            {% else %} {% if product.stock <= 5 %}
-            <p class="text-warning">Only {{ product.stock }} left in stock!</p>
-            {% endif %} {% if in_cart %}
-            <a class="btn btn-success" disabled>
-              <span class="text">Added to Cart</span>
-              <i class="fas fa-check"></i>
-            </a>
-            <a href="{% url 'cart' %}" class="btn btn-outline-primary">
-              <span class="text">View Cart</span>
-              <i class="fa fa-shopping-cart"></i>
-            </a>
             {% else %}
-            <a href="{% url 'add_cart' product.id %}" class="btn btn-primary">
-              <span class="text">Add to Cart</span>
-              <i class="fas fa-shopping-cart"></i>
-            </a>
-            {% endif %} {% endif %}
+              {% if product.stock <= 5 %}
+              <p class="text-warning">Only {{ product.stock }} left in stock!</p>
+              {% endif %}
+              {% if in_cart %}
+              <a class="btn btn-success" disabled>
+                <span class="text">Added to Cart</span>
+                <i class="fas fa-check"></i>
+              </a>
+              <a href="{% url 'cart' %}" class="btn btn-outline-primary">
+                <span class="text">View Cart</span>
+                <i class="fa fa-shopping-cart"></i>
+              </a>
+              {% else %}
+              <a href="{% url 'add_cart' product.id %}" class="btn btn-primary" id="add-to-cart-btn">
+                <span class="text">Add to Cart</span>
+                <i class="fas fa-shopping-cart"></i>
+              </a>
+              {% endif %}
+            {% endif %}
+
+            <!-- SELLER INFORMATION SECTION -->
+            {% if product.seller %}
+            <hr class="my-4" />
+            <div class="seller-info-section">
+              <div class="card border-0 bg-light">
+                <div class="card-body p-3">
+                  <h6 class="card-title mb-3">
+                    <i class="fa fa-store text-primary"></i> Sold by
+                  </h6>
+
+                  <div class="row align-items-center">
+                    <div class="col-3">
+                      <a href="{% url 'products:seller_products' product.seller.id %}" class="seller-link">
+                        {% if product.seller.profile.profile_picture %}
+                        <img
+                          src="{{ product.seller.profile.profile_picture.url }}"
+                          class="rounded-circle seller-avatar"
+                          alt="{{ product.seller.get_full_name|default:product.seller.username }}"
+                        />
+                        {% else %}
+                        <div class="seller-avatar-placeholder rounded-circle">
+                          <i class="fa fa-user fa-2x text-muted"></i>
+                        </div>
+                        {% endif %}
+                      </a>
+                    </div>
+
+                    <div class="col-9">
+                      <div class="seller-details">
+                        <h6 class="seller-name mb-1">
+                          <a href="{% url 'products:seller_products' product.seller.id %}" class="text-decoration-none">
+                            {% if product.seller.profile.business_name %}
+                              {{ product.seller.profile.business_name }}
+                            {% else %}
+                              {{ product.seller.get_full_name|default:product.seller.username }}
+                            {% endif %}
+                          </a>
+                          {% if product.seller.profile.seller_status == 'approved' %}
+                          <span class="badge badge-success badge-sm ml-1">
+                            <i class="fa fa-check-circle"></i> Verified
+                          </span>
+                          {% endif %}
+                        </h6>
+
+                        {% if product.seller.profile.business_description %}
+                        <p class="text-muted small mb-2">
+                          {{ product.seller.profile.business_description|truncatewords:12 }}
+                        </p>
+                        {% endif %}
+
+                        <div class="seller-stats small text-muted mb-2">
+                          <span class="mr-3">
+                            <i class="fa fa-box"></i>
+                            {{ seller_product_count }} Products
+                          </span>
+                          <span>
+                            <i class="fa fa-calendar"></i>
+                            Since {{ product.seller.date_joined|date:"M Y" }}
+                          </span>
+                        </div>
+
+                        <div class="seller-actions">
+                          <a href="{% url 'products:seller_products' product.seller.id %}" class="btn btn-outline-primary btn-sm">
+                            <i class="fa fa-store"></i> View Shop
+                          </a>
+                          <button class="btn btn-outline-success btn-sm ml-2" onclick="openChat(this)" data-seller-id="{{ product.seller.id }}">
+                            <i class="fa fa-comments"></i> Chat
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% endif %}
           </article>
-          <!-- product-info-aside .// -->
         </main>
-        <!-- col.// -->
       </div>
-      <!-- row.// -->
     </div>
-    <!-- card.// -->
-    <!-- ============================ COMPONENT 1 END .// ================================= -->
 
     <br />
 
+    <!-- REVIEWS SECTION -->
     <div class="row">
       <div class="col-md-9">
         <header class="section-heading">
           <h3>Customer Reviews</h3>
         </header>
 
+        <!-- EXISTING REVIEWS DISPLAY -->
         {% for review in reviews %}
         <article class="box mb-3">
           <div class="icontext w-100">
-            <img
-              src="{% static 'images/avatars/avatar1.jpg' %}"
-              class="img-xs icon rounded-circle"
-            />
+            <img src="{% static 'images/avatars/avatar1.jpg' %}" class="img-xs icon rounded-circle" />
             <div class="text">
-              <span class="date text-muted float-md-right"
-                >{{ review.created_at|date:"d.m.Y" }}</span
-              >
+              <span class="date text-muted float-md-right">{{ review.created_at|date:"d.m.Y" }}</span>
               <h6 class="mb-1">
                 {{ review.user.first_name }} {{ review.user.last_name }}
+                {% if review.verified_purchase %}
+                <span class="badge badge-success badge-sm ml-2">Verified Purchase</span>
+                {% endif %}
               </h6>
               <div class="rating-star">
-                {% for i in "12345"|make_list %} 
+                {% for i in "12345"|make_list %}
                   {% if forloop.counter <= review.rating %}
                     <i class="fa fa-star text-warning"></i>
                   {% else %}
                     <i class="fa fa-star text-muted"></i>
-                {% endif %} {% endfor %}
+                  {% endif %}
+                {% endfor %}
               </div>
             </div>
           </div>
@@ -150,10 +292,684 @@
         {% empty %}
         <p>No reviews yet.</p>
         {% endfor %}
+
+        <hr class="my-4" />
+
+        <!-- REVIEW FORM SECTION -->
+        <div class="review-form-section">
+          {% if user.is_authenticated %}
+            {% if user_can_review %}
+              {% if not user_has_reviewed %}
+              <div class="card">
+                <div class="card-header">
+                  <h5 class="mb-0">
+                    <i class="fa fa-star text-warning"></i> Write a Review
+                  </h5>
+                </div>
+                <div class="card-body">
+                  <form method="POST" action="{% url 'products:submit_review' product.id %}" id="review-form">
+                    {% csrf_token %}
+
+                    <div class="form-group">
+                      <label for="rating">Rating *</label>
+                      <div class="rating-input">
+                        <div class="rating-stars" id="rating-stars">
+                          <i class="fa fa-star" data-rating="1"></i>
+                          <i class="fa fa-star" data-rating="2"></i>
+                          <i class="fa fa-star" data-rating="3"></i>
+                          <i class="fa fa-star" data-rating="4"></i>
+                          <i class="fa fa-star" data-rating="5"></i>
+                        </div>
+                        <input type="hidden" name="rating" id="rating-value" required />
+                        <small class="form-text text-muted">Click on stars to rate</small>
+                      </div>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="subject">Review Title</label>
+                      <input
+                        type="text"
+                        class="form-control"
+                        name="subject"
+                        id="subject"
+                        placeholder="Summary of your review"
+                        maxlength="100"
+                      />
+                    </div>
+
+                    <div class="form-group">
+                      <label for="review">Your Review</label>
+                      <textarea
+                        class="form-control"
+                        name="review"
+                        id="review"
+                        rows="4"
+                        placeholder="Share your thoughts about this product..."
+                        maxlength="500"
+                      ></textarea>
+                      <small class="form-text text-muted">Maximum 500 characters</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                      <i class="fa fa-paper-plane"></i> Submit Review
+                    </button>
+                  </form>
+                </div>
+              </div>
+              {% else %}
+              <div class="alert alert-info">
+                <i class="fa fa-info-circle"></i>
+                <strong>Thank you!</strong> You have already reviewed this product.
+              </div>
+              {% endif %}
+            {% else %}
+            <div class="alert alert-warning">
+              <i class="fa fa-shopping-bag"></i>
+              <strong>Purchase Required:</strong> You can only review products you have purchased and received.
+            </div>
+            {% endif %}
+          {% else %}
+          <div class="alert alert-secondary">
+            <i class="fa fa-user"></i>
+            Please <a href="{% url 'login' %}" class="alert-link">login</a> to write a review.
+          </div>
+          {% endif %}
+        </div>
       </div>
     </div>
-    <!-- row.// -->
   </div>
-  <!-- container .//  -->
 </section>
+
+<!-- Image Modal for Zoom -->
+<div class="modal fade" id="imageModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-body p-0">
+        <img id="modal-image" src="" class="w-100" alt="Product Image" />
+        <button type="button" class="close modal-close-btn" data-dismiss="modal">
+          <span>&times;</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DJANGO DATA FOR JAVASCRIPT -->
+<script id="django-data" type="application/json">
+{
+  "basePrice": {{ product.price }},
+  "productId": {{ product.id }},
+  "variationImages": {{ variation_images_json|safe }},
+  "defaultImage": "{% if product.image %}{{ product.image.url }}{% endif %}"
+}
+</script>
+
+<style>
+/* =============== IMAGE GALLERY STYLES =============== */
+.gallery-wrap {
+  position: sticky;
+  top: 20px;
+  width: 100%;
+}
+
+.main-image-container {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  background: #f8f9fa;
+  width: 100%;
+}
+
+.main-product-img {
+  width: 100%;
+  height: 400px;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+  cursor: zoom-in;
+  border-radius: 8px;
+  background: #f8f9fa;
+}
+
+.main-product-img:hover {
+  transform: scale(1.05);
+}
+
+.image-overlay {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.main-image-container:hover .image-overlay {
+  opacity: 1;
+}
+
+.zoom-btn {
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 45px;
+  height: 45px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-size: 16px;
+}
+
+.zoom-btn:hover {
+  background: rgba(0, 0, 0, 0.9);
+  transform: scale(1.1);
+}
+
+.thumbnail-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 15px;
+  max-height: 120px;
+  overflow-y: auto;
+  padding: 5px;
+}
+
+.thumbnail-item {
+  cursor: pointer;
+  border: 3px solid transparent;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+  background: #fff;
+}
+
+.thumbnail-item:hover {
+  border-color: #007bff;
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(0, 123, 255, 0.3);
+}
+
+.thumbnail-item.active {
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.thumbnail-img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.3s;
+}
+
+.thumbnail-item:hover .thumbnail-img {
+  transform: scale(1.1);
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 15px;
+  right: 25px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 45px;
+  height: 45px;
+  font-size: 20px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.modal-close-btn:hover {
+  background: rgba(0, 0, 0, 1);
+}
+
+/* =============== VARIATION STYLES =============== */
+.color-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.2s;
+}
+
+.color-option:hover {
+  transform: translateY(-2px);
+}
+
+.color-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+}
+
+.color-swatch {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  border: 3px solid #ddd;
+  display: block;
+  transition: all 0.3s ease;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.color-option input[type="radio"]:checked + .color-swatch {
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.3);
+  transform: scale(1.15);
+}
+
+.color-option input[type="radio"]:checked + .color-swatch:after {
+  content: "✓";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-weight: bold;
+  font-size: 16px;
+  text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
+}
+
+.color-name {
+  margin-top: 6px;
+  font-size: 11px;
+  text-align: center;
+  font-weight: 500;
+}
+
+.btn-group-toggle .btn {
+  min-width: 55px;
+  transition: all 0.3s;
+}
+
+.btn-group-toggle .btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+/* =============== SELLER INFORMATION STYLES =============== */
+.seller-info-section {
+  margin-top: 25px;
+}
+
+.seller-avatar {
+  width: 75px;
+  height: 75px;
+  object-fit: cover;
+  transition: transform 0.3s;
+  border: 3px solid #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.seller-avatar:hover {
+  transform: scale(1.1);
+}
+
+.seller-avatar-placeholder {
+  width: 75px;
+  height: 75px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px dashed #dee2e6;
+  transition: all 0.3s;
+}
+
+.seller-avatar-placeholder:hover {
+  transform: scale(1.1);
+  background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+}
+
+.seller-link {
+  text-decoration: none;
+}
+
+.seller-name a {
+  color: #495057;
+  font-weight: 700;
+  transition: color 0.3s;
+}
+
+.seller-name a:hover {
+  color: #007bff;
+}
+
+.seller-stats {
+  border-top: 1px solid #dee2e6;
+  padding-top: 10px;
+  margin-top: 8px;
+}
+
+.seller-actions .btn {
+  font-size: 12px;
+  padding: 6px 12px;
+  transition: all 0.3s;
+}
+
+.seller-actions .btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* =============== STAR RATING STYLES =============== */
+.rating-stars {
+  font-size: 28px;
+  margin-bottom: 15px;
+}
+
+.rating-stars i {
+  color: #ddd;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-right: 5px;
+}
+
+.rating-stars i:hover,
+.rating-stars i.active {
+  color: #ffc107;
+  transform: scale(1.2);
+}
+
+.rating-stars i.active ~ i {
+  color: #ddd;
+  transform: scale(1);
+}
+
+/* =============== RESPONSIVE STYLES =============== */
+@media (min-width: 992px) {
+  .main-product-img {
+    height: 500px;
+  }
+}
+
+@media (max-width: 991px) and (min-width: 768px) {
+  .main-product-img {
+    height: 350px;
+  }
+}
+
+@media (max-width: 767px) {
+  .main-product-img {
+    height: 300px;
+  }
+  
+  .thumbnail-img {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .seller-avatar,
+  .seller-avatar-placeholder {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .color-swatch {
+    width: 35px;
+    height: 35px;
+  }
+  
+  .gallery-wrap {
+    position: relative;
+  }
+}
+
+@media (max-width: 576px) {
+  .thumbnail-gallery {
+    max-height: 100px;
+  }
+  
+  .color-options {
+    justify-content: center;
+  }
+  
+  .seller-actions {
+    text-align: center;
+    margin-top: 10px;
+  }
+}
+</style>
+
+<script>
+// =============== GET DJANGO DATA SAFELY ===============
+let productData;
+try {
+  const djangoDataElement = document.getElementById("django-data");
+  productData = JSON.parse(djangoDataElement.textContent);
+} catch (e) {
+  console.error("Error loading product data:", e);
+  productData = {
+    basePrice: 0,
+    productId: 0,
+    variationImages: {},
+    defaultImage: "",
+  };
+}
+
+console.log("Product Data Loaded:", productData);
+
+// =============== SET COLOR SWATCHES ===============
+function setColorSwatches() {
+  document.querySelectorAll(".color-swatch[data-color]").forEach(function (swatch) {
+    const color = swatch.getAttribute("data-color");
+    swatch.style.backgroundColor = color;
+  });
+}
+
+// =============== IMAGE GALLERY FUNCTIONS ===============
+function changeMainImage(imageUrl, thumbnailElement) {
+  const mainImage = document.getElementById("main-product-image");
+  if (!mainImage) return;
+
+  mainImage.style.opacity = "0.5";
+  setTimeout(function () {
+    mainImage.src = imageUrl;
+    mainImage.style.opacity = "1";
+  }, 150);
+
+  document.querySelectorAll(".thumbnail-item").forEach(function (item) {
+    item.classList.remove("active");
+  });
+  if (thumbnailElement) {
+    thumbnailElement.classList.add("active");
+  }
+}
+
+function updateThumbnailGallery(images) {
+  const gallery = document.getElementById("thumbnail-gallery");
+  if (!gallery) return;
+
+  gallery.innerHTML = "";
+
+  if (!images || images.length === 0) {
+    if (productData.defaultImage) {
+      images = [productData.defaultImage];
+    } else {
+      gallery.style.display = "none";
+      return;
+    }
+  }
+
+  gallery.style.display = "flex";
+
+  images.forEach(function (imageUrl, index) {
+    const thumbnailDiv = document.createElement("div");
+    thumbnailDiv.className = "thumbnail-item" + (index === 0 ? " active" : "");
+    thumbnailDiv.onclick = function () {
+      changeMainImage(imageUrl, thumbnailDiv);
+    };
+
+    const img = document.createElement("img");
+    img.src = imageUrl;
+    img.className = "thumbnail-img";
+    img.alt = "Image " + (index + 1);
+
+    img.onerror = function () {
+      this.src = "https://via.placeholder.com/80x80?text=No+Image";
+    };
+
+    thumbnailDiv.appendChild(img);
+    gallery.appendChild(thumbnailDiv);
+  });
+
+  if (images.length > 0) {
+    changeMainImage(images[0], gallery.querySelector(".thumbnail-item"));
+  }
+}
+
+function openImageModal() {
+  const currentImage = document.getElementById("main-product-image");
+  const modalImage = document.getElementById("modal-image");
+  if (currentImage && modalImage) {
+    modalImage.src = currentImage.src;
+    $("#imageModal").modal("show");
+  }
+}
+
+// =============== VARIATION FUNCTIONS ===============
+function updateVariation() {
+  updatePrice();
+  updateImages();
+}
+
+function updatePrice() {
+  let totalAdjustment = 0;
+
+  const form = document.getElementById("variation-form");
+  if (form) {
+    const checkedInputs = form.querySelectorAll("input:checked");
+    checkedInputs.forEach(function (input) {
+      const adjustment = parseFloat(input.getAttribute("data-price-adjustment") || 0);
+      totalAdjustment += adjustment;
+    });
+
+    const selects = form.querySelectorAll("select");
+    selects.forEach(function (select) {
+      const selectedOption = select.options[select.selectedIndex];
+      if (selectedOption && selectedOption.value) {
+        const adjustment = parseFloat(selectedOption.getAttribute("data-price-adjustment") || 0);
+        totalAdjustment += adjustment;
+      }
+    });
+  }
+
+  const newPrice = productData.basePrice + totalAdjustment;
+  const priceElement = document.getElementById("product-price");
+  if (priceElement) {
+    priceElement.style.color = "#007bff";
+    priceElement.textContent = "Rs." + newPrice.toFixed(2);
+    setTimeout(function () {
+      priceElement.style.color = "";
+    }, 500);
+  }
+}
+
+function updateImages() {
+  console.log("updateImages called");
+  console.log("Variation images:", productData.variationImages);
+
+  const colorInput = document.querySelector('input[data-variation-type="Color"]:checked');
+  console.log("Selected color input:", colorInput);
+
+  if (colorInput && colorInput.value) {
+    const optionId = colorInput.value.toString();
+    console.log("Option ID:", optionId);
+    console.log("Images for this option:", productData.variationImages[optionId]);
+
+    if (productData.variationImages[optionId] && productData.variationImages[optionId].length > 0) {
+      updateThumbnailGallery(productData.variationImages[optionId]);
+      return;
+    }
+  }
+
+  if (productData.defaultImage) {
+    updateThumbnailGallery([productData.defaultImage]);
+  }
+}
+
+// =============== UTILITY FUNCTIONS ===============
+function openChat(button) {
+  const sellerId = button.getAttribute("data-seller-id");
+  alert("Chat functionality coming soon! Seller ID: " + sellerId);
+}
+
+// =============== STAR RATING ===============
+function initializeStarRating() {
+  const stars = document.querySelectorAll("#rating-stars i");
+  const ratingValue = document.getElementById("rating-value");
+
+  if (stars.length > 0 && ratingValue) {
+    stars.forEach(function (star, index) {
+      star.addEventListener("click", function () {
+        const rating = this.getAttribute("data-rating");
+        ratingValue.value = rating;
+
+        stars.forEach(function (s, i) {
+          if (i < rating) {
+            s.classList.add("active");
+            s.style.color = "#ffc107";
+          } else {
+            s.classList.remove("active");
+            s.style.color = "#ddd";
+          }
+        });
+      });
+
+      star.addEventListener("mouseover", function () {
+        const rating = this.getAttribute("data-rating");
+        stars.forEach(function (s, i) {
+          if (i < rating) {
+            s.style.color = "#ffc107";
+          } else {
+            s.style.color = "#ddd";
+          }
+        });
+      });
+    });
+
+    const ratingContainer = document.getElementById("rating-stars");
+    if (ratingContainer) {
+      ratingContainer.addEventListener("mouseleave", function () {
+        const currentRating = ratingValue.value;
+        stars.forEach(function (s, i) {
+          if (i < currentRating) {
+            s.style.color = "#ffc107";
+          } else {
+            s.style.color = "#ddd";
+          }
+        });
+      });
+    }
+  }
+}
+
+// =============== INITIALIZATION ===============
+document.addEventListener("DOMContentLoaded", function () {
+  console.log("Page loaded");
+  console.log("Product data:", productData);
+
+  setColorSwatches();
+  updateImages();
+  initializeStarRating();
+
+  const variationForm = document.getElementById("variation-form");
+  if (variationForm) {
+    updateVariation();
+
+    const allInputs = variationForm.querySelectorAll("input, select");
+    allInputs.forEach(function (input) {
+      input.addEventListener("change", updateVariation);
+    });
+  }
+
+  console.log("Initialization complete");
+});
+</script>
+
 {% endblock %}

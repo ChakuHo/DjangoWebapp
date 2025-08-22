@@ -6,7 +6,11 @@ from pages.models import Page
 from cart.models import Cart
 
 def home(request):
-    products = Product.objects.all().filter(status=True)
+    products = Product.objects.filter(
+        status=True,
+        admin_approved=True,
+        approval_status='approved'
+    )
     blogs = Blog.objects.all()[:3]
     pages = Page.objects.all()
     cart = Cart.objects.all()

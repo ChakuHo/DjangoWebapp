@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from .models import Cart, CartItem
 from products.models import Product
 from django.core.exceptions import ObjectDoesNotExist
+from django.contrib import messages
 
 def _cart_id(request):
     cart = request.session.session_key
@@ -31,9 +32,15 @@ def add_cart(request, product_id):
         if cart_item.quantity < product.stock:
             cart_item.quantity += 1
             cart_item.save()
+            messages.success(request, f"{product.name} added to cart!")
+        else:
+            messages.error(request, f"Sorry, only {product.stock} {product.name} available!")
     except CartItem.DoesNotExist:
         if product.stock > 0:
             CartItem.objects.create(product=product, quantity=1, cart=cart)
+            messages.success(request, f"{product.name} added to cart!")
+        else:
+            messages.error(request, f"Sorry, {product.name} is out of stock!")
 
     return redirect('cart')
 

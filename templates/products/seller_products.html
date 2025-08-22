@@ -1,0 +1,143 @@
+{% extends "master/base.html" %} 
+{% load static %} 
+{% block content %}
+
+<!-- ========================= SECTION PAGETOP ========================= -->
+<section class="section-pagetop bg">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-md-8">
+        <h2 class="title-page">
+          {% if seller.profile.profile_picture %}
+            <img src="{{ seller.profile.profile_picture.url }}" class="rounded-circle mr-3" style="width: 50px; height: 50px; object-fit: cover;">
+          {% endif %}
+          {{ page_title }}
+          {% if seller.profile.seller_status == 'approved' %}
+            <span class="badge badge-success ml-2">
+              <i class="fa fa-check-circle"></i> Verified
+            </span>
+          {% endif %}
+        </h2>
+        {% if seller.profile.business_description %}
+          <p class="text-muted">{{ seller.profile.business_description }}</p>
+        {% endif %}
+      </div>
+      <div class="col-md-4 text-right">
+        <button class="btn btn-primary" onclick="openChat({{ seller.id }})">
+          <i class="fa fa-comments"></i> Chat with Seller
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================= SECTION CONTENT ========================= -->
+<section class="section-content padding-y">
+  <div class="container">
+    <div class="row">
+      <!-- Sidebar with categories -->
+      <aside class="col-md-3">
+        <div class="card">
+          <article class="filter-group">
+            <header class="card-header">
+              <h6 class="title">Categories</h6>
+            </header>
+            <div class="filter-content">
+              <div class="card-body">
+                <ul class="list-menu">
+                  {% for category in categories %}
+                  <li>
+                    <a href="{% url 'products:products_by_category' category.slug %}">
+                      {{ category.category_name }}
+                    </a>
+                  </li>
+                  {% endfor %}
+                </ul>
+              </div>
+            </div>
+          </article>
+        </div>
+      </aside>
+
+      <!-- Main content -->
+      <main class="col-md-9">
+        <header class="border-bottom mb-4 pb-3">
+          <div class="form-inline">
+            <span class="mr-md-auto">{{ product_count }} Products found</span>
+          </div>
+        </header>
+
+        <!-- Products grid -->
+        <div class="row">
+          {% for product in products %}
+          <div class="col-md-4">
+            <figure class="card card-product-grid">
+              <div class="img-wrap">
+                {% if product.image %}
+                <a href="{{product.get_url}}">
+                  <img src="{{product.image.url}}" />
+                </a>
+                {% else %}
+                <img src="{% static 'images/placeholder.png' %}" /> 
+                {% endif %}
+              </div>
+              <figcaption class="info-wrap">
+                <div class="fix-height">
+                  <a href="{{ product.get_url }}" class="title">
+                    {{ product.name }}
+                  </a>
+                  <div class="price-wrap mt-2">
+                    <span class="price">Rs.{{product.price}}</span>
+                  </div>
+                  {% if product.stock and product.stock < 6 %}
+                  <p class="text-warning small mb-1">
+                    Only {{ product.stock }} left in stock!
+                  </p>
+                  {% endif %}
+                </div>
+                
+                <!-- Updated add to cart logic with out of stock handling -->
+                {% if product.stock <= 0 %}
+                <button class="btn btn-block btn-danger" disabled>Out of Stock</button>
+                {% elif product.id in in_cart_ids %}
+                <button class="btn btn-block btn-success" disabled>
+                  <i class="fa fa-check"></i> In Cart
+                </button>
+                {% else %}
+                <a href="{% url 'add_cart' product.id %}" class="btn btn-block btn-primary">
+                  Add to cart
+                </a>
+                {% endif %}
+                
+                <a href="{{product.get_url}}" class="btn btn-block btn-outline-primary">
+                  View Details
+                </a>
+              </figcaption>
+            </figure>
+          </div>
+          {% empty %}
+          <div class="col-12">
+            <div class="text-center py-5">
+              <i class="fa fa-store fa-3x text-muted mb-3"></i>
+              <h5>No products found</h5>
+              <p class="text-muted">This seller hasn't added any products yet.</p>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% include 'products/includes/pagination.html' %}
+      </main>
+    </div>
+  </div>
+</section>
+
+<script>
+function openChat(sellerId) {
+    alert('Chat functionality coming soon! Seller ID: ' + sellerId);
+    // TODO: Implement real chat functionality
+}
+</script>
+
+{% endblock %}

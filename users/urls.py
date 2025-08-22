@@ -10,4 +10,6 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout'),
     path('my-selling-items/', views.my_selling_items, name='my_selling_items'),
     path('received-orders/', views.received_orders, name='received_orders'),
+    path('become-seller/', views.become_seller, name='become_seller'),
+    path('add-product/', views.add_product, name='add_product'),
 ]
