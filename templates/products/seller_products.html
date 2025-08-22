@@ -23,7 +23,7 @@
         {% endif %}
       </div>
       <div class="col-md-4 text-right">
-        <button class="btn btn-primary" onclick="openChat({{ seller.id }})">
+        <button class="btn btn-primary" onclick="openChat(this)" data-seller-id="{{ seller.id }}">
           <i class="fa fa-comments"></i> Chat with Seller
         </button>
       </div>
@@ -137,6 +137,11 @@
 function openChat(sellerId) {
     alert('Chat functionality coming soon! Seller ID: ' + sellerId);
     // TODO: Implement real chat functionality
+}
+
+function openChat(button) {
+    const sellerId = button.getAttribute("data-seller-id");
+    alert("Chat functionality coming soon! Seller ID: " + sellerId);
 }
 </script>
 
