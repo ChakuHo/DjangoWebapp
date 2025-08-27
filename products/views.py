@@ -1,6 +1,6 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.db.models import Q
-from .models import Category, Product, Review
+from .models import Category, Product, Review, VariationOption, VariationType
 from django.http import Http404
 from cart.models import CartItem
 from cart.views import _cart_id
@@ -12,15 +12,12 @@ from django.contrib.auth.models import User
 
 
 def product(request, category_slug=None):
-    """
-    Display products - all products or filtered by category
-    This view handles both /products/ and /products/category/slug/
-    """
+    """Display products with advanced filtering"""
     categories = None
     products = None
 
+    # Base queryset
     if category_slug is not None:
-        # Show products from specific category
         categories = get_object_or_404(Category, slug=category_slug)
         products = Product.objects.filter(
             category=categories, 
@@ -28,23 +25,106 @@ def product(request, category_slug=None):
             admin_approved=True,
             approval_status='approved'
         )
-        paginator = Paginator(products, 6)  # Show 6 products per page
-        page = request.GET.get('page')
-        paged_products = paginator.get_page(page)
-        product_count = products.count()  # Get actual count, not just current page
     else:
         products = Product.objects.filter(
             status=True,
             admin_approved=True,
             approval_status='approved'
-        ).order_by('id')
-        paginator = Paginator(products, 6)  # Show 6 products per page
-        page = request.GET.get('page')
-        paged_products = paginator.get_page(page)
-        product_count = products.count()  # Get actual count, not just current page
+        )
 
-    # Get all categories for sidebar and navbar
+    # Apply variation filters
+    selected_variations = []
+    variations_param = request.GET.get('variations')
+    if variations_param:
+        variation_ids = [int(x) for x in variations_param.split(',') if x.isdigit()]
+        selected_variations = variation_ids
+        
+        if variation_ids:
+            for var_id in variation_ids:
+                products = products.filter(
+                    variations__variation_option_id=var_id,
+                    variations__is_active=True
+                ).distinct()
+
+    # Apply price filters
+    min_price = request.GET.get('min_price')
+    max_price = request.GET.get('max_price')
+    
+    if min_price:
+        products = products.filter(price__gte=min_price)
+    
+    if max_price:
+        products = products.filter(price__lte=max_price)
+
+    # Apply product type filter
+    product_type = request.GET.get('product_type')
+    if product_type in ['new', 'thrift', 'refurbished']:
+        products = products.filter(product_type=product_type)
+
+    # Apply sale filter
+    on_sale = request.GET.get('on_sale')
+    if on_sale == 'true':
+        products = products.filter(is_on_sale=True)
+
+    # Apply condition filter (for thrift products)
+    condition = request.GET.get('condition')
+    if condition in ['excellent', 'good', 'fair', 'poor']:
+        products = products.filter(condition=condition)
+
+    # Apply sorting
+    sort_by = request.GET.get('sort', '-created_at')
+    if sort_by in ['name', '-name', 'price', '-price', '-created_at']:
+        products = products.order_by(sort_by)
+
+    # Get variation types for filtering
+    variation_types = VariationType.objects.filter(is_active=True).prefetch_related('options')
+    
+    # Get all categories for sidebar
     cats = Category.objects.filter(status=True)
+
+    # Get cart items
+    if request.user.is_authenticated:
+        in_cart_ids = list(
+            CartItem.objects.filter(cart__user=request.user)
+            .values_list('product_id', flat=True)
+        )
+    else:
+        in_cart_ids = list(
+            CartItem.objects.filter(cart__cart_id=_cart_id(request))
+            .values_list('product_id', flat=True)
+        )
+
+    # Pagination
+    paginator = Paginator(products, 12)
+    page = request.GET.get('page')
+    paged_products = paginator.get_page(page)
+
+    context = {
+        'products': paged_products,
+        'product_count': products.count(),
+        'categories': cats,
+        'links': cats,
+        'in_cart_ids': in_cart_ids,
+        'current_category': categories,
+        'variation_types': variation_types,
+        'selected_variations': selected_variations,
+    }
+    return render(request, 'products/products.html', context)
+
+def sale_products(request):
+    """Display only discounted/sale products"""
+    products = Product.objects.filter(
+        status=True,
+        admin_approved=True,
+        approval_status='approved',
+        is_on_sale=True
+    ).order_by('-created_at')
+
+    # Apply same filtering as main products view
+    # ... (copy filtering logic from above)
+
+    cats = Category.objects.filter(status=True)
+    variation_types = VariationType.objects.filter(is_active=True).prefetch_related('options')
 
     if request.user.is_authenticated:
         in_cart_ids = list(
@@ -57,13 +137,73 @@ def product(request, category_slug=None):
             .values_list('product_id', flat=True)
         )
 
+    paginator = Paginator(products, 12)
+    page = request.GET.get('page')
+    paged_products = paginator.get_page(page)
+
     context = {
         'products': paged_products,
-        'product_count': product_count,
-        'categories': cats,           # For sidebar category lists
-        'links': cats,               # For navbar categories dropdown
-        'in_cart_ids': in_cart_ids,  # To show "In Cart" buttons
-        'current_category': categories,  # Current selected category (if any)
+        'product_count': products.count(),
+        'categories': cats,
+        'links': cats,
+        'in_cart_ids': in_cart_ids,
+        'variation_types': variation_types,
+        'page_title': 'Sale Products',
+        'is_sale_page': True,
+    }
+    return render(request, 'products/products.html', context)
+
+def thrift_products(request, category_slug=None):
+    """Display only thrift/used products"""
+    if category_slug:
+        category = get_object_or_404(Category, slug=category_slug)
+        products = Product.objects.filter(
+            category=category,
+            status=True,
+            admin_approved=True,
+            approval_status='approved',
+            product_type='thrift'
+        )
+    else:
+        category = None
+        products = Product.objects.filter(
+            status=True,
+            admin_approved=True,
+            approval_status='approved',
+            product_type='thrift'
+        )
+
+    # Apply same filtering logic as main products view
+    # ... (copy filtering logic from main product view)
+
+    cats = Category.objects.filter(status=True)
+    variation_types = VariationType.objects.filter(is_active=True).prefetch_related('options')
+
+    if request.user.is_authenticated:
+        in_cart_ids = list(
+            CartItem.objects.filter(cart__user=request.user)
+            .values_list('product_id', flat=True)
+        )
+    else:
+        in_cart_ids = list(
+            CartItem.objects.filter(cart__cart_id=_cart_id(request))
+            .values_list('product_id', flat=True)
+        )
+
+    paginator = Paginator(products, 12)
+    page = request.GET.get('page')
+    paged_products = paginator.get_page(page)
+
+    context = {
+        'products': paged_products,
+        'product_count': products.count(),
+        'categories': cats,
+        'links': cats,
+        'in_cart_ids': in_cart_ids,
+        'current_category': category,
+        'variation_types': variation_types,
+        'page_title': 'Thrift Products' + (f' - {category.category_name}' if category else ''),
+        'is_thrift_page': True,
     }
     return render(request, 'products/products.html', context)
 

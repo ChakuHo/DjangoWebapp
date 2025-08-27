@@ -2,6 +2,10 @@
 {% load static %} 
 {% block content %}
 
+<script>
+const PLACEHOLDER_IMAGE = "{% static 'images/placeholder.png' %}";
+</script>
+
 <section class="section-content padding-y bg">
   <div class="container">
     <form method="POST" action="{% url 'place_order' %}" id="checkout-form">
@@ -23,7 +27,7 @@
                       {% if item.product.image %}
                       <img src="{{ item.product.image.url }}" class="border img-sm rounded" 
                            style="width: 80px; height: 80px; object-fit: cover;"
-                           onerror="this.src='{% static "images/placeholder.png" %}';" />
+                           onerror="this.src=PLACEHOLDER_IMAGE;" />
                       {% else %}
                       <img src="{% static 'images/placeholder.png' %}" class="border img-sm rounded" 
                            style="width: 80px; height: 80px; object-fit: cover;" />
@@ -94,8 +98,9 @@
                          id="phone"
                          value="{% if user.profile.phone_number %}{{ user.profile.phone_number }}{% else %}+977{% endif %}"
                          class="form-control"
-                         pattern="[\+]?[\d\s\-]{7,15}"
+                         placeholder="+977 9812345678"
                          required />
+                  <small class="text-muted">Examples: +977 9812345678, +91 9876543210</small>
                 </div>
                 <div class="form-group col-sm-6">
                   <label for="email">Email <span class="text-danger">*</span></label>
@@ -151,8 +156,10 @@
                   <input type="text" 
                          name="zip" 
                          id="zip"
-                         placeholder="ZIP code"
-                         class="form-control" />
+                         placeholder="e.g., 44600"
+                         class="form-control"
+                         maxlength="10" />
+                  <small class="text-muted">Optional - 4-6 digits or postal code</small>
                 </div>
               </div>
             </div>
@@ -604,6 +611,29 @@
   50% { box-shadow: 0 5px 25px rgba(0,123,255,0.4); }
   100% { box-shadow: 0 5px 15px rgba(0,123,255,0.2); }
 }
+
+/* Form validation styling */
+.form-control.is-valid {
+  border-color: #28a745;
+  background-image: url("data:image/svg+xml;charset=utf8,%3Csvg viewBox='0 0 8 8' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2.3 6.73L.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z' fill='%2328a745'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right calc(0.375em + 0.1875rem) center;
+  background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+}
+
+.form-control.is-invalid {
+  border-color: #dc3545;
+  background-image: url("data:image/svg+xml;charset=utf8,%3Csvg viewBox='0 0 12 12' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M6 0C2.7 0 0 2.7 0 6s2.7 6 6 6 6-2.7 6-6S9.3 0 6 0zM4.3 3.7c.4-.4 1-.4 1.4 0L6 4l.3-.3c.4-.4 1-.4 1.4 0 .4.4.4 1 0 1.4L7.4 5.3l.3.3c.4.4.4 1 0 1.4-.4.4-1 .4-1.4 0L6 6.7l-.3.3c-.4.4-1 .4-1.4 0-.4-.4-.4-1 0-1.4l.3-.3-.3-.3c-.4-.4-.4-1 0-1.4z' fill='%23dc3545'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right calc(0.375em + 0.1875rem) center;
+  background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+}
+
+.field-error {
+  color: #dc3545;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
 </style>
 
 <script>
@@ -620,10 +650,131 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
+            // Validate phone and ZIP before submission
+            if (!validateForm()) {
+                e.preventDefault();
+                return;
+            }
+            
             // Show loading state
             placeOrderBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Processing...';
             placeOrderBtn.disabled = true;
         });
+    }
+    
+    // Improved phone validation
+    const phoneInput = document.getElementById('phone');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function() {
+            validatePhone(this);
+        });
+        
+        phoneInput.addEventListener('blur', function() {
+            validatePhone(this);
+        });
+    }
+    
+    // ZIP code validation
+    const zipInput = document.getElementById('zip');
+    if (zipInput) {
+        zipInput.addEventListener('input', function() {
+            validateZip(this);
+        });
+        
+        zipInput.addEventListener('blur', function() {
+            validateZip(this);
+        });
+    }
+    
+    // Phone validation function
+    function validatePhone(input) {
+        const phone = input.value.trim();
+        const phonePattern = /^(\+977|977)?[-\s]?[98]\d{8}$|^(\+91|91)?[-\s]?[6789]\d{9}$|^(\+1)?[-\s]?\d{3}[-\s]?\d{3}[-\s]?\d{4}$/;
+        
+        if (!phone) {
+            input.setCustomValidity('Phone number is required');
+            input.classList.add('is-invalid');
+            input.classList.remove('is-valid');
+            showFieldError(input, 'Phone number is required');
+            return false;
+        }
+        
+        if (!phonePattern.test(phone)) {
+            input.setCustomValidity('Please enter a valid phone number (e.g., +977 9812345678)');
+            input.classList.add('is-invalid');
+            input.classList.remove('is-valid');
+            showFieldError(input, 'Invalid phone format. Examples: +977 9812345678, +91 9876543210');
+            return false;
+        }
+        
+        input.setCustomValidity('');
+        input.classList.remove('is-invalid');
+        input.classList.add('is-valid');
+        hideFieldError(input);
+        return true;
+    }
+    
+    // ZIP validation function
+    function validateZip(input) {
+        const zip = input.value.trim();
+        
+        if (!zip) {
+            // ZIP is optional, so clear any errors
+            input.setCustomValidity('');
+            input.classList.remove('is-invalid', 'is-valid');
+            hideFieldError(input);
+            return true;
+        }
+        
+        const zipPattern = /^[0-9]{4,6}$|^[A-Z0-9]{3,10}$/i;
+        
+        if (!zipPattern.test(zip)) {
+            input.setCustomValidity('Please enter a valid ZIP/Postal code');
+            input.classList.add('is-invalid');
+            input.classList.remove('is-valid');
+            showFieldError(input, 'ZIP must be 4-6 digits (e.g., 44600) or alphanumeric postal code');
+            return false;
+        }
+        
+        input.setCustomValidity('');
+        input.classList.remove('is-invalid');
+        input.classList.add('is-valid');
+        hideFieldError(input);
+        return true;
+    }
+    
+    // Overall form validation
+    function validateForm() {
+        let isValid = true;
+        
+        if (phoneInput && !validatePhone(phoneInput)) {
+            isValid = false;
+        }
+        
+        if (zipInput && !validateZip(zipInput)) {
+            isValid = false;
+        }
+        
+        return isValid;
+    }
+    
+    // Show field error
+    function showFieldError(input, message) {
+        let errorDiv = input.parentNode.querySelector('.field-error');
+        if (!errorDiv) {
+            errorDiv = document.createElement('div');
+            errorDiv.className = 'field-error text-danger small mt-1';
+            input.parentNode.appendChild(errorDiv);
+        }
+        errorDiv.textContent = message;
+    }
+    
+    // Hide field error
+    function hideFieldError(input) {
+        const errorDiv = input.parentNode.querySelector('.field-error');
+        if (errorDiv) {
+            errorDiv.remove();
+        }
     }
     
     // Payment option selection styling
@@ -653,19 +804,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const checkedRadio = document.querySelector('.payment-radio:checked');
     if (checkedRadio) {
         checkedRadio.closest('.payment-option').classList.add('selected');
-    }
-    
-    // Form validation
-    const phoneInput = document.getElementById('phone');
-    if (phoneInput) {
-        phoneInput.addEventListener('input', function() {
-            const phone = this.value.trim();
-            if (phone && !/^[\+]?[\d\s\-]{7,15}$/.test(phone)) {
-                this.setCustomValidity('Please enter a valid phone number');
-            } else {
-                this.setCustomValidity('');
-            }
-        });
     }
 });
 </script>

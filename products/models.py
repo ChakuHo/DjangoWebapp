@@ -59,6 +59,29 @@ class Product(models.Model):
     rejection_reason = models.TextField(blank=True)
     submitted_for_approval = models.DateTimeField(default=timezone.now ,blank=True)
 
+# NEW FIELDS FOR DISCOUNT FUNCTIONALITY
+    original_price = models.FloatField(null=True, blank=True, help_text="Original price before discount")
+    discount_percentage = models.IntegerField(default=0, blank=True, help_text="Discount percentage (0-100)")
+    is_on_sale = models.BooleanField(default=False, help_text="Is this product on sale?")
+    sale_start_date = models.DateTimeField(null=True, blank=True)
+    sale_end_date = models.DateTimeField(null=True, blank=True)
+
+     # NEW FIELDS FOR THRIFT FUNCTIONALITY  
+    product_type = models.CharField(max_length=20, choices=[
+        ('new', 'New Product'),
+        ('thrift', 'Thrift/Used Product'),
+        ('refurbished', 'Refurbished')
+    ], default='new', help_text="Type of product")
+    
+    condition = models.CharField(max_length=20, choices=[
+        ('excellent', 'Excellent - Like New'),
+        ('good', 'Good - Minor wear'),
+        ('fair', 'Fair - Noticeable wear'),
+        ('poor', 'Poor - Heavy wear')
+    ], blank=True, null=True, help_text="Condition (for thrift/used products)")
+    
+    years_used = models.IntegerField(null=True, blank=True, help_text="How many years used (for thrift products)")
+
     def get_url(self):
         if self.category and self.category.slug and self.slug:
             return reverse('products:product_detail', args=[self.category.slug, self.slug])
@@ -77,6 +100,31 @@ class Product(models.Model):
                 counter += 1
             self.slug = slug
         super().save(*args, **kwargs)
+
+    
+    def get_final_price(self):
+        """Get the final price after discount"""
+        if self.is_on_sale and self.original_price:
+            return self.original_price * (1 - self.discount_percentage / 100)
+        return self.price
+    
+    def get_savings(self):
+        """Get the amount saved"""
+        if self.is_on_sale and self.original_price:
+            return self.original_price - self.get_final_price()
+        return 0
+    
+    def is_sale_active(self):
+        """Check if sale is currently active"""
+        if not self.is_on_sale:
+            return False
+        
+        now = timezone.now()
+        if self.sale_start_date and now < self.sale_start_date:
+            return False
+        if self.sale_end_date and now > self.sale_end_date:
+            return False
+        return True
 
     
     def get_available_stock(self):

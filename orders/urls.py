@@ -11,6 +11,6 @@ urlpatterns = [
     path('khalti-verify/', views.khalti_verify, name='khalti_verify'),
     path('esewa-start/<int:order_id>/', views.esewa_start, name='esewa_start'),
     path('esewa-return/<int:order_id>/', views.esewa_return, name='esewa_return'),
-
+    path('khalti-return/<int:order_id>/', views.khalti_return, name='khalti_return'),
 
 ]

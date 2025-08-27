@@ -1,13 +1,27 @@
 {% extends "master/base.html" %} {% load static %} {% block content %}
 
+<!-- Add this script at the top for placeholder image -->
+<script>
+const PLACEHOLDER_IMAGE = "{% static 'images/placeholder.png' %}";
+</script>
+
 <!-- ========================= SECTION PAGETOP ========================= -->
 <section class="section-pagetop bg">
   <div class="container">
-    <h2 class="title-page">Our Store</h2>
+    <h2 class="title-page">
+      {% if is_sale_page %}
+        🔥 Sale Products
+      {% elif is_thrift_page %}
+        ♻️ Thrift Products
+      {% else %}
+        Our Store
+      {% endif %}
+    </h2>
+    {% if current_category %}
+      <p class="text-muted">{{ current_category.category_name }}</p>
+    {% endif %}
   </div>
-  <!-- container //  -->
 </section>
-<!-- ========================= SECTION INTRO END// ========================= -->
 
 <!-- ========================= SECTION CONTENT ========================= -->
 <section class="section-content padding-y">
@@ -15,164 +29,292 @@
     <div class="row">
       <aside class="col-md-3">
         <div class="card">
+          <!-- Product Type Filter -->
           <article class="filter-group">
             <header class="card-header">
-              <a
-                href="#"
-                data-toggle="collapse"
-                data-target="#collapse_1"
-                aria-expanded="true"
-                class=""
-              >
+              <a href="#" data-toggle="collapse" data-target="#collapse_product_type" aria-expanded="true">
+                <i class="icon-control fa fa-chevron-down"></i>
+                <h6 class="title">Product Type</h6>
+              </a>
+            </header>
+            <div class="filter-content collapse show" id="collapse_product_type">
+              <div class="card-body">
+                <label class="checkbox-btn mb-2">
+                  <input type="radio" name="product_type_filter" value="" 
+                         {% if not request.GET.product_type %}checked{% endif %} />
+                  <span class="btn btn-light filter-option">All Products</span>
+                </label>
+                <label class="checkbox-btn mb-2">
+                  <input type="radio" name="product_type_filter" value="new"
+                         {% if request.GET.product_type == "new" %}checked{% endif %} />
+                  <span class="btn btn-light filter-option">🆕 New Products</span>
+                </label>
+                <label class="checkbox-btn mb-2">
+                  <input type="radio" name="product_type_filter" value="thrift"
+                         {% if request.GET.product_type == "thrift" %}checked{% endif %} />
+                  <span class="btn btn-light filter-option">♻️ Thrift Products</span>
+                </label>
+                <label class="checkbox-btn mb-2">
+                  <input type="radio" name="product_type_filter" value="refurbished"
+                         {% if request.GET.product_type == "refurbished" %}checked{% endif %} />
+                  <span class="btn btn-light filter-option">🔧 Refurbished</span>
+                </label>
+              </div>
+            </div>
+          </article>
+
+          <!-- Categories Filter -->
+          <article class="filter-group">
+            <header class="card-header">
+              <a href="#" data-toggle="collapse" data-target="#collapse_categories" aria-expanded="true">
                 <i class="icon-control fa fa-chevron-down"></i>
                 <h6 class="title">Categories</h6>
               </a>
             </header>
-            <div class="filter-content collapse show" id="collapse_1" style="">
+            <div class="filter-content collapse show" id="collapse_categories">
               <div class="card-body">
                 <ul class="list-menu">
-                  {% for category in categories %} {% if category.slug %}
                   <li>
-                    <a href="/store/category/{{ category.slug }}/">
+                    <a href="{% url 'products:product' %}" class="{% if not current_category %}text-primary font-weight-bold{% endif %}">
+                      All Categories
+                    </a>
+                  </li>
+                  {% for category in categories %}
+                  {% if category.slug %}
+                  <li>
+                    <a href="{% url 'products:products_by_category' category.slug %}" class="{% if current_category.slug == category.slug %}text-primary font-weight-bold{% endif %}">
                       {{ category.category_name }}
                     </a>
                   </li>
-                  {% endif %} {% endfor %}
+                  {% endif %}
+                  {% endfor %}
                 </ul>
               </div>
-              <!-- card-body.// -->
             </div>
           </article>
-          <!-- filter-group  .// -->
+
+          <!-- Dynamic Variation Filters -->
+          {% for variation_type in variation_types %}
           <article class="filter-group">
             <header class="card-header">
-              <a
-                href="#"
-                data-toggle="collapse"
-                data-target="#collapse_4"
-                aria-expanded="true"
-                class=""
-              >
+              <a href="#" data-toggle="collapse" data-target="#collapse_{{ variation_type.id }}" aria-expanded="true">
                 <i class="icon-control fa fa-chevron-down"></i>
-                <h6 class="title">Sizes</h6>
+                <h6 class="title">{{ variation_type.display_name }}</h6>
               </a>
             </header>
-            <div class="filter-content collapse show" id="collapse_4" style="">
+            <div class="filter-content collapse show" id="collapse_{{ variation_type.id }}">
               <div class="card-body">
-                <label class="checkbox-btn">
-                  <input type="checkbox" />
-                  <span class="btn btn-light"> XS </span>
+                {% for option in variation_type.options.all %}
+                <label class="checkbox-btn mb-2">
+                  <input type="checkbox" 
+                         name="variation_{{ variation_type.id }}" 
+                         value="{{ option.id }}"
+                         class="variation-filter"
+                         data-variation-type="{{ variation_type.id }}"
+                         {% if option.id|stringformat:"s" in selected_variations %}checked{% endif %} />
+                  <span class="btn btn-light filter-option">
+                    {% if variation_type.name == 'color' and option.color_code %}
+                      <span class="color-swatch" data-color="{{ option.color_code }}"></span>
+                    {% endif %}
+                    {{ option.display_value }}
+                  </span>
                 </label>
-
-                <label class="checkbox-btn">
-                  <input type="checkbox" />
-                  <span class="btn btn-light"> SM </span>
-                </label>
-
-                <label class="checkbox-btn">
-                  <input type="checkbox" />
-                  <span class="btn btn-light"> LG </span>
-                </label>
-
-                <label class="checkbox-btn">
-                  <input type="checkbox" />
-                  <span class="btn btn-light"> XXL </span>
-                </label>
+                {% endfor %}
               </div>
-              <!-- card-body.// -->
             </div>
           </article>
-          <!-- filter-group .// -->
+          {% endfor %}
 
+          <!-- Condition Filter (for thrift products) -->
           <article class="filter-group">
             <header class="card-header">
-              <a
-                href="#"
-                data-toggle="collapse"
-                data-target="#collapse_3"
-                aria-expanded="true"
-                class=""
-              >
+              <a href="#" data-toggle="collapse" data-target="#collapse_condition" aria-expanded="true">
                 <i class="icon-control fa fa-chevron-down"></i>
-                <h6 class="title">Price range</h6>
+                <h6 class="title">Condition</h6>
               </a>
             </header>
-            <div class="filter-content collapse show" id="collapse_3" style="">
+            <div class="filter-content collapse show" id="collapse_condition">
               <div class="card-body">
-                <div class="form-row">
-                  <div class="form-group col-md-6">
-                    <label>Min</label>
-                    <!-- <input class="form-control" placeholder="$0" type="number"> -->
-                    <select class="mr-2 form-control">
-                      <option value="0">Rs.0</option>
-                      <option value="500">Rs.500</option>
-                      <option value="1000">Rs.1000</option>
-                      <option value="10000">Rs.10000</option>
-                      <option value="20000">Rs.20000</option>
-                      <option value="80000">Rs.80000</option>
-                      <option value="1050000">Rs.1050000</option>
-                    </select>
-                  </div>
-                  <div class="form-group text-right col-md-6">
-                    <label>Max</label>
-                    <select class="mr-2 form-control">
-                      <option value="500">Rs.50</option>
-                      <option value="1000">Rs.1000</option>
-                      <option value="10000">Rs.10000</option>
-                      <option value="20000">Rs.20000</option>
-                      <option value="50000">Rs.50000</option>
-                      <option value="100000">Rs.100000</option>
-                      <option value="200000">Rs.200000+</option>
-                    </select>
-                  </div>
-                </div>
-                <!-- form-row.// -->
-                <button class="btn btn-block btn-primary">Apply</button>
+                <label class="checkbox-btn mb-2">
+                  <input type="radio" name="condition_filter" value=""
+                         {% if not request.GET.condition %}checked{% endif %} />
+                  <span class="btn btn-light filter-option">Any Condition</span>
+                </label>
+                <label class="checkbox-btn mb-2">
+                  <input type="radio" name="condition_filter" value="excellent"
+                         {% if request.GET.condition == "excellent" %}checked{% endif %} />
+                  <span class="btn btn-light filter-option">⭐ Excellent</span>
+                </label>
+                <label class="checkbox-btn mb-2">
+                  <input type="radio" name="condition_filter" value="good"
+                         {% if request.GET.condition == "good" %}checked{% endif %} />
+                  <span class="btn btn-light filter-option">👍 Good</span>
+                </label>
+                <label class="checkbox-btn mb-2">
+                  <input type="radio" name="condition_filter" value="fair"
+                         {% if request.GET.condition == "fair" %}checked{% endif %} />
+                  <span class="btn btn-light filter-option">👌 Fair</span>
+                </label>
+                <label class="checkbox-btn mb-2">
+                  <input type="radio" name="condition_filter" value="poor"
+                         {% if request.GET.condition == "poor" %}checked{% endif %} />
+                  <span class="btn btn-light filter-option">⚠️ Poor</span>
+                </label>
               </div>
-              <!-- card-body.// -->
             </div>
           </article>
-          <!-- filter-group .// -->
+
+          <!-- Price Range Filter -->
+          <article class="filter-group">
+            <header class="card-header">
+              <a href="#" data-toggle="collapse" data-target="#collapse_price" aria-expanded="true">
+                <i class="icon-control fa fa-chevron-down"></i>
+                <h6 class="title">Price Range</h6>
+              </a>
+            </header>
+            <div class="filter-content collapse show" id="collapse_price">
+              <div class="card-body">
+                <form id="price-filter-form">
+                  <div class="form-row">
+                    <div class="form-group col-md-6">
+                      <label>Min Price</label>
+                      <select class="form-control" id="min-price" name="min_price">
+                        <option value="">Any</option>
+                        <option value="0" {% if request.GET.min_price == "0" %}selected{% endif %}>Rs. 0</option>
+                        <option value="500" {% if request.GET.min_price == "500" %}selected{% endif %}>Rs. 500</option>
+                        <option value="1000" {% if request.GET.min_price == "1000" %}selected{% endif %}>Rs. 1,000</option>
+                        <option value="5000" {% if request.GET.min_price == "5000" %}selected{% endif %}>Rs. 5,000</option>
+                        <option value="10000" {% if request.GET.min_price == "10000" %}selected{% endif %}>Rs. 10,000</option>
+                        <option value="20000" {% if request.GET.min_price == "20000" %}selected{% endif %}>Rs. 20,000</option>
+                        <option value="50000" {% if request.GET.min_price == "50000" %}selected{% endif %}>Rs. 50,000</option>
+                      </select>
+                    </div>
+                    <div class="form-group col-md-6">
+                      <label>Max Price</label>
+                      <select class="form-control" id="max-price" name="max_price">
+                        <option value="">Any</option>
+                        <option value="1000" {% if request.GET.max_price == "1000" %}selected{% endif %}>Rs. 1,000</option>
+                        <option value="5000" {% if request.GET.max_price == "5000" %}selected{% endif %}>Rs. 5,000</option>
+                        <option value="10000" {% if request.GET.max_price == "10000" %}selected{% endif %}>Rs. 10,000</option>
+                        <option value="20000" {% if request.GET.max_price == "20000" %}selected{% endif %}>Rs. 20,000</option>
+                        <option value="50000" {% if request.GET.max_price == "50000" %}selected{% endif %}>Rs. 50,000</option>
+                        <option value="100000" {% if request.GET.max_price == "100000" %}selected{% endif %}>Rs. 100,000</option>
+                        <option value="200000" {% if request.GET.max_price == "200000" %}selected{% endif %}>Rs. 200,000+</option>
+                      </select>
+                    </div>
+                  </div>
+                  <button type="button" class="btn btn-block btn-primary" id="apply-price-filter">Apply Price Filter</button>
+                  <button type="button" class="btn btn-block btn-outline-secondary mt-2" id="clear-price-filter">Clear Price</button>
+                </form>
+              </div>
+            </div>
+          </article>
+
+          <!-- Sale Filter -->
+          <article class="filter-group">
+            <header class="card-header">
+              <a href="#" data-toggle="collapse" data-target="#collapse_sale" aria-expanded="true">
+                <i class="icon-control fa fa-chevron-down"></i>
+                <h6 class="title">Special Offers</h6>
+              </a>
+            </header>
+            <div class="filter-content collapse show" id="collapse_sale">
+              <div class="card-body">
+                <label class="checkbox-btn mb-2">
+                  <input type="checkbox" id="sale-filter"
+                         {% if request.GET.on_sale == "true" %}checked{% endif %} />
+                  <span class="btn btn-light filter-option">🔥 On Sale Only</span>
+                </label>
+              </div>
+            </div>
+          </article>
+
+          <!-- Clear All Filters -->
+          <div class="text-center mt-3">
+            <button class="btn btn-outline-danger" id="clear-all-filters">
+              <i class="fa fa-times"></i> Clear All Filters
+            </button>
+          </div>
         </div>
-        <!-- card.// -->
       </aside>
-      <!-- col.// -->
+
       <main class="col-md-9">
         <header class="border-bottom mb-4 pb-3">
           <div class="form-inline">
-            <span class="mr-md-auto"
-              >{{ products.paginator.count }} Items found</span
-            >
-            <!--I think this should be also dynamic like from the database how many items are there instead od manually typing 8 items found.-->
+            <span class="mr-md-auto">
+              {{ product_count }} Items found
+              {% if current_category %} in {{ current_category.category_name }}{% endif %}
+            </span>
+            <div class="form-group">
+              <label class="mr-2">Sort by:</label>
+              <select class="form-control" id="sort-products">
+                <option value="-created_at" {% if request.GET.sort == "-created_at" %}selected{% endif %}>Newest First</option>
+                <option value="name" {% if request.GET.sort == "name" %}selected{% endif %}>Name A-Z</option>
+                <option value="-name" {% if request.GET.sort == "-name" %}selected{% endif %}>Name Z-A</option>
+                <option value="price" {% if request.GET.sort == "price" %}selected{% endif %}>Price Low-High</option>
+                <option value="-price" {% if request.GET.sort == "-price" %}selected{% endif %}>Price High-Low</option>
+              </select>
+            </div>
           </div>
         </header>
-        <!-- sect-heading -->
 
-        <div class="row">
+        <!-- Active Filters Display -->
+        <div id="active-filters" class="mb-3">
+          <!-- Will be populated by JavaScript -->
+        </div>
+
+        <div class="row" id="products-container">
           {% for product in products %}
-          <div class="col-md-4">
+          <div class="col-md-4 mb-4">
             <figure class="card card-product-grid">
               <div class="img-wrap">
                 {% if product.image %}
-                <a href="{{product.get_url}}">
-                  <img src="{{product.image.url}}" />
+                <a href="{{ product.get_url }}">
+                  <img src="{{ product.image.url }}" onerror="this.src=PLACEHOLDER_IMAGE;" />
                 </a>
                 {% else %}
-                <img src="{% static 'images/placeholder.png' %}" />
+                <a href="{{ product.get_url }}">
+                  <img src="{% static 'images/placeholder.png' %}" />
+                </a>
                 {% endif %}
+                
+                <!-- Product badges -->
+                <div class="product-badges">
+                  {% if product.is_on_sale %}
+                    <span class="badge badge-danger sale-badge">
+                      {{ product.discount_percentage }}% OFF
+                    </span>
+                  {% endif %}
+                  {% if product.product_type == 'thrift' %}
+                    <span class="badge badge-success thrift-badge">THRIFT</span>
+                  {% elif product.product_type == 'refurbished' %}
+                    <span class="badge badge-info refurbished-badge">REFURBISHED</span>
+                  {% endif %}
+                  {% if product.condition %}
+                    <span class="badge badge-secondary condition-badge">{{ product.get_condition_display }}</span>
+                  {% endif %}
+                </div>
               </div>
               <figcaption class="info-wrap">
                 <div class="fix-height">
-                  <a href="{{ product.get_url }}" class="title">
-                    {{ product.name }}
-                  </a>
+                  <a href="{{ product.get_url }}" class="title">{{ product.name }}</a>
                   <div class="price-wrap mt-2">
-                    <span class="price">Rs.{{product.price}}</span>
-                    <del class="price-old">Rs.{{product.price}}</del>
+                    {% if product.is_on_sale and product.original_price %}
+                      <span class="price text-success">Rs. {{ product.get_final_price|floatformat:0 }}</span>
+                      <del class="price-old">Rs. {{ product.original_price|floatformat:0 }}</del>
+                      <small class="text-success d-block">Save Rs. {{ product.get_savings|floatformat:0 }}</small>
+                    {% else %}
+                      <span class="price">Rs. {{ product.price|floatformat:0 }}</span>
+                    {% endif %}
                   </div>
                   {% if product.stock and product.stock < 6 %}
                   <p class="text-warning small mb-1">
                     Only {{ product.stock }} left in stock!
+                  </p>
+                  {% endif %}
+                  {% if product.product_type == 'thrift' and product.years_used %}
+                  <p class="text-muted small mb-1">
+                    Used for {{ product.years_used }} year{{ product.years_used|pluralize }}
                   </p>
                   {% endif %}
                 </div>
@@ -185,28 +327,304 @@
                   <i class="fa fa-check"></i> In Cart
                 </button>
                 {% else %}
-                <a
-                  href="{% url 'add_cart' product.id %}"
-                  class="btn btn-block btn-primary"
-                  >Add to cart</a
-                >
+                <a href="{% url 'add_cart' product.id %}" class="btn btn-block btn-primary">
+                  Add to cart
+                </a>
                 {% endif %}
-                <a href="{{product.get_url}}" class="btn btn-block btn-primary"
-                  >View Details
+                <a href="{{ product.get_url }}" class="btn btn-block btn-outline-primary mt-2">
+                  View Details
                 </a>
               </figcaption>
             </figure>
           </div>
           {% empty %}
           <div class="col-12">
-            <p>No products found.</p>
+            <div class="text-center">
+              <i class="fa fa-search fa-3x text-muted mb-3"></i>
+              <h4>No products found</h4>
+              <p class="text-muted">Try adjusting your filters or search criteria</p>
+            </div>
           </div>
           {% endfor %}
         </div>
+
         {% include 'products/includes/pagination.html' %}
       </main>
     </div>
   </div>
 </section>
+
+<style>
+/* Filter Styling */
+.checkbox-btn {
+  display: block;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.checkbox-btn input[type="checkbox"], 
+.checkbox-btn input[type="radio"] {
+  display: none;
+}
+
+.checkbox-btn .filter-option {
+  width: 100%;
+  text-align: left;
+  border: 1px solid #ddd;
+  background: white;
+  transition: all 0.3s ease;
+  border-radius: 6px;
+}
+
+.checkbox-btn input:checked + .filter-option {
+  background: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.checkbox-btn .filter-option:hover {
+  background: #f8f9fa;
+  border-color: #007bff;
+}
+
+.checkbox-btn input:checked + .filter-option:hover {
+  background: #0056b3;
+}
+
+.color-swatch {
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px #ddd;
+}
+
+.card-product-grid {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  position: relative;
+}
+
+.card-product-grid:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.img-wrap {
+  height: 200px;
+  overflow: hidden;
+  position: relative;
+}
+
+.img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.product-badges {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 5;
+}
+
+.product-badges .badge {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.sale-badge {
+  background: linear-gradient(45deg, #ff6b6b, #ff5722);
+  animation: pulse 2s infinite;
+}
+
+.thrift-badge {
+  background: linear-gradient(45deg, #4caf50, #2e7d32);
+}
+
+.refurbished-badge {
+  background: linear-gradient(45deg, #2196f3, #1976d2);
+}
+
+.condition-badge {
+  background: #6c757d;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.price {
+  font-weight: bold;
+  color: #28a745;
+  font-size: 1.1em;
+}
+
+.price-old {
+  color: #6c757d;
+  font-size: 0.9em;
+}
+
+.active-filter-tag {
+  display: inline-block;
+  background: #007bff;
+  color: white;
+  padding: 4px 8px;
+  margin: 2px;
+  border-radius: 15px;
+  font-size: 12px;
+}
+
+.active-filter-tag .remove-filter {
+  margin-left: 5px;
+  cursor: pointer;
+  font-weight: bold;
+}
+  .color-swatch {
+  width: 20px;
+  height: 20px;
+  display: inline-block;
+  border-radius: 50%;
+  margin-right: 5px;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px #ddd;
+  vertical-align: middle;
+}
+
+
+.color-swatch[data-color] {
+  background-color: var(--swatch-color, #cccccc);
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const variationFilters = document.querySelectorAll('.variation-filter');
+    const productTypeFilters = document.querySelectorAll('input[name="product_type_filter"]');
+    const conditionFilters = document.querySelectorAll('input[name="condition_filter"]');
+    const saleFilter = document.getElementById('sale-filter');
+    const sortSelect = document.getElementById('sort-products');
+    const clearAllBtn = document.getElementById('clear-all-filters');
+    const applyPriceBtn = document.getElementById('apply-price-filter');
+    const clearPriceBtn = document.getElementById('clear-price-filter');
+
+    // Handle all filter changes
+    variationFilters.forEach(filter => {
+        filter.addEventListener('change', applyFilters);
+    });
+
+    productTypeFilters.forEach(filter => {
+        filter.addEventListener('change', applyFilters);
+    });
+
+    conditionFilters.forEach(filter => {
+        filter.addEventListener('change', applyFilters);
+    });
+
+    if (saleFilter) {
+        saleFilter.addEventListener('change', applyFilters);
+    }
+
+    if (sortSelect) {
+        sortSelect.addEventListener('change', applyFilters);
+    }
+
+    if (applyPriceBtn) {
+        applyPriceBtn.addEventListener('click', applyFilters);
+    }
+
+    if (clearPriceBtn) {
+        clearPriceBtn.addEventListener('click', function() {
+            document.getElementById('min-price').value = '';
+            document.getElementById('max-price').value = '';
+            applyFilters();
+        });
+    }
+
+    if (clearAllBtn) {
+        clearAllBtn.addEventListener('click', function() {
+            // Clear all filters
+            variationFilters.forEach(filter => filter.checked = false);
+            productTypeFilters.forEach(filter => filter.checked = filter.value === '');
+            conditionFilters.forEach(filter => filter.checked = filter.value === '');
+            if (saleFilter) saleFilter.checked = false;
+            document.getElementById('min-price').value = '';
+            document.getElementById('max-price').value = '';
+            if (sortSelect) sortSelect.value = '-created_at';
+            applyFilters();
+        });
+    }
+
+    function applyFilters() {
+        const url = new URL(window.location);
+        
+        // Clear existing filter parameters
+        url.searchParams.delete('variations');
+        url.searchParams.delete('product_type');
+        url.searchParams.delete('condition');
+        url.searchParams.delete('on_sale');
+        url.searchParams.delete('min_price');
+        url.searchParams.delete('max_price');
+        url.searchParams.delete('sort');
+        
+        // Collect selected variations
+        const selectedVariations = [];
+        variationFilters.forEach(filter => {
+            if (filter.checked) {
+                selectedVariations.push(filter.value);
+            }
+        });
+        
+        if (selectedVariations.length > 0) {
+            url.searchParams.set('variations', selectedVariations.join(','));
+        }
+        
+        // Product type filter
+        const selectedProductType = document.querySelector('input[name="product_type_filter"]:checked');
+        if (selectedProductType && selectedProductType.value) {
+            url.searchParams.set('product_type', selectedProductType.value);
+        }
+        
+        // Condition filter
+        const selectedCondition = document.querySelector('input[name="condition_filter"]:checked');
+        if (selectedCondition && selectedCondition.value) {
+            url.searchParams.set('condition', selectedCondition.value);
+        }
+        
+        // Sale filter
+        if (saleFilter && saleFilter.checked) {
+            url.searchParams.set('on_sale', 'true');
+        }
+        
+        // Price filters
+        const minPrice = document.getElementById('min-price').value;
+        const maxPrice = document.getElementById('max-price').value;
+        
+        if (minPrice) {
+            url.searchParams.set('min_price', minPrice);
+        }
+        
+        if (maxPrice) {
+            url.searchParams.set('max_price', maxPrice);
+        }
+        
+        // Sort
+        if (sortSelect && sortSelect.value) {
+            url.searchParams.set('sort', sortSelect.value);
+        }
+        
+        // Reload page with new filters
+        window.location.href = url.toString();
+    }
+});
+
+document.querySelectorAll('.color-swatch[data-color]').forEach(swatch => {
+    const color = swatch.getAttribute('data-color');
+    if (color && color.trim()) {
+        swatch.style.backgroundColor = color;
+    }
+});
+</script>
 
 {% endblock %}

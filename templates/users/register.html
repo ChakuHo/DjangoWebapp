@@ -3,70 +3,596 @@
 <!-- ========================= SECTION CONTENT ========================= -->
 <section class="section-content padding-y">
   <!-- ============================ COMPONENT REGISTER   ================================= -->
-  <div class="card mx-auto" style="max-width: 520px; margin-top: 40px">
+  <div class="card mx-auto" style="max-width: 600px; margin-top: 40px">
     <article class="card-body">
-      <header class="mb-4"><h4 class="card-title">Sign up</h4></header>
-      <form action="{% url 'register' %}" method="POST">
+      <header class="mb-4">
+        <h4 class="card-title">
+          <i class="fa fa-user-plus text-primary"></i> Create Your Account
+        </h4>
+        <p class="text-muted">Join ISLINGTON MARKETPLACE today!</p>
+      </header>
+      
+      <form action="{% url 'register' %}" method="POST" id="register-form">
         {% csrf_token %}
         
         {% if error %}
-        <div class="alert alert-danger">{{ error }}</div>
+        <div class="alert alert-danger">
+          <i class="fa fa-exclamation-triangle"></i> {{ error }}
+        </div>
         {% endif %}
         
-        <div class="form-row">
-          <div class="col form-group">
-            <label>First name</label>
-            <input type="text" name="first_name" class="form-control" placeholder="First name" required />
+        <!-- Personal Information -->
+        <div class="card mb-4">
+          <div class="card-body">
+            <h6 class="card-subtitle mb-3">
+              <i class="fa fa-user text-primary"></i> Personal Information
+            </h6>
+            
+            <div class="form-row">
+              <div class="col form-group">
+                <label for="first_name">First Name <span class="text-danger">*</span></label>
+                <input type="text" 
+                       name="first_name" 
+                       id="first_name"
+                       class="form-control" 
+                       placeholder="Enter first name" 
+                       required />
+              </div>
+              <div class="col form-group">
+                <label for="last_name">Last Name <span class="text-danger">*</span></label>
+                <input type="text" 
+                       name="last_name" 
+                       id="last_name"
+                       class="form-control" 
+                       placeholder="Enter last name" 
+                       required />
+              </div>
+            </div>
           </div>
-          <div class="col form-group">
-            <label>Last name</label>
-            <input type="text" name="last_name" class="form-control" placeholder="Last name" required />
+        </div>
+        
+        <!-- Account Information -->
+        <div class="card mb-4">
+          <div class="card-body">
+            <h6 class="card-subtitle mb-3">
+              <i class="fa fa-at text-primary"></i> Account Information
+            </h6>
+            
+            <div class="form-group">
+              <label for="username">Username <span class="text-danger">*</span></label>
+              <input type="text" 
+                     name="username" 
+                     id="username"
+                     class="form-control" 
+                     placeholder="Choose a username"
+                     pattern="[a-zA-Z0-9_]{3,30}"
+                     title="Username must be 3-30 characters, letters, numbers and underscore only"
+                     required />
+              <small class="form-text text-muted">3-30 characters, letters, numbers and underscore only</small>
+            </div>
+            
+            <div class="form-group">
+              <label for="email">Email Address <span class="text-danger">*</span></label>
+              <input type="email" 
+                     name="email" 
+                     id="email"
+                     class="form-control" 
+                     placeholder="your@email.com" 
+                     required />
+              <small class="form-text text-muted">We'll never share your email with anyone else.</small>
+            </div>
+            
+            <div class="form-group">
+              <label for="phone">Phone Number <span class="text-danger">*</span></label>
+              <input type="tel" 
+                     name="phone" 
+                     id="phone"
+                     class="form-control"
+                     placeholder="+977 98XXXXXXXX"
+                     required />
+              <small class="form-text text-muted">Examples: +977 9812345678, +91 9876543210</small>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Location Information -->
+        <div class="card mb-4">
+          <div class="card-body">
+            <h6 class="card-subtitle mb-3">
+              <i class="fa fa-map-marker-alt text-primary"></i> Location Information
+            </h6>
+            
+            <div class="form-row">
+              <div class="form-group col-md-6">
+                <label for="city">City <span class="text-danger">*</span></label>
+                <input type="text" 
+                       name="city" 
+                       id="city"
+                       class="form-control" 
+                       placeholder="Your city" 
+                       required />
+              </div>
+              <div class="form-group col-md-6">
+                <label for="country">Country <span class="text-danger">*</span></label>
+                <select name="country" id="country" class="form-control country-select" required>
+                  <option value="">Choose your country</option>
+                  <option value="Nepal">Nepal</option>
+                  <option value="India">India</option>
+                  <option value="USA">United States</option>
+                  <option value="UK">United Kingdom</option>
+                  <option value="Canada">Canada</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="zip">ZIP/Postal Code</label>
+              <input type="text" 
+                     name="zip" 
+                     id="zip"
+                     class="form-control" 
+                     placeholder="ZIP/Postal code (optional)"
+                     maxlength="10" />
+              <small class="form-text text-muted">Optional - helps with delivery estimates</small>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Password Information -->
+        <div class="card mb-4">
+          <div class="card-body">
+            <h6 class="card-subtitle mb-3">
+              <i class="fa fa-lock text-primary"></i> Security
+            </h6>
+            
+            <div class="form-row">
+              <div class="form-group col-md-6">
+                <label for="password">Create Password <span class="text-danger">*</span></label>
+                <input class="form-control" 
+                       name="password" 
+                       id="password"
+                       type="password" 
+                       placeholder="Create password"
+                       minlength="8"
+                       required />
+                <small class="form-text text-muted">Minimum 8 characters</small>
+              </div>
+              <div class="form-group col-md-6">
+                <label for="confirm_password">Confirm Password <span class="text-danger">*</span></label>
+                <input class="form-control" 
+                       name="confirm_password" 
+                       id="confirm_password"
+                       type="password" 
+                       placeholder="Confirm password" 
+                       required />
+                <small class="form-text text-muted">Must match password</small>
+              </div>
+            </div>
+            
+            <!-- Password strength indicator -->
+            <div class="password-strength mt-2" id="password-strength" style="display: none;">
+              <div class="progress" style="height: 5px;">
+                <div class="progress-bar" role="progressbar"></div>
+              </div>
+              <small class="strength-text"></small>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Terms and Submit -->
+        <div class="form-group">
+          <div class="custom-control custom-checkbox">
+            <input type="checkbox" class="custom-control-input" id="terms" required>
+            <label class="custom-control-label" for="terms">
+              I agree to the <a href="#" target="_blank">Terms & Conditions</a> and <a href="#" target="_blank">Privacy Policy</a> <span class="text-danger">*</span>
+            </label>
           </div>
         </div>
         
         <div class="form-group">
-          <label>Email</label>
-          <input type="email" name="email" class="form-control" placeholder="Email address" required />
-          <small class="form-text text-muted">We'll never share your email with anyone else.</small>
-        </div>
-        
-        <div class="form-row">
-          <div class="form-group col-md-6">
-            <label>City</label>
-            <input type="text" name="city" class="form-control" placeholder="Your city" />
-          </div>
-          <div class="form-group col-md-6">
-            <label>Country</label>
-            <select name="country" class="form-control">
-              <option value="">Choose...</option>
-              <option value="Nepal">Nepal</option>
-              <option value="India">India</option>
-              <option value="USA">United States</option>
-              <option value="UK">United Kingdom</option>
-              <option value="Canada">Canada</option>
-            </select>
-          </div>
-        </div>
-        
-        <div class="form-row">
-          <div class="form-group col-md-6">
-            <label>Create password</label>
-            <input class="form-control" name="password" type="password" placeholder="Password" required />
-          </div>
-          <div class="form-group col-md-6">
-            <label>Repeat password</label>
-            <input class="form-control" name="confirm_password" type="password" placeholder="Confirm password" required />
-          </div>
-        </div>
-        
-        <div class="form-group">
-          <button type="submit" class="btn btn-primary btn-block">Register</button>
+          <button type="submit" class="btn btn-primary btn-block btn-lg" id="register-btn">
+            <i class="fa fa-user-plus"></i> Create Account
+          </button>
         </div>
       </form>
     </article>
   </div>
   
-  <p class="text-center mt-4">Have an account? <a href="{% url 'login' %}">Log In</a></p>
+  <p class="text-center mt-4">
+    Already have an account? <a href="{% url 'login' %}">Sign In</a>
+  </p>
   <br /><br />
 </section>
+
+<style>
+/* Enhanced Registration Form Styling */
+.card {
+  border: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 15px;
+}
+
+.card-subtitle {
+  font-weight: 600;
+  color: #495057;
+  border-bottom: 2px solid #e9ecef;
+  padding-bottom: 8px;
+}
+
+.form-control {
+  border-radius: 8px;
+  border: 2px solid #e9ecef;
+  padding: 12px 15px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+/* Fix country dropdown styling */
+.country-select {
+  padding: 12px 15px !important;
+  height: auto !important;
+  line-height: 1.5 !important;
+}
+
+.country-select option {
+  padding: 8px 12px;
+  color: #495057;
+}
+
+.form-control:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.form-control.is-valid {
+  border-color: #28a745;
+  background-image: url("data:image/svg+xml;charset=utf8,%3Csvg viewBox='0 0 8 8' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2.3 6.73L.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z' fill='%2328a745'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right calc(0.375em + 0.1875rem) center;
+  background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+}
+
+.form-control.is-invalid {
+  border-color: #dc3545;
+  background-image: url("data:image/svg+xml;charset=utf8,%3Csvg viewBox='0 0 12 12' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M6 0C2.7 0 0 2.7 0 6s2.7 6 6 6 6-2.7 6-6S9.3 0 6 0zM4.3 3.7c.4-.4 1-.4 1.4 0L6 4l.3-.3c.4-.4 1-.4 1.4 0 .4.4.4 1 0 1.4L7.4 5.3l.3.3c.4.4.4 1 0 1.4-.4.4-1 .4-1.4 0L6 6.7l-.3.3c-.4.4-1 .4-1.4 0-.4-.4-.4-1 0-1.4l.3-.3-.3-.3c-.4-.4-.4-1 0-1.4z' fill='%23dc3545'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right calc(0.375em + 0.1875rem) center;
+  background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  border: none;
+  border-radius: 10px;
+  padding: 15px;
+  font-weight: 600;
+  font-size: 16px;
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 123, 255, 0.3);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  transform: none;
+  box-shadow: none;
+}
+
+.text-danger {
+  font-weight: 600;
+}
+
+.alert {
+  border-radius: 10px;
+  border: none;
+}
+
+.progress-bar {
+  transition: all 0.3s ease;
+}
+
+.strength-weak { background-color: #dc3545; }
+.strength-medium { background-color: #ffc107; }
+.strength-strong { background-color: #28a745; }
+
+/* Custom checkbox styling */
+.custom-control-input:checked ~ .custom-control-label::before {
+  background-color: #007bff;
+  border-color: #007bff;
+}
+
+.field-error {
+  color: #dc3545;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+  .card {
+    margin: 20px 15px;
+  }
+  
+  .form-control {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('register-form');
+    const registerBtn = document.getElementById('register-btn');
+    const passwordInput = document.getElementById('password');
+    const confirmPasswordInput = document.getElementById('confirm_password');
+    const phoneInput = document.getElementById('phone');
+    const usernameInput = document.getElementById('username');
+    const emailInput = document.getElementById('email');
+    const zipInput = document.getElementById('zip');
+    const termsCheckbox = document.getElementById('terms');
+    
+    // Form submission handling with proper validation
+    form.addEventListener('submit', function(e) {
+        // Check terms and conditions first
+        if (!termsCheckbox.checked) {
+            e.preventDefault();
+            alert('Please accept the Terms & Conditions to continue');
+            termsCheckbox.focus();
+            return;
+        }
+        
+        // Validate form before submission
+        if (!validateForm()) {
+            e.preventDefault();
+            return;
+        }
+        
+        // Show loading state
+        registerBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Creating Account...';
+        registerBtn.disabled = true;
+    });
+    
+    // Terms checkbox validation
+    termsCheckbox.addEventListener('change', function() {
+        if (this.checked) {
+            this.setCustomValidity('');
+        } else {
+            this.setCustomValidity('You must accept the Terms & Conditions');
+        }
+    });
+    
+    // Password strength checker
+    passwordInput.addEventListener('input', function() {
+        const password = this.value;
+        const strengthDiv = document.getElementById('password-strength');
+        const progressBar = strengthDiv.querySelector('.progress-bar');
+        const strengthText = strengthDiv.querySelector('.strength-text');
+        
+        if (password.length > 0) {
+            strengthDiv.style.display = 'block';
+            
+            let strength = 0;
+            let message = '';
+            
+            // Check password criteria
+            if (password.length >= 8) strength += 25;
+            if (/[a-z]/.test(password)) strength += 25;
+            if (/[A-Z]/.test(password)) strength += 25;
+            if (/[0-9]/.test(password)) strength += 25;
+            
+            // Update progress bar and message
+            progressBar.style.width = strength + '%';
+            
+            if (strength < 50) {
+                progressBar.className = 'progress-bar strength-weak';
+                message = 'Weak password';
+            } else if (strength < 75) {
+                progressBar.className = 'progress-bar strength-medium';
+                message = 'Medium strength';
+            } else {
+                progressBar.className = 'progress-bar strength-strong';
+                message = 'Strong password';
+            }
+            
+            strengthText.textContent = message;
+        } else {
+            strengthDiv.style.display = 'none';
+        }
+    });
+    
+    // Confirm password validation
+    confirmPasswordInput.addEventListener('input', function() {
+        validateConfirmPassword(this);
+    });
+    
+    // Phone validation
+    phoneInput.addEventListener('input', function() {
+        validatePhone(this);
+    });
+    
+    phoneInput.addEventListener('blur', function() {
+        validatePhone(this);
+    });
+    
+    // ZIP validation
+    if (zipInput) {
+        zipInput.addEventListener('input', function() {
+            validateZip(this);
+        });
+    }
+    
+    // Username validation
+    usernameInput.addEventListener('input', function() {
+        validateUsername(this);
+    });
+    
+    // Email validation
+    emailInput.addEventListener('input', function() {
+        validateEmail(this);
+    });
+    
+    // Validation functions
+    function validatePhone(input) {
+        const phone = input.value.trim();
+        const phonePattern = /^(\+977|977)?[-\s]?[98]\d{8}$|^(\+91|91)?[-\s]?[6789]\d{9}$|^(\+1)?[-\s]?\d{3}[-\s]?\d{3}[-\s]?\d{4}$/;
+        
+        if (!phone) {
+            input.setCustomValidity('Phone number is required');
+            input.classList.add('is-invalid');
+            input.classList.remove('is-valid');
+            showFieldError(input, 'Phone number is required');
+            return false;
+        }
+        
+        if (!phonePattern.test(phone)) {
+            input.setCustomValidity('Please enter a valid phone number');
+            input.classList.add('is-invalid');
+            input.classList.remove('is-valid');
+            showFieldError(input, 'Invalid format. Examples: +977 9812345678, +91 9876543210');
+            return false;
+        }
+        
+        input.setCustomValidity('');
+        input.classList.remove('is-invalid');
+        input.classList.add('is-valid');
+        hideFieldError(input);
+        return true;
+    }
+    
+    function validateZip(input) {
+        const zip = input.value.trim();
+        
+        if (!zip) {
+            input.setCustomValidity('');
+            input.classList.remove('is-invalid', 'is-valid');
+            hideFieldError(input);
+            return true;
+        }
+        
+        const zipPattern = /^[0-9]{4,6}$|^[A-Z0-9]{3,10}$/i;
+        
+        if (!zipPattern.test(zip)) {
+            input.setCustomValidity('Please enter a valid ZIP/Postal code');
+            input.classList.add('is-invalid');
+            input.classList.remove('is-valid');
+            showFieldError(input, 'ZIP must be 4-6 digits or alphanumeric postal code');
+            return false;
+        }
+        
+        input.setCustomValidity('');
+        input.classList.remove('is-invalid');
+        input.classList.add('is-valid');
+        hideFieldError(input);
+        return true;
+    }
+    
+    function validateConfirmPassword(input) {
+        const password = passwordInput.value;
+        const confirmPassword = input.value;
+        
+        if (confirmPassword && password !== confirmPassword) {
+            input.setCustomValidity('Passwords do not match');
+            input.classList.add('is-invalid');
+            input.classList.remove('is-valid');
+            showFieldError(input, 'Passwords do not match');
+            return false;
+        } else if (confirmPassword) {
+            input.setCustomValidity('');
+            input.classList.remove('is-invalid');
+            input.classList.add('is-valid');
+            hideFieldError(input);
+            return true;
+        }
+        return true;
+    }
+    
+    function validateUsername(input) {
+        const username = input.value.trim();
+        if (username && !/^[a-zA-Z0-9_]{3,30}$/.test(username)) {
+            input.setCustomValidity('Username must be 3-30 characters, letters, numbers and underscore only');
+            input.classList.add('is-invalid');
+            input.classList.remove('is-valid');
+            showFieldError(input, 'Invalid username format');
+            return false;
+        } else if (username && username.length >= 3) {
+            input.setCustomValidity('');
+            input.classList.remove('is-invalid');
+            input.classList.add('is-valid');
+            hideFieldError(input);
+            return true;
+        }
+        return true;
+    }
+    
+    function validateEmail(input) {
+        const email = input.value.trim();
+        if (email && input.validity.valid) {
+            input.classList.remove('is-invalid');
+            input.classList.add('is-valid');
+            hideFieldError(input);
+            return true;
+        } else if (email) {
+            input.classList.add('is-invalid');
+            input.classList.remove('is-valid');
+            showFieldError(input, 'Please enter a valid email address');
+            return false;
+        }
+        return true;
+    }
+    
+    // Overall form validation
+    function validateForm() {
+        let isValid = true;
+        
+        if (!validatePhone(phoneInput)) isValid = false;
+        if (!validateConfirmPassword(confirmPasswordInput)) isValid = false;
+        if (!validateUsername(usernameInput)) isValid = false;
+        if (!validateEmail(emailInput)) isValid = false;
+        if (zipInput && !validateZip(zipInput)) isValid = false;
+        
+        // Check terms and conditions
+        if (!termsCheckbox.checked) {
+            isValid = false;
+        }
+        
+        return isValid;
+    }
+    
+    // Show field error
+    function showFieldError(input, message) {
+        let errorDiv = input.parentNode.querySelector('.field-error');
+        if (!errorDiv) {
+            errorDiv = document.createElement('div');
+            errorDiv.className = 'field-error';
+            input.parentNode.appendChild(errorDiv);
+        }
+        errorDiv.textContent = message;
+    }
+    
+    // Hide field error
+    function hideFieldError(input) {
+        const errorDiv = input.parentNode.querySelector('.field-error');
+        if (errorDiv) {
+            errorDiv.remove();
+        }
+    }
+    
+    // Real-time validation for all inputs
+    const inputs = form.querySelectorAll('input[required]');
+    inputs.forEach(input => {
+        input.addEventListener('blur', function() {
+            if (this.value.trim() && this.validity.valid) {
+                this.classList.remove('is-invalid');
+                this.classList.add('is-valid');
+            }
+        });
+    });
+});
+</script>
+
 {% endblock %}

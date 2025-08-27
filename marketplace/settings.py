@@ -190,10 +190,11 @@ ESEWA_SETTINGS = {
 
 # Keep your Khalti settings as they are
 KHALTI_SETTINGS = {
-    'PUBLIC_KEY': 'test_public_key_dc74e0fd6c3048ba9b7563ab772cf808',
-    'SECRET_KEY': 'test_secret_key_f59e8b7c18b4499ca35f68bcb7c6b9bb',
-    'API_URL': 'https://a.khalti.com/api/v2/',
+    'PUBLIC_KEY': 'test_public_key_dc74e0fd6c3048ba9b7563ab772cf808',  # Not needed for ePayment
+    'SECRET_KEY': 'test_secret_key_f59e8b7c18b4499ca35f68bcb7c6b9bb',   # This is what matters
+    'API_URL': 'https://dev.khalti.com/api/v2/',  # DEV URL
 }
+
 
 PAYMENT_TESTING_MODE = True
 DEFAULT_FROM_EMAIL = 'noreply@marketplace.com'

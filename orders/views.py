@@ -261,25 +261,26 @@ def place_order(request):
                 return redirect('esewa_start', order_id=order.id)
                 
             elif payment_method == 'Khalti':
+                # 🔥 NEW KHALTI CODE HERE 🔥
                 print("🚀 PROCESSING KHALTI...")
                 
-                khalti_config = KhaltiPayment.initiate_payment(order)
+                khalti_result = KhaltiPayment.initiate_payment(order)
                 
-                if khalti_config is None:
-                    messages.error(request, 'Khalti payment initialization failed. Please try again.')
+                if khalti_result and khalti_result['success']:
+                    order.payment_status = 'initiated'
+                    order.payment_reference = khalti_result['pidx']
+                    order.save()
+                    
+                    context = {
+                        'order': order,
+                        'payment_method': 'Khalti',
+                        'khalti_payment_url': khalti_result['payment_url'],
+                        'csrf_token': get_token(request)
+                    }
+                    return render(request, 'orders/payment_gateway.html', context)
+                else:
+                    messages.error(request, f'Khalti payment failed: {khalti_result.get("error", "Unknown error")}')
                     return redirect('checkout')
-                
-                order.payment_status = 'initiated'
-                order.save()
-                
-                context = {
-                    'order': order,
-                    'payment_method': 'Khalti',
-                    'khalti_config': khalti_config['config'],
-                    'amount': khalti_config['amount'],
-                    'csrf_token': get_token(request)
-                }
-                return render(request, 'orders/payment_gateway.html', context)
             
         except Cart.DoesNotExist:
             print("❌ CART DOES NOT EXIST")
@@ -510,6 +511,70 @@ def khalti_verify(request):
         print(f"❌ Khalti Verify Error: {str(e)}")
         logger.error(f"Khalti verification error: {str(e)}")
         return JsonResponse({'success': False, 'error': str(e)})
+    
+@login_required
+def khalti_return(request, order_id):
+    """Handle Khalti ePayment return"""
+    print("💜 Khalti Return Called")
+    
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+    
+    # Get pidx from URL parameters
+    pidx = request.GET.get('pidx')
+    status = request.GET.get('status')
+    
+    print(f"💜 Khalti Return - pidx: {pidx}, status: {status}")
+    
+    if status == 'Completed' and pidx:
+        # Verify payment
+        verification_result = KhaltiPayment.verify_payment(pidx)
+        
+        if verification_result['success']:
+            # Create Payment
+            payment = Payment.objects.create(
+                user=order.user,
+                payment_id=pidx,
+                payment_method="Khalti",
+                amount_paid=str(order.grand_total),
+                status="COMPLETED",
+            )
+            
+            # Update order items
+            for order_item in order.items.all():
+                order_item.payment = payment
+                order_item.ordered = True
+                order_item.save()
+            
+            order.payment = payment
+            order.payment_status = 'completed'
+            order.status = 'Confirmed'
+            order.is_ordered = True
+            order.payment_reference = pidx
+            order.payment_gateway_response = json.dumps(verification_result['data'])
+            order.save()
+
+            # Complete the order
+            try:
+                cart = Cart.objects.get(user=request.user)
+                items = CartItem.objects.filter(cart=cart)
+                deduct_stock_after_checkout(items)
+                items.delete()
+            except Cart.DoesNotExist:
+                pass
+                
+            if 'pending_order_id' in request.session:
+                del request.session['pending_order_id']
+
+            send_order_confirmation_email(order)
+            
+            messages.success(request, 'Khalti payment successful! Order confirmed.')
+            return redirect('order_complete', order_id=order.id)
+        else:
+            messages.error(request, f'Payment verification failed: {verification_result.get("error")}')
+    else:
+        messages.error(request, 'Payment was cancelled or failed.')
+    
+    return redirect('checkout')
 
 @login_required
 def my_orders(request):

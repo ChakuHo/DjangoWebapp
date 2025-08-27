@@ -8,7 +8,75 @@ from orders.models import Order
 from django.utils import timezone
 from products.models import Product, Category, CategoryVariation, VariationType, VariationOption, ProductVariation
 import json
+from django.core.mail import send_mail
+from django.conf import settings
 
+
+def send_registration_confirmation_email(user):
+    """Send welcome/registration confirmation email to new users"""
+    print(f"🔄 REGISTRATION EMAIL FUNCTION CALLED for {user.email}")
+    
+    try:
+        subject = '🎉 Welcome to ISLINGTON MARKETPLACE!'
+        
+        message = f"""
+Dear {user.first_name or user.username},
+
+🎉 Welcome to ISLINGTON MARKETPLACE! 
+
+Your account has been successfully created and you're now part of our community.
+
+👤 ACCOUNT DETAILS:
+═══════════════════════════════════════
+Name: {user.first_name} {user.last_name}
+Username: {user.username}
+Email: {user.email}
+Registration Date: {user.date_joined.strftime('%B %d, %Y at %I:%M %p')}
+
+🚀 WHAT'S NEXT?
+═══════════════════════════════════════
+✓ Browse thousands of products
+✓ Add items to your cart and checkout
+✓ Track your orders in real-time
+✓ Apply to become a seller and start your business
+✓ Manage your profile and preferences
+
+🛍️ READY TO SHOP?
+═══════════════════════════════════════
+Start exploring our marketplace and discover amazing products from verified sellers.
+
+💼 INTERESTED IN SELLING?
+═══════════════════════════════════════
+Apply to become a seller from your dashboard and start your entrepreneurial journey with us!
+
+Thank you for joining ISLINGTON MARKETPLACE. We're excited to have you aboard!
+
+Best regards,
+The ISLINGTON MARKETPLACE Team
+
+---
+Need help? Contact us at {settings.DEFAULT_FROM_EMAIL}
+        """
+        
+        print("🔄 SENDING REGISTRATION EMAIL NOW...")
+        
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
+        
+        print(f"✅ Registration confirmation email sent to {user.email}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Registration email sending failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+    
 
 def login_view(request):
     if request.method == 'POST':
@@ -49,15 +117,26 @@ def register_view(request):
         first_name = request.POST.get('first_name')
         last_name = request.POST.get('last_name')
         email = request.POST.get('email')
-        username = request.POST.get('username', email)  
+        username = request.POST.get('username')  # Now separate from email
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password')
+        phone = request.POST.get('phone')  # New field
         city = request.POST.get('city')
         country = request.POST.get('country')
+        zip_code = request.POST.get('zip')  # New field
 
-        # Validation
+        # Enhanced validation
+        if not username:
+            return render(request, 'users/register.html', {'error': 'Username is required'})
+            
+        if not phone:
+            return render(request, 'users/register.html', {'error': 'Phone number is required'})
+
         if password != confirm_password:
             return render(request, 'users/register.html', {'error': 'Passwords do not match'})
+
+        if len(password) < 8:
+            return render(request, 'users/register.html', {'error': 'Password must be at least 8 characters'})
 
         if User.objects.filter(username=username).exists():
             return render(request, 'users/register.html', {'error': 'Username already exists'})
@@ -76,14 +155,21 @@ def register_view(request):
             )
             
             # Updating the profile with additional info
-            profile = user.profile  # This will be created automatically by signal
+            profile = user.profile
+            profile.phone_number = phone  # New field
             profile.city = city
             profile.country = country
             profile.save()
             
-            messages.success(request, 'Account created successfully!')
+            email_sent = send_registration_confirmation_email(user)
+            if email_sent:
+                messages.success(request, 'Account created successfully! Welcome email sent to your inbox.')
+            else:
+                messages.success(request, 'Account created successfully! (Welcome email notification failed)')
+
             login(request, user)
             return redirect('dashboard')
+
         except Exception as e:
             return render(request, 'users/register.html', {'error': 'Error creating account'})
     return render(request, 'users/register.html')
@@ -304,10 +390,19 @@ def add_product(request):
             category_id = request.POST.get('category')
             brand = request.POST.get('brand', '').strip()
             spec = request.POST.get('spec', '').strip()
-            
-            # Get selected variation types
-            selected_variation_types = request.POST.getlist('enabled_variation_types')
-            
+
+            # NEW FIELDS FOR THRIFT/SALE
+            product_type = request.POST.get('product_type', 'new')
+            condition = request.POST.get('condition', '')
+            years_used = request.POST.get('years_used', '')
+
+            # Sale fields
+            is_on_sale = request.POST.get('is_on_sale') == 'on'
+            original_price = request.POST.get('original_price', '')
+            discount_percentage = request.POST.get('discount_percentage', '')
+            sale_start_date = request.POST.get('sale_start_date', '')
+            sale_end_date = request.POST.get('sale_end_date', '')
+
             # Validation
             if not all([name, description, price, stock, category_id]):
                 messages.error(request, 'Please fill in all required fields.')
@@ -315,7 +410,10 @@ def add_product(request):
             
             category = Category.objects.get(id=category_id, status=True)
             
-            # Create main product
+            # Get selected variation types
+            selected_variation_types = request.POST.getlist('enabled_variation_types')
+            
+            # Create main product with all fields
             product = Product.objects.create(
                 name=name,
                 description=description,
@@ -328,7 +426,16 @@ def add_product(request):
                 status=False,
                 admin_approved=False,
                 approval_status='pending',
-                submitted_for_approval=timezone.now()
+                submitted_for_approval=timezone.now(),
+                # NEW FIELDS
+                product_type=product_type,
+                condition=condition if condition else None,
+                years_used=int(years_used) if years_used else None,
+                is_on_sale=is_on_sale,
+                original_price=float(original_price) if original_price else None,
+                discount_percentage=int(discount_percentage) if discount_percentage else 0,
+                sale_start_date=sale_start_date if sale_start_date else None,
+                sale_end_date=sale_end_date if sale_end_date else None,
             )
             
             # Handle main product image
@@ -369,7 +476,6 @@ def add_product(request):
                             variation_files[var_type_id][option_id] = {}
                         
                         variation_files[var_type_id][option_id][field] = request.FILES[key]
-            
             
             for var_type_id, options in variation_data.items():
                 try:

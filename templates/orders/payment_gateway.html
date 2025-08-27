@@ -48,34 +48,40 @@
                             </div>
                         </form>
 
-                    {% elif payment_method == 'Khalti' %}
-                        <!-- WORKING Khalti Payment -->
-                        <div class="alert alert-success mb-4">
-                            <i class="fa fa-mobile-alt"></i>
-                            <strong>Khalti Digital Wallet</strong><br>
-                            Click below to complete payment with Khalti.
-                        </div>
-                        
-                        <div class="text-center">
-                            <div class="mb-4">
-                                <div class="khalti-logo mx-auto" style="width: 120px; height: 120px; background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-                                    <i class="fa fa-mobile-alt text-white" style="font-size: 50px;"></i>
-                                </div>
-                            </div>
-                            
-                            <button type="button" class="btn btn-primary btn-lg px-5 py-3" id="khalti-payment-button">
-                                <i class="fa fa-mobile-alt"></i>
-                                Pay Rs. {{ order.grand_total|floatformat:2 }} with Khalti
-                            </button>
-                            
-                            <div class="mt-3">
-                                <small class="text-muted">
-                                    <i class="fa fa-info-circle"></i>
-                                    Use Test Mobile: 9806800001, PIN: 1111
-                                </small>
-                            </div>
-                        </div>
-                    {% endif %}
+{% elif payment_method == 'Khalti' %}
+<!-- NEW Khalti ePayment -->
+<div class="alert alert-success mb-4">
+    <i class="fa fa-mobile-alt"></i>
+    <strong>Khalti ePayment</strong><br>
+    You will be redirected to Khalti's secure payment page.
+</div>
+
+<div class="text-center">
+    <div class="mb-4">
+        <div class="khalti-logo mx-auto" style="width: 120px; height: 120px; background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+            <i class="fa fa-mobile-alt text-white" style="font-size: 50px;"></i>
+        </div>
+    </div>
+    
+    <a href="{{ khalti_payment_url }}" class="btn btn-primary btn-lg px-5 py-3" id="khalti-payment-button">
+        <i class="fa fa-external-link-alt"></i>
+        Redirect to Khalti Payment
+    </a>
+    
+    <div class="mt-3">
+        <small class="text-success">
+            <i class="fa fa-check-circle"></i>
+            Using Khalti ePayment API - Secure & Reliable!
+        </small>
+    </div>
+</div>
+
+<script>
+document.getElementById('khalti-payment-button').addEventListener('click', function() {
+    this.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Redirecting to Khalti...';
+});
+</script>
+{% endif %}
 
                     <div class="text-center mt-4">
                         <a href="{% url 'checkout' %}" class="btn btn-outline-secondary">
@@ -96,7 +102,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     let countdown = 3;
     const interval = setInterval(() => {
-        btn.innerHTML = `<i class="fa fa-spinner fa-spin"></i> Redirecting in ${countdown}s...`;
+        btn.innerHTML = `<i class="fa fa-spinner fa-spin"></i> Redirecting to eSewa in ${countdown}s...`;
         countdown--;
         
         if (countdown < 0) {
@@ -108,7 +114,7 @@ document.addEventListener('DOMContentLoaded', function() {
     btn.addEventListener('click', function(e) {
         e.preventDefault();
         clearInterval(interval);
-        this.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Redirecting...';
+        this.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Redirecting to eSewa...';
         form.submit();
     });
 });
@@ -119,52 +125,68 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="https://khalti.s3.ap-south-1.amazonaws.com/KPG/dist/2020.12.17.0.0.0/khalti-checkout.iffe.js"></script>
 
 <script>
-// WORKING Khalti Integration
 document.getElementById('khalti-payment-button').addEventListener('click', function() {
-    console.log('🟣 Khalti button clicked!');
+    console.log('💜 Khalti DEV Payment Started');
     
     const button = this;
-    button.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Opening Khalti...';
+    button.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Opening Khalti DEV...';
     button.disabled = true;
     
-    // <p style="color:red;">DEBUG PUBLIC KEY: {{ khalti_config.publicKey }}</p>
-    // CORRECT Khalti Configuration with WORKING test key
+    // WORKING Khalti Config with DEV environment
     const config = {
-        "publicKey": "{{ khalti_config.publicKey|escapejs }}", // Use the correct test key
-        "productIdentity": "ORDER-{{ order.id }}",
-        "productName": "Order #{{ order.id }}",
-        "productUrl": "http://127.0.0.1:8000/",
-        "paymentPreference": [
-            "KHALTI",
-            "EBANKING", 
-            "MOBILE_BANKING",
-            "CONNECT_IPS",
-            "SCT"
-        ],
+        "publicKey": "{{ khalti_config.publicKey }}",
+        "productIdentity": "{{ khalti_config.productIdentity }}",
+        "productName": "{{ khalti_config.productName }}",
+        "productUrl": "{{ khalti_config.productUrl }}",
+        "paymentPreference": {{ khalti_config.paymentPreference|safe }},
         "eventHandler": {
             onSuccess: function(payload) {
-                console.log('🟣 Khalti Payment Success:', payload);
+                console.log('💜 Khalti DEV Payment Success:', payload);
                 
-                button.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Verifying Payment...';
+                button.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Verifying with DEV API...';
                 
-                // Mock successful verification for demo
-                setTimeout(() => {
-                    alert('✅ Payment Successful! Redirecting...');
-                    
-                    // Redirect to order complete page
-                    window.location.href = '/orders/order-complete/{{ order.id }}/';
-                }, 2000);
+                // Verify with DEV API
+                fetch('{% url "khalti_verify" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        token: payload.token,
+                        amount: {{ amount }}
+                    })
+                })
+                .then(response => {
+                    console.log('💜 Verification Response Status:', response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('💜 Verification Response:', data);
+                    if (data.success) {
+                        alert('💜 Khalti Payment Successful! Order confirmed.');
+                        window.location.href = data.redirect_url;
+                    } else {
+                        alert('❌ Payment verification failed: ' + data.error);
+                        location.reload();
+                    }
+                })
+                .catch(error => {
+                    console.error('💜 Verification Error:', error);
+                    alert('❌ Verification failed, but payment might be successful. Check your orders.');
+                    window.location.href = '/orders/my-orders/';
+                });
             },
             
             onError: function(error) {
-                console.log('🟣 Khalti Error:', error);
-                alert('❌ Payment failed. Please try again.');
+                console.log('💜 Khalti DEV Error:', error);
+                alert('❌ Payment failed: ' + (error.message || 'Unknown error'));
                 button.innerHTML = '<i class="fa fa-mobile-alt"></i> Pay Rs. {{ order.grand_total|floatformat:2 }} with Khalti';
                 button.disabled = false;
             },
             
             onClose: function() {
-                console.log('🟣 Khalti widget closed');
+                console.log('💜 Khalti DEV Widget Closed');
                 button.innerHTML = '<i class="fa fa-mobile-alt"></i> Pay Rs. {{ order.grand_total|floatformat:2 }} with Khalti';
                 button.disabled = false;
             }
@@ -172,15 +194,12 @@ document.getElementById('khalti-payment-button').addEventListener('click', funct
     };
     
     try {
-        console.log('🟣 Creating Khalti checkout...');
+        console.log('💜 Initializing Khalti DEV Checkout...');
         const checkout = new KhaltiCheckout(config);
-        
-        console.log('🟣 Showing Khalti widget...');
         checkout.show({amount: {{ amount }}});
-        
     } catch (error) {
-        console.error('🟣 Khalti initialization error:', error);
-        alert('❌ Khalti payment failed to initialize');
+        console.error('💜 Khalti DEV Init Error:', error);
+        alert('❌ Failed to initialize Khalti payment');
         button.innerHTML = '<i class="fa fa-mobile-alt"></i> Pay Rs. {{ order.grand_total|floatformat:2 }} with Khalti';
         button.disabled = false;
     }
