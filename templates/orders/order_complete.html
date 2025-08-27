@@ -2,12 +2,22 @@
 
 <div class="container" style="margin-top: 50px">
   <center>
+    {% if order.payment_method == 'Cash on Delivery' %}
     <i
       class="fas fa-check-circle"
       style="font-size: 72px; margin-bottom: 20px; color: #28a745"
     ></i>
+    <h2 class="text-center">Order Placed Successfully!</h2>
+    <p class="text-center text-muted">Your order has been confirmed. Payment will be collected upon delivery.</p>
+    {% else %}
+    <i
+      class="fas fa-check-circle"
+      style="font-size: 72px; margin-bottom: 20px; color: #28a745"
+    ></i>
+    <h2 class="text-center">Payment Successful!</h2>
+    <p class="text-center text-muted">Your payment has been processed and order confirmed.</p>
+    {% endif %}
   </center>
-  <h2 class="text-center">Payment Successful</h2>
   <br />
   <div class="text-center">
     <a href="{% url 'products:product' %}" class="btn btn-success">Shop more</a>
@@ -45,7 +55,7 @@
             </div>
             <!-- col-lg-6 end here -->
             <div class="col-lg-6">
-              <!-- col-lg-6 start here - THIS WAS MISSING -->
+              <!-- col-lg-6 start here -->
               <div class="invoice-from">
                 <ul class="list-unstyled text-right">
                   <li><strong>Invoiced To</strong></li>
@@ -71,6 +81,16 @@
                     </li>
                     <li><strong>Status:</strong> {{ order.status|upper }}</li>
                     <li><strong>Payment Method:</strong> {{ order.payment_method }}</li>
+                    {% if order.payment_status %}
+<li><strong>Payment Status:</strong> 
+  <span class="badge {% if order.payment_status == 'completed' %}badge-success{% elif order.payment_status == 'pending' %}badge-warning{% else %}badge-danger{% endif %}">
+    {{ order.get_payment_display }}
+  </span>
+</li>
+                    {% endif %}
+                    {% if order.payment_reference %}
+                    <li><strong>Payment Reference:</strong> {{ order.payment_reference }}</li>
+                    {% endif %}
                   </ul>
                 </div>
               </div>
@@ -92,7 +112,17 @@
                     <tbody>
                       {% for item in order.items.all %}
                       <tr>
-                        <td>{{ item.product.name }}</td>
+                        <td>
+                          {{ item.product.name }}
+                          {% if item.has_variations %}
+                            <br><small class="text-muted">
+                              {% for variation in item.variations.all %}
+                                {{ variation.variation_type.display_name }}: {{ variation.variation_option.get_display_value }}
+                                {% if not forloop.last %}, {% endif %}
+                              {% endfor %}
+                            </small>
+                          {% endif %}
+                        </td>
                         <td class="text-center">{{ item.quantity }}</td>
                         <td class="text-center">
                           Rs. {{ item.price|floatformat:2 }}
@@ -124,19 +154,35 @@
                 </div>
               </div>
               
-              <!-- Payment Method Info -->
-              {% if order.payment_method != 'Cash on Delivery' %}
-              <div class="invoice-footer mt25">
-                <div class="alert alert-success text-center">
-                  <i class="fa fa-check-circle"></i>
-                  Payment completed via {{ order.payment_method }}
-                </div>
-              </div>
-              {% else %}
+              <!-- Enhanced Payment Method Info -->
+              {% if order.payment_method == 'Cash on Delivery' %}
               <div class="invoice-footer mt25">
                 <div class="alert alert-info text-center">
-                  <i class="fa fa-money-bill-alt"></i>
-                  Payment will be collected on delivery
+                  <i class="fa fa-truck"></i>
+                  <strong>Cash on Delivery</strong><br>
+                  Payment of <strong>Rs. {{ order.grand_total|floatformat:2 }}</strong> will be collected when your order is delivered.
+                </div>
+              </div>
+              {% elif order.payment_method == 'eSewa' %}
+              <div class="invoice-footer mt25">
+                <div class="alert alert-success text-center">
+                  <i class="fa fa-wallet"></i>
+                  <strong>eSewa Payment Completed</strong><br>
+                  Your payment of <strong>Rs. {{ order.grand_total|floatformat:2 }}</strong> has been successfully processed.
+                  {% if order.payment_reference %}
+                    <br><small>Reference: {{ order.payment_reference }}</small>
+                  {% endif %}
+                </div>
+              </div>
+              {% elif order.payment_method == 'Khalti' %}
+              <div class="invoice-footer mt25">
+                <div class="alert alert-success text-center">
+                  <i class="fa fa-mobile-alt"></i>
+                  <strong>Khalti Payment Completed</strong><br>
+                  Your payment of <strong>Rs. {{ order.grand_total|floatformat:2 }}</strong> has been successfully processed.
+                  {% if order.payment_reference %}
+                    <br><small>Reference: {{ order.payment_reference }}</small>
+                  {% endif %}
                 </div>
               </div>
               {% endif %}
@@ -171,6 +217,24 @@
     margin: 0 !important;
     padding: 0 !important;
   }
+}
+
+.badge {
+  font-size: 0.8em;
+  padding: 0.4em 0.6em;
+}
+
+.badge-success {
+  background-color: #28a745;
+}
+
+.badge-warning {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.badge-danger {
+  background-color: #dc3545;
 }
 </style>
 

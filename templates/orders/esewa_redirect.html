@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Redirecting to eSewa...</title>
+</head>
+<body>
+    <div style="text-align: center; padding: 50px;">
+        <h3>Redirecting to eSewa Payment Gateway...</h3>
+        <p>Please wait while we redirect you to eSewa for secure payment.</p>
+        <div id="countdown" style="font-size: 18px; color: #007bff;">
+            Redirecting in <span id="timer">3</span> seconds...
+        </div>
+    </div>
+
+    <form method="POST" action="{{ ESEWA_FORM_URL }}" id="esewaForm" style="display: none;">
+        {% for key, value in form.items %}
+            <input type="hidden" name="{{ key }}" value="{{ value }}">
+        {% endfor %}
+    </form>
+
+    <script>
+        let countdown = 3;
+        const timer = document.getElementById('timer');
+        const form = document.getElementById('esewaForm');
+        
+        const interval = setInterval(() => {
+            countdown--;
+            timer.textContent = countdown;
+            
+            if (countdown <= 0) {
+                clearInterval(interval);
+                document.getElementById('countdown').innerHTML = 'Redirecting now...';
+                form.submit();
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

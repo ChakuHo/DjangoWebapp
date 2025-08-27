@@ -163,3 +163,79 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage' 
 SESSION_COOKIE_AGE = 259200  # 3 days in seconds (3 * 24 * 60 * 60)
 SESSION_SAVE_EVERY_REQUEST = True
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+
+from django.contrib.messages import constants as messages
+
+MESSAGE_TAGS={
+    messages.DEBUG: 'secondary',
+    messages.INFO: 'info',
+    messages.SUCCESS: 'success',
+    messages.WARNING: 'warning',
+    messages.ERROR: 'danger', #maps "error" Bootstrap red
+}
+
+# Payment Gateway Settings - REAL eSewa Test Environment
+# eSewa Settings (same as teacher's)
+ESEWA_PRODUCT_CODE = "EPAYTEST"
+ESEWA_SECRET_KEY = "8gBm/:&EnhH.1/q"
+ESEWA_FORM_URL = "https://rc-epay.esewa.com.np/api/epay/main/v2/form"
+
+ESEWA_SETTINGS = {
+    'PRODUCT_CODE': ESEWA_PRODUCT_CODE,
+    'SECRET_KEY': ESEWA_SECRET_KEY,
+    'FORM_URL': ESEWA_FORM_URL,
+    'SUCCESS_URL': 'http://127.0.0.1:8000/orders/esewa-return/',
+    'FAILURE_URL': 'http://127.0.0.1:8000/orders/esewa-return/',
+}
+
+# Keep your Khalti settings as they are
+KHALTI_SETTINGS = {
+    'PUBLIC_KEY': 'test_public_key_dc74e0fd6c3048ba9b7563ab772cf808',
+    'SECRET_KEY': 'test_secret_key_f59e8b7c18b4499ca35f68bcb7c6b9bb',
+    'API_URL': 'https://a.khalti.com/api/v2/',
+}
+
+PAYMENT_TESTING_MODE = True
+DEFAULT_FROM_EMAIL = 'noreply@marketplace.com'
+
+# =============================================================================
+# EMAIL CONFIGURATION
+# =============================================================================
+
+# For TESTING - emails will show in Django console (no real emails sent)
+# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# Real email settings
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'get4prajit@gmail.com'  
+EMAIL_HOST_PASSWORD = 'nkty rpwb cbsh eerh'  
+DEFAULT_FROM_EMAIL = 'ISLINGTON MARKETPLACE <islingtonmarketplace@gmail.com>'  # What customers see as sender
+# Email settings explanation:
+# EMAIL_BACKEND: Which method Django uses to send emails
+# EMAIL_HOST: Gmail's SMTP server address
+# EMAIL_PORT: Port number for Gmail SMTP (587 for TLS)
+# EMAIL_USE_TLS: Enable secure connection
+# EMAIL_HOST_USER: Your Gmail address
+# EMAIL_HOST_PASSWORD: Special app password (NOT your Gmail password)
+# DEFAULT_FROM_EMAIL: What recipients see as sender
+
+# Email timeout settings (optional)
+EMAIL_TIMEOUT = 60
+
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+}

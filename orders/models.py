@@ -1,6 +1,17 @@
 from django.db import models
 from django.contrib.auth.models import User
-from products.models import Product
+from products.models import Product, ProductVariation
+
+class Payment(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    payment_id = models.CharField(max_length=100)
+    payment_method = models.CharField(max_length=100)
+    amount_paid = models.CharField(max_length=100)
+    status = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.payment_id
 
 class Order(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -12,11 +23,14 @@ class Order(models.Model):
     total = models.FloatField(default=0)
     tax = models.FloatField(default=0)
     grand_total = models.FloatField(default=0)
-    status = models.CharField(max_length=20, default='Pending')  
+    status = models.CharField(max_length=20, default='Pending')
     created_at = models.DateTimeField(auto_now_add=True)
     transaction_id = models.CharField(max_length=100, blank=True, null=True)
     
-    # NEW ENHANCED STATUS SYSTEM (additive)
+    order_number = models.CharField(max_length=20, blank=True)
+    is_ordered = models.BooleanField(default=False)
+    payment = models.ForeignKey(Payment, on_delete=models.SET_NULL, blank=True, null=True)
+
     order_status = models.CharField(max_length=20, choices=[
         ('pending', 'Pending'),
         ('confirmed', 'Confirmed'), 
@@ -27,24 +41,63 @@ class Order(models.Model):
         ('cancelled', 'Cancelled'),
         ('refunded', 'Refunded')
     ], default='pending', blank=True)
-    
+
     # TRACKING FIELDS
     shipped_date = models.DateTimeField(null=True, blank=True)
     delivered_date = models.DateTimeField(null=True, blank=True)
     completed_date = models.DateTimeField(null=True, blank=True)
     tracking_number = models.CharField(max_length=100, blank=True)
-    
+
+    # NEW FIELDS FOR PAYMENT PROCESSING
+    payment_status = models.CharField(max_length=20, choices=[
+        ('pending', 'Pending'),
+        ('initiated', 'Payment Initiated'),
+        ('completed', 'Payment Completed'),
+        ('failed', 'Payment Failed'),
+        ('refunded', 'Refunded')
+    ], default='pending')    
+
+    payment_gateway_response = models.TextField(blank=True, null=True, help_text="Raw response from payment gateway")
+    payment_reference = models.CharField(max_length=100, blank=True, null=True, help_text="Payment gateway reference ID")
+
     def __str__(self):
         return f"Order #{self.id} by {self.user.username}"
-    
 
     def is_completed(self):
         return self.order_status == 'completed'
-    
+
     def get_effective_status(self):
         if self.order_status and self.order_status != 'pending':
             return self.order_status
         return self.status.lower()
+    
+    def get_payment_display(self):
+        """Return user-friendly payment status"""
+        if self.payment_method == 'Cash on Delivery':
+            if self.payment_status == 'completed':
+                return "Cash on Delivery"
+            else:
+                return "Pay on Delivery"
+        else:
+            if self.payment_status == 'completed':
+                return "Payment Completed"
+            elif self.payment_status == 'pending':
+                return "Payment Pending"
+            elif self.payment_status == 'failed':
+                return "Payment Failed"
+            else:
+                return self.payment_status.title()
+    
+    def get_payment_icon(self):
+        """Return appropriate icon for payment method"""
+        if self.payment_method == 'Cash on Delivery':
+            return "💰"
+        elif self.payment_method == 'eSewa':
+            return "💳"
+        elif self.payment_method == 'Khalti':
+            return "📱"
+        else:
+            return "💳"
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
@@ -52,8 +105,24 @@ class OrderItem(models.Model):
     quantity = models.PositiveIntegerField(default=1)
     price = models.FloatField()
     
+    payment = models.ForeignKey(Payment, on_delete=models.SET_NULL, blank=True, null=True)
+    ordered = models.BooleanField(default=False)
+
     # SELLER TRACKING 
     seller = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='sold_items')
     
+    #  Variation support for order items
+    variations = models.ManyToManyField(ProductVariation, blank=True)
+    variation_data = models.TextField(blank=True, help_text="JSON data of selected variations at time of purchase")
+
+
+
     def __str__(self):
+        if self.variations.exists():
+            variations = ', '.join([f"{v.variation_type.display_name}: {v.variation_option.get_display_value()}" 
+                                  for v in self.variations.all()])
+            return f"{self.product.name} ({variations}) x {self.quantity}"
         return f"{self.product.name} x {self.quantity}"
+
+    def has_variations(self):
+        return self.variations.exists()

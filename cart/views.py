@@ -1,8 +1,9 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import Cart, CartItem
-from products.models import Product
+from products.models import Product, ProductVariation
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib import messages
+import json
 
 def _cart_id(request):
     cart = request.session.session_key
@@ -11,87 +12,189 @@ def _cart_id(request):
     return cart
 
 def _get_cart(request):
-    """Get cart based on user status - user-based if logged in, session-based if anonymous"""
+    """Get cart based on user status"""
     if request.user.is_authenticated:
-        # For authenticated users, get or create cart by user
         cart, created = Cart.objects.get_or_create(user=request.user)
     else:
-        # For anonymous users, get or create cart by session
         try:
             cart = Cart.objects.get(cart_id=_cart_id(request))
         except Cart.DoesNotExist:
             cart = Cart.objects.create(cart_id=_cart_id(request))
     return cart
 
+# In cart/views.py
 def add_cart(request, product_id):
+    """Enhanced add to cart with variation support"""
     product = get_object_or_404(Product, id=product_id)
     cart = _get_cart(request)
-
-    try:
-        cart_item = CartItem.objects.get(product=product, cart=cart)
-        if cart_item.quantity < product.stock:
-            cart_item.quantity += 1
-            cart_item.save()
-            messages.success(request, f"{product.name} added to cart!")
-        else:
-            messages.error(request, f"Sorry, only {product.stock} {product.name} available!")
-    except CartItem.DoesNotExist:
-        if product.stock > 0:
-            CartItem.objects.create(product=product, quantity=1, cart=cart)
-            messages.success(request, f"{product.name} added to cart!")
-        else:
-            messages.error(request, f"Sorry, {product.name} is out of stock!")
-
-    return redirect('cart')
-
-def remove_cart(request, product_id):
-    cart = _get_cart(request)
-    product = get_object_or_404(Product, id=product_id)
-    try:
-        cart_item = CartItem.objects.get(product=product, cart=cart)
-        if cart_item.quantity > 1:
-            cart_item.quantity -= 1
-            cart_item.save()
-        else:
-            cart_item.delete()
-    except CartItem.DoesNotExist:
-        pass
-    return redirect('cart')
     
-def remove_cart_item(request, product_id):
-    cart = _get_cart(request)
-    product = get_object_or_404(Product, id=product_id)
+    # Parse variations from request (if any)
+    selected_variations = []
+    
+    if request.method == 'POST':
+        for key, value in request.POST.items():
+            if key.startswith('variation_') and value:
+                try:
+                    variation_type_id = key.split('_')[1]
+                    variation_option_id = value
+                    product_variation = ProductVariation.objects.get(
+                        product=product,
+                        variation_type_id=variation_type_id,
+                        variation_option_id=variation_option_id,
+                        is_active=True
+                    )
+                    selected_variations.append(product_variation)
+                except (ProductVariation.DoesNotExist, IndexError, ValueError):
+                    continue
+    
+    # Check for existing cart item with same variations
+    existing_item = None
+    cart_items = CartItem.objects.filter(product=product, cart=cart, is_active=True)
+    
+    for item in cart_items:
+        item_variations = list(item.variations.all())
+        if len(item_variations) == len(selected_variations):
+            match = True
+            for variation in item_variations:
+                if variation not in selected_variations:
+                    match = False
+                    break
+            if match:
+                existing_item = item
+                break
+    
     try:
-        cart_item = CartItem.objects.get(product=product, cart=cart)
-        cart_item.delete()
+        # Calculate available stock for the selected variations
+        available_stock = get_available_stock(product, selected_variations)
+        
+        if existing_item:
+            if existing_item.quantity < available_stock:
+                existing_item.quantity += 1
+                existing_item.save()
+                messages.success(request, f"{product.name} added to cart!")
+            else:
+                messages.error(request, f"Sorry, only {available_stock} available!")
+        else:
+            if available_stock > 0:
+                cart_item = CartItem.objects.create(
+                    product=product, 
+                    quantity=1, 
+                    cart=cart
+                )
+                # Add variations if any
+                if selected_variations:
+                    cart_item.variations.set(selected_variations)
+                    cart_item.save()
+                messages.success(request, f"{product.name} added to cart!")
+            else:
+                messages.error(request, f"Sorry, {product.name} is out of stock!")
+                
+    except Exception as e:
+        messages.error(request, "Error adding to cart. Please try again.")
+    
+    return redirect('cart')
+
+def get_available_stock(product, variations):
+    """Calculate available stock considering variations"""
+    if not variations:
+        return product.stock
+    
+    min_stock = product.stock
+    for variation in variations:
+        if variation.stock_quantity < min_stock:
+            min_stock = variation.stock_quantity
+    
+    return max(0, min_stock)
+
+def remove_cart(request, product_id, cart_item_id=None):
+    """Remove one quantity"""
+    cart = _get_cart(request)
+    
+    try:
+        if cart_item_id:
+            cart_item = CartItem.objects.get(id=cart_item_id, cart=cart)
+        else:
+            # Backward compatibility - get first matching product
+            cart_item = CartItem.objects.filter(product_id=product_id, cart=cart, is_active=True).first()
+        
+        if cart_item:
+            if cart_item.quantity > 1:
+                cart_item.quantity -= 1
+                cart_item.save()
+            else:
+                cart_item.delete()
     except CartItem.DoesNotExist:
         pass
+    
+    return redirect('cart')
+
+def remove_cart_item(request, product_id, cart_item_id=None):
+    """Remove entire cart item"""
+    cart = _get_cart(request)
+    
+    try:
+        if cart_item_id:
+            cart_item = CartItem.objects.get(id=cart_item_id, cart=cart)
+        else:
+            # Backward compatibility
+            cart_item = CartItem.objects.filter(product_id=product_id, cart=cart, is_active=True).first()
+        
+        if cart_item:
+            product_name = str(cart_item)
+            cart_item.delete()
+            messages.success(request, f"{product_name} removed from cart!")
+    except CartItem.DoesNotExist:
+        pass
+    
     return redirect('cart')
 
 def cart(request, total=0, quantity=0, cart_items=None):
+    """Enhanced cart view - backward compatible"""
     try:
         cart = _get_cart(request)
-        cart_items = CartItem.objects.filter(cart=cart, is_active=True)
-
+        cart_items = CartItem.objects.filter(cart=cart, is_active=True).prefetch_related(
+            'variations__variation_type',
+            'variations__variation_option'
+        )
+        
         for cart_item in cart_items:
-            total += (cart_item.product.price * cart_item.quantity)
+            total += cart_item.sub_total()  # Uses enhanced sub_total method
             quantity += cart_item.quantity
-
+            
     except ObjectDoesNotExist:
         cart_items = []
         
     tax = 0.13 * total
     grand_total = total + tax
-
+    
     context = {
         'total': total,
         'quantity': quantity,
         'cart_items': cart_items,
+        'items': cart_items,  # ⭐ Add this for checkout compatibility
         'tax': tax,
         'grand_total': grand_total
     }
-
+    
     return render(request, 'cart/cart.html', context)
+
+# Stock deduction function for after checkout
+def deduct_stock_after_checkout(cart_items):
+    """Call this after successful checkout"""
+    for item in cart_items:
+        product = item.product
+        quantity = item.quantity
+        
+        # Deduct main product stock
+        if product.stock >= quantity:
+            product.stock -= quantity
+            product.save()
+        
+        # Deduct variation stocks
+        for variation in item.variations.all():
+            if variation.stock_quantity >= quantity:
+                variation.stock_quantity -= quantity
+                variation.save()
 
 def merge_cart_on_login(request):
     """Call this when user logs in to merge session cart with user cart"""

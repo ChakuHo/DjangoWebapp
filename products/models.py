@@ -78,6 +78,18 @@ class Product(models.Model):
             self.slug = slug
         super().save(*args, **kwargs)
 
+    
+    def get_available_stock(self):
+        """Get available stock considering variations"""
+        if self.variations.exists():
+            # Get the minimum stock among all variations
+            min_stock = self.stock
+            for variation in self.variations.all():
+                if variation.stock_quantity < min_stock:
+                    min_stock = variation.stock_quantity
+            return min_stock
+        return self.stock    
+
 
     def get_available_variations(self):
         """Get variations available for this product based on its category"""

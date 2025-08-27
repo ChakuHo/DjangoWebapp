@@ -1,166 +1,295 @@
-{% extends "master/base.html" %} {% load static %} {% block content %}
+{% extends "master/base.html" %}
+{% load static %}
+{% block content %}
+
 <section class="section-content padding-y bg">
   <div class="container">
-    <!-- ============================ COMPONENT 1 ================================= -->
     {% if not cart_items %}
-    <h2 class="text-center">Your Shopping Cart is Empty</h2>
-    <br />
-    <div class="text-center">
-      <a href="{% url 'products:product' %}" class="btn btn-primary"
-        >Continue Shopping</a
-      >
-    </div>
+      <h2 class="text-center">Your Shopping Cart is Empty</h2>
+      <br />
+      <div class="text-center">
+        <a href="{% url 'products:product' %}" class="btn btn-primary">Continue Shopping</a>
+      </div>
     {% else %}
-    <div class="row">
-      <aside class="col-lg-9">
-        <div class="card">
-          <table class="table table-borderless table-shopping-cart">
-            <thead class="text-muted">
-              <tr class="small text-uppercase">
-                <th scope="col">Product</th>
-                <th scope="col" width="160">Quantity</th>
-                <th scope="col" width="140">Price</th>
-                <th scope="col" class="text-right" width="160"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for cart_item in cart_items %}
-              <tr>
-                <td>
-                  <figure class="itemside align-items-center">
-                    <div class="aside">
-                      {% if cart_item.product.image %}
-                      <img
-                        src="{{ cart_item.product.image.url }}"
-                        class="img-sm"
-                      />
-                      {% else %}
-                      <img
-                        src="https://via.placeholder.com/80x80?text=No+Image"
-                        class="img-sm"
-                      />
-                      {% endif %}
-                    </div>
-                    <figcaption class="info">
-                      <a
-                        href="{{ cart_item.product.get_url }}"
-                        class="title text-dark"
-                      >
-                        {{ cart_item.product.name }}
-                      </a>
-                      {% if cart_item.product.stock <= 0 %}
-                      <p class="text-danger small mb-1">Out of stock</p>
-                      {% elif cart_item.product.stock <= 5 %}
-                      <p class="text-warning small mb-1">
-                        Only {{ cart_item.product.stock }} left in stock!
-                      </p>
-                      {% endif %}
-                      <p class="text-muted small">
-                        {% if cart_item.product.brand %} 
-                          Brand: {{ cart_item.product.brand }}<br />
-                          SKU: {{ cart_item.product.slug }} 
+      <div class="row">
+        <aside class="col-lg-9">
+          <div class="card">
+            <table class="table table-borderless table-shopping-cart">
+              <thead class="text-muted">
+                <tr class="small text-uppercase">
+                  <th scope="col">Product</th>
+                  <th scope="col" width="160">Quantity</th>
+                  <th scope="col" width="140">Price</th>
+                  <th scope="col" class="text-right" width="160"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for cart_item in cart_items %}
+                {% with available_stock=cart_item.get_available_stock %}
+                <tr>
+                  <td>
+                    <figure class="itemside align-items-center">
+                      <div class="aside">
+                        {% if cart_item.product.image %}
+                          <img src="{{ cart_item.product.image.url }}" 
+                               class="img-sm" 
+                               alt="{{ cart_item.product.name }}" 
+                               onerror="this.src='{% static "images/placeholder.png" %}';" />
+                        {% else %}
+                          <img src="{% static 'images/placeholder.png' %}" 
+                               class="img-sm" 
+                               alt="No Image" />
                         {% endif %}
-                      </p>
-                    </figcaption>
-                  </figure>
-                </td>
-                <td>
-                  <div class="input-group input-spinner">
-                    <div class="input-group-prepend">
-                      <a
-                        href="{% url 'remove_cart' cart_item.product.id %}"
-                        class="btn btn-light"
-                        type="button"
-                      >
-                        <i class="fa fa-minus"></i>
-                      </a>
-                    </div>
-                    <input
-                      type="text"
-                      class="form-control"
-                      value="{{ cart_item.quantity }}"
-                    />
-                    <div class="input-group-append">
-                      {% if cart_item.quantity < cart_item.product.stock %}
-                      <a
-                        href="{% url 'add_cart' cart_item.product.id %}"
-                        class="btn btn-light"
-                      >
-                        <i class="fa fa-plus"></i>
-                      </a>
-                      {% else %}
-                      <button
-                        class="btn btn-light"
-                        disabled
-                        title="No more stock left"
-                      >
-                        <i class="fa fa-plus"></i>
-                      </button>
-                      {% endif %}
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  <div class="price-wrap">
-                    <var class="price"
-                      >Rs. {{ cart_item.sub_total|floatformat:2 }}</var
-                    >
-                    <small class="text-muted"
-                      >Rs. {{ cart_item.product.price|floatformat:2 }}
-                      each</small
-                    >
-                  </div>
-                </td>
-                <td class="text-right">
-                  <a
-                    href="{% url 'remove_cart_item' cart_item.product.id %}"
-                    class="btn btn-danger"
-                    >Remove</a
-                  >
-                </td>
-              </tr>
-              {% empty %}
-              <tr>
-                <td colspan="4">Your cart is empty.</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </aside>
+                      </div>
+                      <figcaption class="info">
+                        <a href="{{ cart_item.product.get_url }}" class="title text-dark">
+                          {{ cart_item.product.name }}
+                        </a>
 
-      <aside class="col-lg-3">
-        <div class="card">
-          <div class="card-body">
-            <dl class="dlist-align">
-              <dt>Total price:</dt>
-              <dd class="text-right">Rs. {{ total|floatformat:2 }}</dd>
-            </dl>
-            <dl class="dlist-align">
-              <dt>Tax:</dt>
-              <dd class="text-right">Rs. {{ tax|floatformat:2 }}</dd>
-            </dl>
-            <dl class="dlist-align">
-              <dt>Grand Total:</dt>
-              <dd class="text-right text-dark b">
-                <strong>Rs. {{ grand_total|floatformat:2 }}</strong>
-              </dd>
-            </dl>
-            <hr />
-            <p class="text-center mb-3">
-              <img src="/static/images/misc/payments.png" height="26" />
-            </p>
-            <a href="{% url 'checkout' %}" class="btn btn-primary btn-block">Checkout</a>
-            <a href="{% url 'products:product' %}" class="btn btn-light btn-block"
-              >Continue Shopping</a
-            >
+                        <!-- Show variations if they exist -->
+                        {% if cart_item.variations.exists %}
+                          <div class="variation-details mb-2">
+                            {% for variation in cart_item.variations.all %}
+                              <div class="text-muted small">
+                                <strong>{{ variation.variation_type.display_name|default:variation.variation_type.name }}:</strong>
+                                {{ variation.variation_option.display_value|default:variation.variation_option.value }}
+                                {% if variation.price_adjustment > 0 %}
+                                  (+Rs. {{ variation.price_adjustment }})
+                                {% endif %}
+                              </div>
+                            {% endfor %}
+                          </div>
+                        {% endif %}
+
+                        <!-- Stock status -->
+                        {% if available_stock <= 0 %}
+                          <p class="text-danger small mb-1">Out of stock</p>
+                        {% elif available_stock <= 5 %}
+                          <p class="text-warning small mb-1">
+                            Only {{ available_stock }} left!
+                          </p>
+                        {% endif %}
+
+                        <!-- Product details -->
+                        <p class="text-muted small">
+                          {% if cart_item.product.brand %}
+                            Brand: {{ cart_item.product.brand }}<br />
+                          {% endif %}
+                          
+                          <!-- Show specific variation types if they exist -->
+                          {% if cart_item.variations.exists %}
+                            {% for variation in cart_item.variations.all %}
+                              {% if variation.variation_type.name == 'color' %}
+                                Color: {{ variation.variation_option.display_value }}<br />
+                              {% elif variation.variation_type.name == 'size' %}
+                                Size: {{ variation.variation_option.display_value }}<br />
+                              {% elif variation.variation_type.name == 'capacity' %}
+                                Capacity: {{ variation.variation_option.display_value }}<br />
+                              {% endif %}
+                            {% endfor %}
+                          {% endif %}
+                          
+                          SKU: {{ cart_item.product.slug }}
+                        </p>
+                      </figcaption>
+                    </figure>
+                  </td>
+                  <td>
+                    <div class="input-group input-spinner">
+                      <div class="input-group-prepend">
+                        <a href="{% url 'remove_cart' cart_item.product.id cart_item.id %}" 
+                           class="btn btn-light {% if cart_item.quantity <= 1 or available_stock <= 0 %}disabled{% endif %}" 
+                           {% if cart_item.quantity <= 1 or available_stock <= 0 %}aria-disabled="true"{% endif %}>
+                          <i class="fa fa-minus"></i>
+                        </a>
+                      </div>
+                      <input type="text" 
+                             class="form-control" 
+                             value="{{ cart_item.quantity }}" 
+                             readonly />
+                      <div class="input-group-append">
+                        <a href="{% url 'add_cart' cart_item.product.id %}" 
+                           class="btn btn-light {% if cart_item.quantity >= available_stock %}disabled{% endif %}" 
+                           {% if cart_item.quantity >= available_stock %}aria-disabled="true"{% endif %}>
+                          <i class="fa fa-plus"></i>
+                        </a>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="price-wrap">
+                      <var class="price">Rs. {{ cart_item.sub_total|floatformat:2 }}</var>
+                      <small class="text-muted">
+                        Rs. {{ cart_item.get_final_price_per_unit|floatformat:2 }} each
+                        {% if cart_item.variations.exists %}
+                          <br /><span class="text-info">(includes options)</span>
+                        {% endif %}
+                      </small>
+                    </div>
+                  </td>
+                  <td class="text-right">
+                    <a href="{% url 'remove_cart_item' cart_item.product.id cart_item.id %}" 
+                       class="btn btn-danger btn-sm" 
+                       onclick="return confirm('Remove this item?')">
+                      <i class="fa fa-trash"></i> Remove
+                    </a>
+                  </td>
+                </tr>
+                {% endwith %}
+                {% endfor %}
+              </tbody>
+            </table>
           </div>
-        </div>
-      </aside>
-    </div>
+        </aside>
+
+        <aside class="col-lg-3">
+          <div class="card">
+            <div class="card-body">
+              <dl class="dlist-align">
+                <dt>Total price:</dt>
+                <dd class="text-right">Rs. {{ total|floatformat:2 }}</dd>
+              </dl>
+              <dl class="dlist-align">
+                <dt>Tax:</dt>
+                <dd class="text-right">Rs. {{ tax|floatformat:2 }}</dd>
+              </dl>
+              <dl class="dlist-align">
+                <dt>Grand Total:</dt>
+                <dd class="text-right text-dark b">
+                  <strong>Rs. {{ grand_total|floatformat:2 }}</strong>
+                </dd>
+              </dl>
+              <hr />
+              <a href="{% url 'checkout' %}" class="btn btn-primary btn-block">Checkout</a>
+              <a href="{% url 'products:product' %}" class="btn btn-light btn-block">Continue Shopping</a>
+            </div>
+          </div>
+        </aside>
+      </div>
     {% endif %}
-    <!-- ============================ COMPONENT 1 END .// ================================= -->
   </div>
-  <!-- container .//  -->
 </section>
+
+<style>
+.variation-display .badge {
+  font-size: 0.75em;
+  padding: 0.3em 0.6em;
+  background: linear-gradient(135deg, #007bff, #0056b3);
+  border: none;
+}
+
+.img-sm {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.price {
+  font-size: 1.1em;
+  font-weight: 600;
+  color: #007bff;
+}
+
+.variation-details {
+  background-color: #f8f9fa;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border-left: 3px solid #007bff;
+  margin-bottom: 8px;
+}
+
+.variation-details div {
+  margin-bottom: 3px;
+}
+
+.variation-details div:last-child {
+  margin-bottom: 0;
+}
+
+.input-spinner .btn {
+  padding: 0.375rem 0.5rem;
+}
+
+.input-spinner .form-control {
+  text-align: center;
+  border-left: 0;
+  border-right: 0;
+}
+
+/* Disabled button styles */
+.btn.disabled {
+  pointer-events: none;
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Enhanced cart styling */
+.itemside {
+  display: flex;
+  align-items: flex-start;
+}
+
+.itemside .aside {
+  margin-right: 15px;
+  flex-shrink: 0;
+}
+
+.itemside .info {
+  flex-grow: 1;
+}
+
+.title {
+  font-weight: 600;
+  margin-bottom: 8px;
+  display: block;
+  text-decoration: none;
+}
+
+.title:hover {
+  color: #007bff !important;
+  text-decoration: none;
+}
+
+/* Table improvements */
+.table-shopping-cart td {
+  vertical-align: middle;
+  padding: 1.5rem 1rem;
+}
+
+.table-shopping-cart th {
+  border-bottom: 2px solid #dee2e6;
+  font-weight: 600;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Add stock validation to add/remove cart buttons
+  document.querySelectorAll('.input-spinner .btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      if (this.classList.contains('disabled')) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+    });
+  });
+
+  // Add confirmation for quantity changes when stock is low
+  document.querySelectorAll('a[href*="add_cart"]').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      const row = this.closest('tr');
+      const stockWarning = row.querySelector('.text-warning');
+      if (stockWarning && stockWarning.textContent.includes('Only')) {
+        if (!confirm('This item has limited stock. Continue adding to cart?')) {
+          e.preventDefault();
+          return false;
+        }
+      }
+    });
+  });
+});
+</script>
+
 {% endblock %}

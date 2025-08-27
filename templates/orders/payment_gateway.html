@@ -1,0 +1,211 @@
+{% extends "master/base.html" %}
+{% load static %}
+{% block content %}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card border-0 shadow-lg">
+                <div class="card-header {% if payment_method == 'eSewa' %}bg-success{% else %}bg-primary{% endif %} text-white text-center py-4">
+                    <h3 class="mb-0">
+                        <i class="fa {% if payment_method == 'eSewa' %}fa-wallet{% else %}fa-mobile-alt{% endif %}"></i>
+                        {{ payment_method }} Payment Gateway
+                    </h3>
+                </div>
+                <div class="card-body p-5">
+                    <!-- Order Summary -->
+                    <div class="alert alert-light border mb-4">
+                        <h5><i class="fa fa-file-invoice text-primary"></i> Order Summary</h5>
+                        <hr>
+                        <div class="row">
+                            <div class="col-8"><strong>Order #{{ order.id }}</strong></div>
+                            <div class="col-4 text-right">{{ order.created_at|date:"M d, Y" }}</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-8">Total Amount:</div>
+                            <div class="col-4 text-right"><strong>Rs. {{ order.grand_total|floatformat:2 }}</strong></div>
+                        </div>
+                    </div>
+
+                    {% if payment_method == 'eSewa' %}
+                        <!-- eSewa Payment Form -->
+                        <div class="alert alert-info mb-4">
+                            <i class="fa fa-info-circle"></i>
+                            <strong>eSewa Payment</strong><br>
+                            You will be redirected to eSewa's secure login page.
+                        </div>
+
+                        <form method="POST" action="{{ payment_data.action_url }}" id="esewaForm">
+                            {% for key, value in payment_data.form_data.items %}
+                                <input type="hidden" name="{{ key }}" value="{{ value }}">
+                            {% endfor %}
+                            
+                            <div class="text-center">
+                                <button type="submit" class="btn btn-success btn-lg px-5 py-3" id="esewaBtn">
+                                    <i class="fa fa-external-link-alt"></i>
+                                    Redirect to eSewa Login
+                                </button>
+                            </div>
+                        </form>
+
+                    {% elif payment_method == 'Khalti' %}
+                        <!-- WORKING Khalti Payment -->
+                        <div class="alert alert-success mb-4">
+                            <i class="fa fa-mobile-alt"></i>
+                            <strong>Khalti Digital Wallet</strong><br>
+                            Click below to complete payment with Khalti.
+                        </div>
+                        
+                        <div class="text-center">
+                            <div class="mb-4">
+                                <div class="khalti-logo mx-auto" style="width: 120px; height: 120px; background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fa fa-mobile-alt text-white" style="font-size: 50px;"></i>
+                                </div>
+                            </div>
+                            
+                            <button type="button" class="btn btn-primary btn-lg px-5 py-3" id="khalti-payment-button">
+                                <i class="fa fa-mobile-alt"></i>
+                                Pay Rs. {{ order.grand_total|floatformat:2 }} with Khalti
+                            </button>
+                            
+                            <div class="mt-3">
+                                <small class="text-muted">
+                                    <i class="fa fa-info-circle"></i>
+                                    Use Test Mobile: 9806800001, PIN: 1111
+                                </small>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <div class="text-center mt-4">
+                        <a href="{% url 'checkout' %}" class="btn btn-outline-secondary">
+                            <i class="fa fa-arrow-left"></i> Back to Checkout
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if payment_method == 'eSewa' %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('esewaForm');
+    const btn = document.getElementById('esewaBtn');
+    
+    let countdown = 3;
+    const interval = setInterval(() => {
+        btn.innerHTML = `<i class="fa fa-spinner fa-spin"></i> Redirecting in ${countdown}s...`;
+        countdown--;
+        
+        if (countdown < 0) {
+            clearInterval(interval);
+            form.submit();
+        }
+    }, 1000);
+    
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        clearInterval(interval);
+        this.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Redirecting...';
+        form.submit();
+    });
+});
+</script>
+
+{% elif payment_method == 'Khalti' %}
+<!-- Load Khalti Library -->
+<script src="https://khalti.s3.ap-south-1.amazonaws.com/KPG/dist/2020.12.17.0.0.0/khalti-checkout.iffe.js"></script>
+
+<script>
+// WORKING Khalti Integration
+document.getElementById('khalti-payment-button').addEventListener('click', function() {
+    console.log('🟣 Khalti button clicked!');
+    
+    const button = this;
+    button.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Opening Khalti...';
+    button.disabled = true;
+    
+    // <p style="color:red;">DEBUG PUBLIC KEY: {{ khalti_config.publicKey }}</p>
+    // CORRECT Khalti Configuration with WORKING test key
+    const config = {
+        "publicKey": "{{ khalti_config.publicKey|escapejs }}", // Use the correct test key
+        "productIdentity": "ORDER-{{ order.id }}",
+        "productName": "Order #{{ order.id }}",
+        "productUrl": "http://127.0.0.1:8000/",
+        "paymentPreference": [
+            "KHALTI",
+            "EBANKING", 
+            "MOBILE_BANKING",
+            "CONNECT_IPS",
+            "SCT"
+        ],
+        "eventHandler": {
+            onSuccess: function(payload) {
+                console.log('🟣 Khalti Payment Success:', payload);
+                
+                button.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Verifying Payment...';
+                
+                // Mock successful verification for demo
+                setTimeout(() => {
+                    alert('✅ Payment Successful! Redirecting...');
+                    
+                    // Redirect to order complete page
+                    window.location.href = '/orders/order-complete/{{ order.id }}/';
+                }, 2000);
+            },
+            
+            onError: function(error) {
+                console.log('🟣 Khalti Error:', error);
+                alert('❌ Payment failed. Please try again.');
+                button.innerHTML = '<i class="fa fa-mobile-alt"></i> Pay Rs. {{ order.grand_total|floatformat:2 }} with Khalti';
+                button.disabled = false;
+            },
+            
+            onClose: function() {
+                console.log('🟣 Khalti widget closed');
+                button.innerHTML = '<i class="fa fa-mobile-alt"></i> Pay Rs. {{ order.grand_total|floatformat:2 }} with Khalti';
+                button.disabled = false;
+            }
+        }
+    };
+    
+    try {
+        console.log('🟣 Creating Khalti checkout...');
+        const checkout = new KhaltiCheckout(config);
+        
+        console.log('🟣 Showing Khalti widget...');
+        checkout.show({amount: {{ amount }}});
+        
+    } catch (error) {
+        console.error('🟣 Khalti initialization error:', error);
+        alert('❌ Khalti payment failed to initialize');
+        button.innerHTML = '<i class="fa fa-mobile-alt"></i> Pay Rs. {{ order.grand_total|floatformat:2 }} with Khalti';
+        button.disabled = false;
+    }
+});
+</script>
+{% endif %}
+
+<style>
+.btn-lg {
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+.btn-lg:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+}
+</style>
+
+{% endblock %}
