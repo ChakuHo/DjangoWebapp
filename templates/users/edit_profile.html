@@ -3,35 +3,7 @@
 <section class="section-conten padding-y bg">
   <div class="container">
     <div class="row">
-      <aside class="col-md-3">
-        <!--   SIDEBAR   -->
-        <ul class="list-group">
-          <a class="list-group-item" href="{% url 'dashboard' %}">
-            Dashboard
-          </a>
-          <a class="list-group-item" href="/orders/my-orders/">
-            My Orders
-          </a>
-          <a class="list-group-item active" href="{% url 'edit_profile' %}">
-            Edit Profile
-          </a>
-          <a class="list-group-item" href="{% url 'my_selling_items' %}"> 
-            My Selling Items 
-          </a>
-          <a class="list-group-item" href="{% url 'received_orders' %}"> 
-            Received Orders 
-          </a>
-          <a class="list-group-item" href="{% url 'change_password' %}">
-            Change Password
-          </a>
-        </ul>
-        <br />
-        <a class="btn btn-light btn-block" href="{% url 'logout' %}"
-           onclick="return confirm('Are you sure you want to logout?')">
-          <i class="fa fa-power-off"></i> <span class="text">Log out</span>
-        </a>
-        <!--   SIDEBAR .//END   -->
-      </aside>
+{% include 'users/includes/sidebar.html' %}
 
       <main class="col-md-9">
         <!-- Display Messages -->

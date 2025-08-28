@@ -57,6 +57,41 @@ class Profile(models.Model):
         return self.seller_status == 'pending'
 
 
+class ChatRoom(models.Model):
+    participants = models.ManyToManyField(User, related_name='chat_rooms')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    # For product-specific chats
+    product = models.ForeignKey('products.Product', on_delete=models.CASCADE, null=True, blank=True)
+    
+    def __str__(self):
+        participant_names = ", ".join([user.username for user in self.participants.all()])
+        return f"Chat: {participant_names}"
+    
+    def get_other_participant(self, current_user):
+        """Get the other participant in a 2-person chat"""
+        return self.participants.exclude(id=current_user.id).first()
+    
+    def get_last_message(self):
+        return self.messages.last()
+
+class ChatMessage(models.Model):
+    chat_room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name='messages')
+    sender = models.ForeignKey(User, on_delete=models.CASCADE)
+    message = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
+    
+    # Optional: File attachments
+    attachment = models.FileField(upload_to='chat_attachments/', null=True, blank=True)
+    
+    class Meta:
+        ordering = ['timestamp']
+    
+    def __str__(self):
+        return f"{self.sender.username}: {self.message[:50]}"
+
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
@@ -65,3 +100,5 @@ def create_user_profile(sender, instance, created, **kwargs):
 @receiver(post_save, sender=User)
 def save_user_profile(sender, instance, **kwargs):
     instance.profile.save()
+
+

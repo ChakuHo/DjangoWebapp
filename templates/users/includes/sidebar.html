@@ -1,0 +1,46 @@
+<aside class="col-md-3">
+  <!--   CONSISTENT SIDEBAR   -->
+  <ul class="list-group">
+    <a class="list-group-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard' %}">
+      <i class="fa fa-tachometer-alt"></i> Dashboard
+    </a>
+    <a class="list-group-item {% if 'my-orders' in request.path %}active{% endif %}" href="/orders/my-orders/">
+      <i class="fa fa-shopping-cart"></i> My Orders
+    </a>
+    <a class="list-group-item {% if request.resolver_match.url_name == 'edit_profile' %}active{% endif %}" href="{% url 'edit_profile' %}">
+      <i class="fa fa-user-edit"></i> Edit Profile
+    </a>
+    
+    <!-- SELLER NAVIGATION - Show only if approved seller -->
+    {% if user.profile.seller_status == 'approved' %}
+    <a class="list-group-item {% if request.resolver_match.url_name == 'my_selling_items' %}active{% endif %}" href="{% url 'my_selling_items' %}"> 
+      <i class="fa fa-store text-primary"></i> My Selling Items 
+    </a>
+    <a class="list-group-item {% if request.resolver_match.url_name == 'seller_received_orders' %}active{% endif %}" href="{% url 'seller_received_orders' %}"> 
+      <i class="fa fa-shopping-bag text-success"></i> Orders from Customers 
+    </a>
+    {% else %}
+    <span class="list-group-item text-muted"> 
+      <i class="fa fa-lock"></i> My Selling Items 
+      <small class="text-muted d-block">Seller approval required</small>
+    </span>
+    <span class="list-group-item text-muted"> 
+      <i class="fa fa-lock"></i> Orders from Customers 
+      <small class="text-muted d-block">Seller approval required</small>
+    </span>
+    {% endif %}
+    
+    <a class="list-group-item {% if request.resolver_match.url_name == 'received_orders' %}active{% endif %}" href="{% url 'received_orders' %}">
+      <i class="fa fa-box-open text-info"></i> Items Received
+    </a>
+    <a class="list-group-item {% if request.resolver_match.url_name == 'change_password' %}active{% endif %}" href="{% url 'change_password' %}">
+      <i class="fa fa-key"></i> Change Password
+    </a>
+  </ul>
+  <br />
+  <a class="btn btn-light btn-block" href="{% url 'logout' %}"
+     onclick="return confirm('Are you sure you want to logout?')">
+    <i class="fa fa-power-off"></i> <span class="text">Log out</span>
+  </a>
+  <!--   SIDEBAR .//END   -->
+</aside>

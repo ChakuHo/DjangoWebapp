@@ -10,6 +10,14 @@ from products.models import Product, Category, CategoryVariation, VariationType,
 import json
 from django.core.mail import send_mail
 from django.conf import settings
+from django.db.models import Count, Q
+from datetime import datetime, timedelta
+from orders.models import OrderItem
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+from .models import ChatRoom, ChatMessage
+from django.http import JsonResponse
+
 
 
 def send_registration_confirmation_email(user):
@@ -176,6 +184,7 @@ def register_view(request):
 
 
 @login_required
+@login_required
 def dashboard(request):
     try:
         profile = request.user.profile
@@ -184,6 +193,11 @@ def dashboard(request):
 
     # Calculate orders count
     orders_count = Order.objects.filter(user=request.user).count()
+    
+    # Calculate received orders count (for sellers)
+    received_orders_count = 0
+    if profile.seller_status == 'approved':
+        received_orders_count = OrderItem.objects.filter(seller=request.user).count()
 
     # Add seller stats if they're a seller
     seller_stats = {}
@@ -196,13 +210,174 @@ def dashboard(request):
             'rejected_products': seller_products.filter(approval_status='rejected').count(),
         }
 
+    # Generate recent activities
+    recent_activities = []
+    
+    # Recent orders
+    recent_orders = Order.objects.filter(user=request.user).order_by('-created_at')[:3]
+    for order in recent_orders:
+        recent_activities.append({
+            'message': f'Order #{order.id} placed successfully',
+            'created_at': order.created_at,
+            'icon': 'fa-shopping-cart',
+            'badge_color': 'primary'
+        })
+    
+    # Recent seller activities (if seller)
+    if profile.seller_status == 'approved':
+        # Recent products
+        recent_products = Product.objects.filter(seller=request.user).order_by('-created_at')[:2]
+        for product in recent_products:
+            recent_activities.append({
+                'message': f'Product "{product.name}" added for review',
+                'created_at': product.created_at,
+                'icon': 'fa-plus',
+                'badge_color': 'success'
+            })
+        
+        # Recent received orders
+        recent_received = OrderItem.objects.filter(seller=request.user).order_by('-order__created_at')[:2]
+        for item in recent_received:
+            recent_activities.append({
+                'message': f'New order received for "{item.product.name}"',
+                'created_at': item.order.created_at,
+                'icon': 'fa-bell',
+                'badge_color': 'warning'
+            })
+    
+    # Sort activities by date
+    recent_activities.sort(key=lambda x: x['created_at'], reverse=True)
+    recent_activities = recent_activities[:5]  # Keep only 5 most recent
+
+    # Additional stats
     context = {
         'profile': profile,
         'orders_count': orders_count,
+        'received_orders_count': received_orders_count,
         'user': request.user,
         'seller_stats': seller_stats,
+        'recent_activities': recent_activities,
+        'wishlist_count': 0,  # You can implement this later
+        'unread_messages_count': 0,  # You can implement this later
     }
     return render(request, 'users/dashboard.html', context)
+
+
+@login_required
+def received_orders(request):
+    """Display items that the CUSTOMER has received (delivered orders) - FIXED SYNTAX"""
+    from django.db.models import Q
+    from products.models import Review
+    
+    print(f"\n=== DEBUG: USER {request.user.username} RECEIVED ORDERS ===")
+    
+    # Check if user has ANY orders at all
+    total_orders = Order.objects.filter(user=request.user).count()
+    print(f"Total orders for user: {total_orders}")
+    
+    # Check if user has ANY order items at all
+    total_order_items = OrderItem.objects.filter(order__user=request.user).count()
+    print(f"Total order items for user: {total_order_items}")
+    
+    # Check ordered=True items
+    ordered_items = OrderItem.objects.filter(order__user=request.user, ordered=True).count()
+    print(f"Order items with ordered=True: {ordered_items}")
+    
+    # Check what statuses exist
+    existing_statuses = Order.objects.filter(user=request.user).values_list('status', 'order_status').distinct()
+    print(f"Existing order statuses: {list(existing_statuses)}")
+    
+    # Try to get ALL order items first (ignore status)
+    all_items = OrderItem.objects.filter(
+        order__user=request.user
+    ).select_related('order', 'product', 'seller').order_by('-order__created_at')
+    
+    print(f"All order items (ignoring status): {all_items.count()}")
+    
+    # FIXED: Combine everything into Q objects OR separate filter calls
+    # Method 1: All in Q objects
+    received_items = OrderItem.objects.filter(
+        Q(order__user=request.user) &
+        Q(ordered=True) & 
+        (
+            Q(order__order_status__in=['delivered', 'completed']) | 
+            Q(order__status__icontains='delivered') |
+            Q(order__status__icontains='completed')
+        )
+    ).select_related('order', 'product', 'seller').order_by('-order__created_at')
+    
+    print(f"Items with delivered/completed status: {received_items.count()}")
+    
+    # If still empty, try getting ALL order items for this user with ordered=True
+    if not received_items.exists():
+        print("No delivered orders found, trying all items with ordered=True...")
+        received_items = OrderItem.objects.filter(
+            order__user=request.user,
+            ordered=True
+        ).select_related('order', 'product', 'seller').order_by('-order__created_at')
+        print(f"Items with ordered=True: {received_items.count()}")
+    
+    # If STILL empty, show ALL items (for debugging)
+    if not received_items.exists():
+        print("No ordered=True items found, showing ALL items for debugging...")
+        received_items = all_items
+    
+    print(f"Final received_items count: {received_items.count()}")
+    print("=== END DEBUG ===\n")
+    
+    # Count unique orders
+    unique_orders_count = Order.objects.filter(user=request.user).count()
+    
+    # Get reviewed product IDs
+    reviewed_product_ids = list(Review.objects.filter(
+        user=request.user
+    ).values_list('product_id', flat=True))
+    
+    # Count pending reviews
+    pending_reviews_count = received_items.exclude(product_id__in=reviewed_product_ids).count()
+    
+    context = {
+        'received_items': received_items,
+        'unique_orders_count': unique_orders_count,
+        'pending_reviews_count': pending_reviews_count,
+        'reviewed_product_ids': reviewed_product_ids,
+    }
+    return render(request, 'users/received_orders.html', context)
+
+
+# NEW VIEW: For sellers to see orders they received from customers
+@login_required
+def seller_received_orders(request):
+    """Display orders received by seller from customers - FOR SELLERS"""
+    profile = request.user.profile
+
+    # Gate: Only approved sellers can access
+    if profile.seller_status != 'approved':
+        messages.error(request, 'You need to be an approved seller to access this page.')
+        return redirect('dashboard')
+
+    # Get ORDER ITEMS where this user is the seller
+    seller_received_orders = OrderItem.objects.filter(
+        seller=request.user,
+        ordered=True
+    ).select_related('order', 'product', 'order__user').order_by('-order__created_at')
+
+    # Calculate status counts
+    pending_orders_count = seller_received_orders.filter(order__order_status='pending').count()
+    processing_orders_count = seller_received_orders.filter(order__order_status='processing').count()
+    shipped_orders_count = seller_received_orders.filter(order__order_status='shipped').count()
+    completed_orders_count = seller_received_orders.filter(order__order_status='completed').count()
+
+    context = {
+        'received_orders': seller_received_orders,
+        'pending_orders_count': pending_orders_count,
+        'processing_orders_count': processing_orders_count,
+        'shipped_orders_count': shipped_orders_count,
+        'completed_orders_count': completed_orders_count,
+        'today': timezone.now(),
+    }
+    return render(request, 'users/seller_received_orders.html', context)
+    return render(request, 'users/received_orders.html', context)
 
 
 @login_required
@@ -577,3 +752,164 @@ def get_add_product_context():
         'variation_types': variation_types,
         'category_variations': json.dumps(category_variations)
     }
+
+@login_required
+def chat_list(request):
+    """Display all chat rooms for current user"""
+    chat_rooms = ChatRoom.objects.filter(
+        participants=request.user
+    ).prefetch_related('participants', 'messages').order_by('-updated_at')
+    
+    context = {
+        'chat_rooms': chat_rooms,
+    }
+    return render(request, 'users/chat_list.html', context)
+
+@login_required
+def chat_detail(request, chat_id):
+    """Display specific chat room"""
+    chat_room = get_object_or_404(ChatRoom, id=chat_id, participants=request.user)
+    
+    # Mark messages as read
+    ChatMessage.objects.filter(
+        chat_room=chat_room,
+        is_read=False
+    ).exclude(sender=request.user).update(is_read=True)
+    
+    messages = chat_room.messages.all()
+    other_participant = chat_room.get_other_participant(request.user)
+    
+    context = {
+        'chat_room': chat_room,
+        'messages': messages,
+        'other_participant': other_participant,
+    }
+    return render(request, 'users/chat_detail.html', context)
+
+@login_required
+def start_chat_with_user(request, username):
+    """Start or continue chat with specific user"""
+    other_user = get_object_or_404(User, username=username)
+    
+    # Check if chat already exists
+    chat_room = ChatRoom.objects.filter(
+        participants=request.user
+    ).filter(
+        participants=other_user
+    ).first()
+    
+    if not chat_room:
+        # Create new chat room
+        chat_room = ChatRoom.objects.create()
+        chat_room.participants.add(request.user, other_user)
+    
+    return redirect('chat_detail', chat_id=chat_room.id)
+
+@login_required
+def send_message(request):
+    """AJAX endpoint to send message"""
+    if request.method == 'POST':
+        chat_id = request.POST.get('chat_id')
+        message_text = request.POST.get('message')
+        
+        if chat_id and message_text:
+            chat_room = get_object_or_404(ChatRoom, id=chat_id, participants=request.user)
+            
+            message = ChatMessage.objects.create(
+                chat_room=chat_room,
+                sender=request.user,
+                message=message_text
+            )
+            
+            # Update chat room timestamp
+            chat_room.updated_at = timezone.now()
+            chat_room.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': {
+                    'id': message.id,
+                    'message': message.message,
+                    'sender': message.sender.username,
+                    'timestamp': message.timestamp.strftime('%Y-%m-%d %H:%M')
+                }
+            })
+    
+    return JsonResponse({'success': False})
+
+@login_required
+def update_product_stock(request, product_id):
+    """AJAX endpoint to update product stock"""
+    if request.method == 'POST':
+        try:
+            product = get_object_or_404(Product, id=product_id, seller=request.user)
+            data = json.loads(request.body)
+            new_stock = int(data.get('stock', 0))
+            
+            product.stock = max(0, new_stock)
+            product.save()
+            
+            return JsonResponse({'success': True})
+        except:
+            return JsonResponse({'success': False})
+    return JsonResponse({'success': False})
+
+@login_required
+def toggle_product_status(request, product_id):
+    """AJAX endpoint to toggle product live/hidden status"""
+    if request.method == 'POST':
+        try:
+            product = get_object_or_404(Product, id=product_id, seller=request.user)
+            data = json.loads(request.body)
+            
+            # Only allow status change for approved products
+            if product.approval_status == 'approved':
+                product.status = data.get('status', False)
+                product.save()
+                return JsonResponse({'success': True})
+            
+            return JsonResponse({'success': False})
+        except:
+            return JsonResponse({'success': False})
+    return JsonResponse({'success': False})
+
+@login_required
+def delete_product(request, product_id):
+    """AJAX endpoint to delete product"""
+    if request.method == 'POST':
+        try:
+            product = get_object_or_404(Product, id=product_id, seller=request.user)
+            product.delete()
+            return JsonResponse({'success': True})
+        except:
+            return JsonResponse({'success': False})
+    return JsonResponse({'success': False})
+
+@login_required
+def bulk_update_stock(request):
+    """AJAX endpoint for bulk stock updates"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            product_ids = data.get('products', [])
+            action = data.get('action')
+            amount = int(data.get('amount', 0))
+            
+            products = Product.objects.filter(id__in=product_ids, seller=request.user)
+            updated_count = 0
+            
+            for product in products:
+                if action == 'set':
+                    product.stock = amount
+                elif action == 'add':
+                    product.stock += amount
+                elif action == 'subtract':
+                    product.stock = max(0, product.stock - amount)
+                
+                product.save()
+                updated_count += 1
+            
+            return JsonResponse({'success': True, 'updated_count': updated_count})
+        except:
+            return JsonResponse({'success': False})
+    return JsonResponse({'success': False})

@@ -1,65 +1,27 @@
 {% extends "master/base.html" %} {% load static %} {% block content %}
 
-<!-- ========================= SECTION CONTENT ========================= -->
+<!-- Enhanced Dashboard with New Widgets -->
 <section class="section-conten padding-y bg">
   <div class="container">
     <div class="row">
-      <aside class="col-md-3">
-        <!--   SIDEBAR   -->
-        <ul class="list-group">
-          <a class="list-group-item active" href="{% url 'dashboard' %}">
-            Dashboard
-          </a>
-          <a class="list-group-item" href="/orders/my-orders/">
-            My Orders
-          </a>
-          <a class="list-group-item" href="{% url 'edit_profile' %}">
-            Edit Profile
-          </a>
-          
-          <!-- SELLER NAVIGATION - Show only if approved seller -->
-          {% if user.profile.seller_status == 'approved' %}
-          <a class="list-group-item" href="{% url 'my_selling_items' %}"> 
-            <i class="fa fa-store text-primary"></i> My Selling Items 
-          </a>
-          <a class="list-group-item" href="{% url 'received_orders' %}"> 
-            <i class="fa fa-shopping-bag text-success"></i> Received Orders 
-          </a>
-          {% else %}
-          <a class="list-group-item text-muted" href="#" onclick="return false;"> 
-            <i class="fa fa-lock"></i> My Selling Items 
-            <small class="text-muted d-block">Seller approval required</small>
-          </a>
-          <a class="list-group-item text-muted" href="#" onclick="return false;"> 
-            <i class="fa fa-lock"></i> Received Orders 
-            <small class="text-muted d-block">Seller approval required</small>
-          </a>
-          {% endif %}
-          
-          <a class="list-group-item" href="{% url 'change_password' %}">
-            Change Password
-          </a>
-        </ul>
-        <br />
-        <a class="btn btn-light btn-block" href="{% url 'logout' %}" 
-           onclick="return confirm('Are you sure you want to logout?')">
-          <i class="fa fa-power-off"></i> <span class="text">Log out</span>
-        </a>
-        <!--   SIDEBAR .//END   -->
-      </aside>
+{% include 'users/includes/sidebar.html' %}
 
       <main class="col-md-9">
-        <!-- User Welcome Section -->
+        <!-- User Welcome Section with Enhanced Stats -->
         <article class="card mb-4">
-          <header class="card-header">
-            <strong class="d-inline-block mr-3">Welcome back,</strong>
+          <header class="card-header bg-primary text-white">
+            <strong class="d-inline-block mr-3">
+              <i class="fa fa-user-circle"></i> Welcome back,
+            </strong>
             <span>{% if user.get_full_name %}{{ user.get_full_name }}{% else %}{{ user.username }}{% endif %}!</span>
           </header>
           <div class="card-body">
+            <!-- Enhanced Stats Row -->
             <div class="row">
-              <div class="col-md-6">
-                <div class="card" style="text-align: center">
-                  <div class="card-body">
+              <div class="col-md-3">
+                <div class="card border-primary" style="text-align: center">
+                  <div class="card-body py-3">
+                    <i class="fa fa-shopping-cart fa-2x text-primary mb-2"></i>
                     <h5 class="card-title">Total Orders</h5>
                     <h4 class="text-primary">{{ orders_count }}</h4>
                     {% if orders_count > 0 %}
@@ -70,16 +32,40 @@
                   </div>
                 </div>
               </div>
-              <div class="col-md-6">
-                <div class="card" style="text-align: center">
-                  <div class="card-body">
+              
+              <div class="col-md-3">
+                <div class="card border-success" style="text-align: center">
+                  <div class="card-body py-3">
+                    <i class="fa fa-box fa-2x text-success mb-2"></i>
                     <h5 class="card-title">Received Orders</h5>
-                    <h4 class="text-success">0</h4>
+                    <h4 class="text-success">{{ received_orders_count|default:0 }}</h4>
                     {% if user.profile.seller_status == 'approved' %}
-                      <a href="{% url 'received_orders' %}" class="btn btn-outline-success btn-sm">View Orders</a>
+                      <a href="{% url 'received_orders' %}" class="btn btn-outline-success btn-sm">Manage Orders</a>
                     {% else %}
-                      <small class="text-muted">Become a seller to receive orders</small>
+                      <small class="text-muted">Become a seller</small>
                     {% endif %}
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-3">
+                <div class="card border-info" style="text-align: center">
+                  <div class="card-body py-3">
+                    <i class="fa fa-heart fa-2x text-info mb-2"></i>
+                    <h5 class="card-title">Wishlist</h5>
+                    <h4 class="text-info">{{ wishlist_count|default:0 }}</h4>
+                    <a href="#" class="btn btn-outline-info btn-sm">View Wishlist</a>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-3">
+                <div class="card border-warning" style="text-align: center">
+                  <div class="card-body py-3">
+                    <i class="fa fa-comments fa-2x text-warning mb-2"></i>
+                    <h5 class="card-title">Messages</h5>
+                    <h4 class="text-warning">{{ unread_messages_count|default:0 }}</h4>
+                    <a href="{% url 'chat_list' %}" class="btn btn-outline-warning btn-sm">Open Chat</a>
                   </div>
                 </div>
               </div>
@@ -87,73 +73,120 @@
           </div>
         </article>
 
-        <!-- SELLER WORKFLOW SECTION -->
+        <!-- NEW: Recent Activity Feed -->
+        <article class="card mb-4">
+          <header class="card-header">
+            <i class="fa fa-clock text-info"></i> <strong>Recent Activity</strong>
+          </header>
+          <div class="card-body">
+            {% if recent_activities %}
+              <div class="timeline">
+                {% for activity in recent_activities %}
+                <div class="timeline-item mb-3">
+                  <div class="d-flex">
+                    <div class="flex-shrink-0">
+                      <span class="badge badge-{{ activity.badge_color }} rounded-circle p-2">
+                        <i class="fa {{ activity.icon }}"></i>
+                      </span>
+                    </div>
+                    <div class="flex-grow-1 ml-3">
+                      <p class="mb-1">{{ activity.message }}</p>
+                      <small class="text-muted">{{ activity.created_at|timesince }} ago</small>
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="text-center py-3">
+                <i class="fa fa-history fa-3x text-muted mb-3"></i>
+                <p class="text-muted">No recent activity to show</p>
+                <a href="{% url 'products:product' %}" class="btn btn-primary">Start Shopping</a>
+              </div>
+            {% endif %}
+          </div>
+        </article>
+
+        <!-- SELLER WORKFLOW SECTION (Enhanced) -->
         {% if user.profile.seller_status == 'not_applied' %}
-          <!-- Not Applied - Show Become Seller CTA -->
+          <!-- Not Applied - Enhanced CTA -->
           <article class="card mb-4 border-primary">
             <div class="card-body text-center">
               <i class="fa fa-store fa-4x text-primary mb-3"></i>
-              <h4 class="text-primary">Start Selling on Our Platform</h4>
-              <p class="lead">Turn your products into profit. Join thousands of sellers worldwide.</p>
+              <h4 class="text-primary">🚀 Ready to Start Your Business?</h4>
+              <p class="lead">Join our marketplace and turn your passion into profit!</p>
+              
               <div class="row mt-4">
                 <div class="col-md-4">
                   <div class="mb-3">
                     <i class="fa fa-upload fa-2x text-success mb-2"></i>
                     <h6>List Products</h6>
-                    <small class="text-muted">Upload and manage your inventory</small>
+                    <small class="text-muted">Easy product management</small>
                   </div>
                 </div>
                 <div class="col-md-4">
                   <div class="mb-3">
-                    <i class="fa fa-shopping-cart fa-2x text-info mb-2"></i>
-                    <h6>Get Orders</h6>
-                    <small class="text-muted">Receive orders from customers</small>
+                    <i class="fa fa-users fa-2x text-info mb-2"></i>
+                    <h6>Reach Customers</h6>
+                    <small class="text-muted">Large customer base</small>
                   </div>
                 </div>
                 <div class="col-md-4">
                   <div class="mb-3">
                     <i class="fa fa-money-bill-wave fa-2x text-warning mb-2"></i>
-                    <h6>Earn Money</h6>
-                    <small class="text-muted">Get paid for your sales</small>
+                    <h6>Earn Revenue</h6>
+                    <small class="text-muted">Secure payments</small>
                   </div>
                 </div>
               </div>
+              
               <a href="{% url 'become_seller' %}" class="btn btn-primary btn-lg">
-                <i class="fa fa-plus"></i> Become a Seller
+                <i class="fa fa-plus"></i> Become a Seller Today
               </a>
             </div>
           </article>
 
         {% elif user.profile.seller_status == 'pending' %}
-          <!-- Pending Approval -->
+          <!-- Pending Approval - Enhanced Info -->
           <article class="card mb-4 border-warning">
             <div class="card-body text-center">
               <i class="fa fa-clock fa-3x text-warning mb-3"></i>
-              <h4 class="text-warning">Seller Application Under Review</h4>
+              <h4 class="text-warning">⏳ Application Under Review</h4>
               <p>We're reviewing your seller application. This usually takes 1-2 business days.</p>
+              
               <div class="alert alert-info">
-                <strong>Application Details:</strong><br>
-                <strong>Business Name:</strong> {{ user.profile.business_name }}<br>
-                <strong>Applied on:</strong> {{ user.profile.seller_application_date|date:"M d, Y" }}<br>
-                <strong>Status:</strong> <span class="badge badge-warning">Pending Review</span>
+                <div class="row">
+                  <div class="col-md-6">
+                    <strong>Business Name:</strong> {{ user.profile.business_name }}<br>
+                    <strong>Applied on:</strong> {{ user.profile.seller_application_date|date:"M d, Y" }}
+                  </div>
+                  <div class="col-md-6">
+                    <strong>Status:</strong> <span class="badge badge-warning">Pending Review</span><br>
+                    <strong>Application ID:</strong> #{{ user.id|stringformat:"d" }}{{ user.profile.seller_application_date|date:"md" }}
+                  </div>
+                </div>
               </div>
-              <p class="text-muted">You'll receive an email notification once your application is processed.</p>
+              
+              <p class="text-muted">
+                <i class="fa fa-envelope"></i> You'll receive an email notification once your application is processed.
+              </p>
             </div>
           </article>
 
         {% elif user.profile.seller_status == 'approved' %}
-          <!-- Approved Seller Dashboard -->
+          <!-- Approved Seller Dashboard - Enhanced -->
           <article class="card mb-4 border-success">
             <header class="card-header bg-success text-white">
               <i class="fa fa-check-circle"></i> <strong>Seller Dashboard</strong>
-              <span class="badge badge-light text-success ml-2">Verified Seller</span>
+              <span class="badge badge-light text-success ml-2">✅ Verified Seller</span>
             </header>
             <div class="card-body">
-              <!-- Seller Stats -->
+              <!-- Enhanced Seller Stats -->
               <div class="row mb-4">
                 <div class="col-md-3">
                   <div class="card text-center border-primary">
                     <div class="card-body">
+                      <i class="fa fa-box text-primary mb-2"></i>
                       <h3 class="text-primary">{{ seller_stats.total_products|default:0 }}</h3>
                       <small class="text-muted">Total Products</small>
                     </div>
@@ -162,14 +195,16 @@
                 <div class="col-md-3">
                   <div class="card text-center border-warning">
                     <div class="card-body">
+                      <i class="fa fa-clock text-warning mb-2"></i>
                       <h3 class="text-warning">{{ seller_stats.pending_products|default:0 }}</h3>
-                      <small class="text-muted">Pending Approval</small>
+                      <small class="text-muted">Pending Review</small>
                     </div>
                   </div>
                 </div>
                 <div class="col-md-3">
                   <div class="card text-center border-success">
                     <div class="card-body">
+                      <i class="fa fa-check text-success mb-2"></i>
                       <h3 class="text-success">{{ seller_stats.approved_products|default:0 }}</h3>
                       <small class="text-muted">Live Products</small>
                     </div>
@@ -178,6 +213,7 @@
                 <div class="col-md-3">
                   <div class="card text-center border-danger">
                     <div class="card-body">
+                      <i class="fa fa-times text-danger mb-2"></i>
                       <h3 class="text-danger">{{ seller_stats.rejected_products|default:0 }}</h3>
                       <small class="text-muted">Rejected</small>
                     </div>
@@ -185,29 +221,43 @@
                 </div>
               </div>
 
-              <!-- Quick Actions -->
-              <div class="row">
-                <div class="col-md-6 mb-3">
-                  <a href="{% url 'add_product' %}" class="btn btn-primary btn-block btn-lg">
-                    <i class="fa fa-plus"></i> Add New Product
+              <!-- Quick Actions Enhanced -->
+              <div class="row mb-3">
+                <div class="col-md-4 mb-2">
+                  <a href="{% url 'add_product' %}" class="btn btn-primary btn-block">
+                    <i class="fa fa-plus"></i> Add Product
                   </a>
                 </div>
-                <div class="col-md-6 mb-3">
-                  <a href="{% url 'my_selling_items' %}" class="btn btn-outline-primary btn-block btn-lg">
+                <div class="col-md-4 mb-2">
+                  <a href="{% url 'my_selling_items' %}" class="btn btn-outline-primary btn-block">
                     <i class="fa fa-list"></i> Manage Products
+                  </a>
+                </div>
+                <div class="col-md-4 mb-2">
+                  <a href="{% url 'received_orders' %}" class="btn btn-outline-success btn-block">
+                    <i class="fa fa-shopping-bag"></i> View Orders
                   </a>
                 </div>
               </div>
 
-              <!-- Business Info -->
-              <div class="card bg-light mt-3">
+              <!-- Business Info Enhanced -->
+              <div class="card bg-light">
                 <div class="card-body">
-                  <h6 class="card-title">Your Business</h6>
-                  <p><strong>Business Name:</strong> {{ user.profile.business_name }}</p>
-                  {% if user.profile.business_description %}
-                    <p><strong>Description:</strong> {{ user.profile.business_description }}</p>
-                  {% endif %}
-                  <p><strong>Seller Since:</strong> {{ user.profile.seller_approved_date|date:"M d, Y" }}</p>
+                  <h6 class="card-title">
+                    <i class="fa fa-building text-primary"></i> Your Business Details
+                  </h6>
+                  <div class="row">
+                    <div class="col-md-6">
+                      <p><strong>Business Name:</strong> {{ user.profile.business_name }}</p>
+                      <p><strong>Seller Since:</strong> {{ user.profile.seller_approved_date|date:"M d, Y" }}</p>
+                    </div>
+                    <div class="col-md-6">
+                      {% if user.profile.business_description %}
+                        <p><strong>Description:</strong> {{ user.profile.business_description|truncatewords:15 }}</p>
+                      {% endif %}
+                      <p><strong>Status:</strong> <span class="badge badge-success">Active Seller</span></p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -218,49 +268,66 @@
           <article class="card mb-4 border-danger">
             <div class="card-body text-center">
               <i class="fa fa-times-circle fa-3x text-danger mb-3"></i>
-              <h4 class="text-danger">Seller Application Rejected</h4>
-              <p>Unfortunately, your seller application was not approved at this time.</p>
+              <h4 class="text-danger">❌ Application Not Approved</h4>
+              <p>Your seller application was not approved at this time.</p>
               <div class="alert alert-danger">
                 <strong>You can reapply after 30 days.</strong><br>
-                Please review our seller guidelines and try again.
+                Please review our seller guidelines and ensure you meet all requirements.
               </div>
               <a href="#" class="btn btn-outline-danger">View Guidelines</a>
             </div>
           </article>
-
         {% endif %}
-        
 
+        <!-- Account Information Enhanced -->
         <article class="card">
           <header class="card-header">
-            <strong>Account Information</strong>
+            <i class="fa fa-user text-primary"></i> <strong>Account Information</strong>
           </header>
           <div class="card-body">
             <div class="row">
-              <div class="col-md-6">
-                <p><strong>Username:</strong> {{ user.username }}</p>
-                <p><strong>Email:</strong> {{ user.email }}</p>
-                <p><strong>Member since:</strong> {{ user.date_joined|date:"M d, Y" }}</p>
+              <div class="col-md-8">
+                <div class="row">
+                  <div class="col-md-6">
+                    <p><strong>Username:</strong> {{ user.username }}</p>
+                    <p><strong>Email:</strong> {{ user.email }}</p>
+                    <p><strong>Member since:</strong> {{ user.date_joined|date:"M d, Y" }}</p>
+                  </div>
+                  <div class="col-md-6">
+                    {% if profile.phone_number %}
+                      <p><strong>Phone:</strong> {{ profile.phone_number }}</p>
+                    {% endif %}
+                    {% if profile.city %}
+                      <p><strong>City:</strong> {{ profile.city }}</p>
+                    {% endif %}
+                    {% if profile.country %}
+                      <p><strong>Country:</strong> {{ profile.country }}</p>
+                    {% endif %}
+                  </div>
+                </div>
+                <a href="{% url 'edit_profile' %}" class="btn btn-outline-primary btn-sm">
+                  <i class="fa fa-edit"></i> Edit Profile
+                </a>
               </div>
-              <div class="col-md-6">
-                {% if profile.phone_number %}
-                  <p><strong>Phone:</strong> {{ profile.phone_number }}</p>
-                {% endif %}
-                {% if profile.city %}
-                  <p><strong>City:</strong> {{ profile.city }}</p>
-                {% endif %}
-                {% if profile.country %}
-                  <p><strong>Country:</strong> {{ profile.country }}</p>
+              <div class="col-md-4 text-center">
+                {% if profile.profile_picture %}
+                  <img src="{{ profile.profile_picture.url }}" 
+                       alt="Profile" 
+                       class="rounded-circle" 
+                       style="width: 100px; height: 100px; object-fit: cover;">
+                {% else %}
+                  <img src="{% static 'images/default/default-user.png' %}" 
+                       alt="Profile" 
+                       class="rounded-circle" 
+                       style="width: 100px; height: 100px; object-fit: cover;">
                 {% endif %}
               </div>
             </div>
-            <a href="{% url 'edit_profile' %}" class="btn btn-outline-primary btn-sm">
-              <i class="fa fa-edit"></i> Edit Profile
-            </a>
           </div>
         </article>
       </main>
     </div>
   </div>
 </section>
+
 {% endblock %}
