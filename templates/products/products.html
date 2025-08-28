@@ -253,6 +253,8 @@ const PLACEHOLDER_IMAGE = "{% static 'images/placeholder.png' %}";
                 <option value="-name" {% if request.GET.sort == "-name" %}selected{% endif %}>Name Z-A</option>
                 <option value="price" {% if request.GET.sort == "price" %}selected{% endif %}>Price Low-High</option>
                 <option value="-price" {% if request.GET.sort == "-price" %}selected{% endif %}>Price High-Low</option>
+                <option value="refurbished_first" {% if request.GET.sort == "refurbished_first" %}selected{% endif %}>🔧 Refurbished First</option>
+                <option value="discounted_first" {% if request.GET.sort == "discounted_first" %}selected{% endif %}>🔥 Discounted First</option>
               </select>
             </div>
           </div>
@@ -300,11 +302,11 @@ const PLACEHOLDER_IMAGE = "{% static 'images/placeholder.png' %}";
                   <a href="{{ product.get_url }}" class="title">{{ product.name }}</a>
                   <div class="price-wrap mt-2">
                     {% if product.is_on_sale and product.original_price %}
-                      <span class="price text-success">Rs. {{ product.get_final_price|floatformat:0 }}</span>
+                      <span class="price price-discounted">Rs. {{ product.get_final_price|floatformat:0 }}</span>
                       <del class="price-old">Rs. {{ product.original_price|floatformat:0 }}</del>
                       <small class="text-success d-block">Save Rs. {{ product.get_savings|floatformat:0 }}</small>
                     {% else %}
-                      <span class="price">Rs. {{ product.price|floatformat:0 }}</span>
+                      <span class="price price-regular">Rs. {{ product.price|floatformat:0 }}</span>
                     {% endif %}
                   </div>
                   {% if product.stock and product.stock < 6 %}
@@ -457,8 +459,15 @@ const PLACEHOLDER_IMAGE = "{% static 'images/placeholder.png' %}";
 
 .price {
   font-weight: bold;
-  color: #28a745;
   font-size: 1.1em;
+}
+
+.price-discounted {
+  color: #28a745 !important; /* Green for discounted prices */
+}
+
+.price-regular {
+  color: #007bff !important; /* Blue for regular prices */
 }
 
 .price-old {
@@ -481,7 +490,8 @@ const PLACEHOLDER_IMAGE = "{% static 'images/placeholder.png' %}";
   cursor: pointer;
   font-weight: bold;
 }
-  .color-swatch {
+
+.color-swatch {
   width: 20px;
   height: 20px;
   display: inline-block;
@@ -491,7 +501,6 @@ const PLACEHOLDER_IMAGE = "{% static 'images/placeholder.png' %}";
   box-shadow: 0 0 0 1px #ddd;
   vertical-align: middle;
 }
-
 
 .color-swatch[data-color] {
   background-color: var(--swatch-color, #cccccc);

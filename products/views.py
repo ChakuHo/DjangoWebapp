@@ -1,5 +1,5 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from django.db.models import Q
+from django.db.models import Q, Case, When, IntegerField
 from .models import Category, Product, Review, VariationOption, VariationType
 from django.http import Http404
 from cart.models import CartItem
@@ -9,7 +9,6 @@ from orders.models import Order
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
-
 
 def product(request, category_slug=None):
     """Display products with advanced filtering"""
@@ -49,10 +48,10 @@ def product(request, category_slug=None):
     # Apply price filters
     min_price = request.GET.get('min_price')
     max_price = request.GET.get('max_price')
-    
+
     if min_price:
         products = products.filter(price__gte=min_price)
-    
+
     if max_price:
         products = products.filter(price__lte=max_price)
 
@@ -73,12 +72,29 @@ def product(request, category_slug=None):
 
     # Apply sorting
     sort_by = request.GET.get('sort', '-created_at')
-    if sort_by in ['name', '-name', 'price', '-price', '-created_at']:
+    
+    if sort_by == 'refurbished_first':
+        products = products.annotate(
+            is_refurbished=Case(
+                When(product_type='refurbished', then=0),
+                default=1,
+                output_field=IntegerField()
+            )
+        ).order_by('is_refurbished', '-created_at')
+    elif sort_by == 'discounted_first':
+        products = products.annotate(
+            has_discount=Case(
+                When(is_on_sale=True, then=0),
+                default=1,
+                output_field=IntegerField()
+            )
+        ).order_by('has_discount', '-created_at')
+    elif sort_by in ['name', '-name', 'price', '-price', '-created_at']:
         products = products.order_by(sort_by)
 
     # Get variation types for filtering
     variation_types = VariationType.objects.filter(is_active=True).prefetch_related('options')
-    
+
     # Get all categories for sidebar
     cats = Category.objects.filter(status=True)
 
@@ -118,10 +134,59 @@ def sale_products(request):
         admin_approved=True,
         approval_status='approved',
         is_on_sale=True
-    ).order_by('-created_at')
+    )
 
-    # Apply same filtering as main products view
-    # ... (copy filtering logic from above)
+    # Apply same filtering and sorting as main products view
+    # Apply variation filters
+    selected_variations = []
+    variations_param = request.GET.get('variations')
+    if variations_param:
+        variation_ids = [int(x) for x in variations_param.split(',') if x.isdigit()]
+        selected_variations = variation_ids
+        
+        if variation_ids:
+            for var_id in variation_ids:
+                products = products.filter(
+                    variations__variation_option_id=var_id,
+                    variations__is_active=True
+                ).distinct()
+
+    # Apply price filters
+    min_price = request.GET.get('min_price')
+    max_price = request.GET.get('max_price')
+
+    if min_price:
+        products = products.filter(price__gte=min_price)
+
+    if max_price:
+        products = products.filter(price__lte=max_price)
+
+    # Apply condition filter
+    condition = request.GET.get('condition')
+    if condition in ['excellent', 'good', 'fair', 'poor']:
+        products = products.filter(condition=condition)
+
+    # Apply sorting
+    sort_by = request.GET.get('sort', '-created_at')
+    
+    if sort_by == 'refurbished_first':
+        products = products.annotate(
+            is_refurbished=Case(
+                When(product_type='refurbished', then=0),
+                default=1,
+                output_field=IntegerField()
+            )
+        ).order_by('is_refurbished', '-created_at')
+    elif sort_by == 'discounted_first':
+        products = products.annotate(
+            has_discount=Case(
+                When(is_on_sale=True, then=0),
+                default=1,
+                output_field=IntegerField()
+            )
+        ).order_by('has_discount', '-created_at')
+    elif sort_by in ['name', '-name', 'price', '-price', '-created_at']:
+        products = products.order_by(sort_by)
 
     cats = Category.objects.filter(status=True)
     variation_types = VariationType.objects.filter(is_active=True).prefetch_related('options')
@@ -148,6 +213,7 @@ def sale_products(request):
         'links': cats,
         'in_cart_ids': in_cart_ids,
         'variation_types': variation_types,
+        'selected_variations': selected_variations,
         'page_title': 'Sale Products',
         'is_sale_page': True,
     }
@@ -173,8 +239,62 @@ def thrift_products(request, category_slug=None):
             product_type='thrift'
         )
 
-    # Apply same filtering logic as main products view
-    # ... (copy filtering logic from main product view)
+    # Apply same filtering and sorting as main products view
+    # Apply variation filters
+    selected_variations = []
+    variations_param = request.GET.get('variations')
+    if variations_param:
+        variation_ids = [int(x) for x in variations_param.split(',') if x.isdigit()]
+        selected_variations = variation_ids
+        
+        if variation_ids:
+            for var_id in variation_ids:
+                products = products.filter(
+                    variations__variation_option_id=var_id,
+                    variations__is_active=True
+                ).distinct()
+
+    # Apply price filters
+    min_price = request.GET.get('min_price')
+    max_price = request.GET.get('max_price')
+
+    if min_price:
+        products = products.filter(price__gte=min_price)
+
+    if max_price:
+        products = products.filter(price__lte=max_price)
+
+    # Apply sale filter
+    on_sale = request.GET.get('on_sale')
+    if on_sale == 'true':
+        products = products.filter(is_on_sale=True)
+
+    # Apply condition filter
+    condition = request.GET.get('condition')
+    if condition in ['excellent', 'good', 'fair', 'poor']:
+        products = products.filter(condition=condition)
+
+    # Apply sorting
+    sort_by = request.GET.get('sort', '-created_at')
+    
+    if sort_by == 'refurbished_first':
+        products = products.annotate(
+            is_refurbished=Case(
+                When(product_type='refurbished', then=0),
+                default=1,
+                output_field=IntegerField()
+            )
+        ).order_by('is_refurbished', '-created_at')
+    elif sort_by == 'discounted_first':
+        products = products.annotate(
+            has_discount=Case(
+                When(is_on_sale=True, then=0),
+                default=1,
+                output_field=IntegerField()
+            )
+        ).order_by('has_discount', '-created_at')
+    elif sort_by in ['name', '-name', 'price', '-price', '-created_at']:
+        products = products.order_by(sort_by)
 
     cats = Category.objects.filter(status=True)
     variation_types = VariationType.objects.filter(is_active=True).prefetch_related('options')
@@ -202,6 +322,7 @@ def thrift_products(request, category_slug=None):
         'in_cart_ids': in_cart_ids,
         'current_category': category,
         'variation_types': variation_types,
+        'selected_variations': selected_variations,
         'page_title': 'Thrift Products' + (f' - {category.category_name}' if category else ''),
         'is_thrift_page': True,
     }
@@ -212,8 +333,8 @@ def product_detail(request, category_slug, product_slug):
     Display individual product details
     URL: /products/category/electronics/laptop-hp/
     """
-    import json  
-    
+    import json
+
     try:
         product = Product.objects.get(
             category__slug=category_slug, 
@@ -257,27 +378,25 @@ def product_detail(request, category_slug, product_slug):
         ).count()
 
     variation_images = {}
-    
+
     # Get all product variations for this product
     from .models import ProductVariation
     product_variations = ProductVariation.objects.filter(
         product=product, 
         is_active=True
     ).select_related('variation_option')
-    
+
     for variation in product_variations:
         option_id = str(variation.variation_option.id)
         if option_id not in variation_images:
             variation_images[option_id] = []
         
-
         if variation.image1:
             variation_images[option_id].append(variation.image1.url)
         if variation.image2:
             variation_images[option_id].append(variation.image2.url)
         if variation.image3:
             variation_images[option_id].append(variation.image3.url)
-
 
     available_variations = product.get_available_variations()
     has_variations = product.has_variations()
@@ -291,11 +410,11 @@ def product_detail(request, category_slug, product_slug):
         'user_has_reviewed': user_has_reviewed,
         'seller_product_count': seller_product_count,
         'variation_images_json': json.dumps(variation_images),
-        # ⭐ ADD THESE LINES:
         'available_variations': available_variations,
         'has_variations': has_variations,
     }
     return render(request, 'products/details.html', context)
+
 def search(request):
     """
     Enhanced search for products by keyword
@@ -394,10 +513,10 @@ def generate_search_variations(keyword):
     """
     if not keyword:
         return []
-    
+
     keyword = keyword.lower().strip()
     variations = set([keyword]) 
-    
+
     # Basic variations
     variations.add(keyword.replace(' ', ''))      # "t shirt" -> "tshirt"
     variations.add(keyword.replace('-', ''))      # "t-shirt" -> "tshirt"
@@ -406,23 +525,23 @@ def generate_search_variations(keyword):
     variations.add(keyword.replace(' ', '_'))     # "t shirt" -> "t_shirt"
     variations.add(keyword.replace('-', ' '))     # "t-shirt" -> "t shirt"
     variations.add(keyword.replace('_', ' '))     # "t_shirt" -> "t shirt"
-    
+
     # Add variations with different separators
     if ' ' in keyword:
         # If search has spaces, also try with hyphens and underscores
         variations.add(keyword.replace(' ', '-'))
         variations.add(keyword.replace(' ', '_'))
-    
+
     if '-' in keyword:
         # If search has hyphens, also try with spaces and underscores
         variations.add(keyword.replace('-', ' '))
         variations.add(keyword.replace('-', '_'))
-    
+
     if '_' in keyword:
         # If search has underscores, also try with spaces and hyphens
         variations.add(keyword.replace('_', ' '))
         variations.add(keyword.replace('_', '-'))
-    
+
     # Advanced variations for common cases
     advanced_variations = set()
     for var in variations:
@@ -437,12 +556,12 @@ def generate_search_variations(keyword):
             if len(var) > 3:
                 advanced_variations.add(var[:2] + ' ' + var[2:])
                 advanced_variations.add(var[:2] + '-' + var[2:])
-    
+
     variations.update(advanced_variations)
-    
+
     # Remove empty strings
     variations = {v for v in variations if v.strip()}
-    
+
     return list(variations)
 
 def products_by_category(request, slug):
@@ -459,14 +578,11 @@ def product_list(request):
     """
     return product(request)
 
-
-
 def user_can_review_product(user, product):
     """Check if user can review this product (must have completed order)"""
     if not user.is_authenticated:
         return False
 
-  
     completed_orders = Order.objects.filter(
         user=user,
         items__product=product
@@ -556,7 +672,6 @@ def submit_review(request, product_id):
             
             completed_order = get_user_completed_order_for_product(request.user, product)
             
-
             review = Review.objects.create(
                 product=product,
                 user=request.user,

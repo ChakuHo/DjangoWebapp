@@ -23,6 +23,23 @@
                     <i class="fa fa-search-plus"></i>
                   </button>
                 </div>
+                
+                <!-- Product badges on image -->
+                <div class="product-badges-image">
+                  {% if product.is_on_sale %}
+                    <span class="badge badge-danger sale-badge">
+                      {{ product.discount_percentage }}% OFF
+                    </span>
+                  {% endif %}
+                  {% if product.product_type == 'thrift' %}
+                    <span class="badge badge-success thrift-badge">♻️ THRIFT</span>
+                  {% elif product.product_type == 'refurbished' %}
+                    <span class="badge badge-info refurbished-badge">🔧 REFURBISHED</span>
+                  {% endif %}
+                  {% if product.condition %}
+                    <span class="badge badge-secondary condition-badge">{{ product.get_condition_display }}</span>
+                  {% endif %}
+                </div>
               </div>
             </div>
 
@@ -43,8 +60,46 @@
           <article class="content-body">
             <h2 class="title">{{ product.name }}</h2>
 
+            <!-- Enhanced Price Section -->
             <div class="mb-3">
-              <var class="price h4" id="product-price">Rs.{{ product.price }}</var>
+              <div class="price-section">
+                {% if product.is_on_sale and product.original_price %}
+                  <var class="price h4 price-discounted" id="product-price">Rs. {{ product.get_final_price|floatformat:0 }}</var>
+                  <del class="price-old h5 text-muted ml-2">Rs. {{ product.original_price|floatformat:0 }}</del>
+                  <div class="savings-info mt-2">
+                    <span class="badge badge-success savings-badge">
+                      <i class="fa fa-tag"></i> Save Rs. {{ product.get_savings|floatformat:0 }} ({{ product.discount_percentage }}% OFF)
+                    </span>
+                  </div>
+                {% else %}
+                  <var class="price h4 price-regular" id="product-price">Rs. {{ product.price|floatformat:0 }}</var>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Enhanced Product Type and Condition Badges -->
+            <div class="product-badges-detail mb-3">
+              {% if product.product_type == 'thrift' %}
+                <span class="badge badge-success badge-enhanced mr-2">
+                  <i class="fa fa-recycle"></i> ♻️ THRIFT PRODUCT
+                </span>
+              {% elif product.product_type == 'refurbished' %}
+                <span class="badge badge-info badge-enhanced mr-2">
+                  <i class="fa fa-tools"></i> 🔧 REFURBISHED
+                </span>
+              {% endif %}
+              
+              {% if product.condition %}
+                <span class="badge badge-secondary badge-enhanced mr-2">
+                  <i class="fa fa-star"></i> Condition: {{ product.get_condition_display }}
+                </span>
+              {% endif %}
+              
+              {% if product.product_type == 'thrift' and product.years_used %}
+                <span class="badge badge-light badge-enhanced">
+                  <i class="fa fa-calendar"></i> Used for {{ product.years_used }} year{{ product.years_used|pluralize }}
+                </span>
+              {% endif %}
             </div>
 
             <p>{{ product.description }}</p>
@@ -411,7 +466,7 @@
 <!-- DJANGO DATA FOR JAVASCRIPT -->
 <script id="django-data" type="application/json">
 {
-  "basePrice": {{ product.price }},
+  "basePrice": {% if product.is_on_sale and product.get_final_price %}{{ product.get_final_price }}{% else %}{{ product.price }}{% endif %},
   "productId": {{ product.id }},
   "variationImages": {{ variation_images_json|safe }},
   "defaultImage": "{% if product.image %}{{ product.image.url }}{% endif %}"
@@ -419,7 +474,133 @@
 </script>
 
 <style>
-/* =============== IMAGE GALLERY STYLES =============== */
+/* =============== ENHANCED PRODUCT BADGES ON IMAGE =============== */
+.product-badges-image {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  z-index: 10;
+}
+
+.product-badges-image .badge {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 6px 12px;
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.sale-badge {
+  background: linear-gradient(45deg, #ff6b6b, #ff5722) !important;
+  animation: pulse 2s infinite;
+  color: white !important;
+}
+
+.thrift-badge {
+  background: linear-gradient(45deg, #4caf50, #2e7d32) !important;
+  color: white !important;
+}
+
+.refurbished-badge {
+  background: linear-gradient(45deg, #2196f3, #1976d2) !important;
+  color: white !important;
+}
+
+.condition-badge {
+  background: linear-gradient(45deg, #6c757d, #495057) !important;
+  color: white !important;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* =============== ENHANCED PRICE SECTION =============== */
+.price-section {
+  padding: 20px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 12px;
+  border-left: 4px solid #28a745;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.price-section:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+}
+
+.price-discounted {
+  color: #28a745 !important; /* Green for discounted prices */
+}
+
+.price-regular {
+  color: #007bff !important; /* Blue for regular prices */
+}
+
+.price-old {
+  text-decoration: line-through;
+}
+
+.savings-badge {
+  font-size: 0.85rem;
+  padding: 8px 15px;
+  border-radius: 20px;
+  background: linear-gradient(45deg, #28a745, #20c997) !important;
+  animation: fadeInBounce 0.5s ease-out;
+}
+
+@keyframes fadeInBounce {
+  0% { opacity: 0; transform: scale(0.8); }
+  50% { transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* =============== ENHANCED PRODUCT TYPE BADGES =============== */
+.product-badges-detail .badge-enhanced {
+  font-size: 0.85rem;
+  padding: 10px 15px;
+  border-radius: 20px;
+  margin-bottom: 8px;
+  display: inline-block;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  animation: slideInFromLeft 0.6s ease-out;
+}
+
+.product-badges-detail .badge-enhanced:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.product-badges-detail .badge-success {
+  background: linear-gradient(45deg, #4caf50, #2e7d32) !important;
+}
+
+.product-badges-detail .badge-info {
+  background: linear-gradient(45deg, #2196f3, #1976d2) !important;
+}
+
+.product-badges-detail .badge-secondary {
+  background: linear-gradient(45deg, #6c757d, #495057) !important;
+}
+
+.product-badges-detail .badge-light {
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef) !important;
+  color: #6c757d !important;
+  border: 2px solid #dee2e6;
+}
+
+@keyframes slideInFromLeft {
+  0% { opacity: 0; transform: translateX(-30px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+/* =============== KEEP EXISTING IMAGE GALLERY STYLES =============== */
 .gallery-wrap {
   position: sticky;
   top: 20px;
@@ -541,7 +722,7 @@
   background: rgba(0, 0, 0, 1);
 }
 
-/* =============== VARIATION STYLES =============== */
+/* =============== KEEP EXISTING COLOR AND SIZE VARIATION STYLES =============== */
 .color-option {
   display: flex;
   flex-direction: column;
@@ -606,7 +787,7 @@
   box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
 }
 
-/* =============== SELLER INFORMATION STYLES =============== */
+/* =============== KEEP EXISTING SELLER STYLES =============== */
 .seller-info-section {
   margin-top: 25px;
 }
@@ -671,7 +852,7 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-/* =============== STAR RATING STYLES =============== */
+/* =============== KEEP EXISTING STAR RATING STYLES =============== */
 .rating-stars {
   font-size: 28px;
   margin-bottom: 15px;
@@ -732,6 +913,17 @@
   .gallery-wrap {
     position: relative;
   }
+  
+  .product-badges-image {
+    top: 10px;
+    left: 10px;
+  }
+  
+  .product-badges-image .badge {
+    font-size: 10px;
+    padding: 4px 8px;
+    margin-bottom: 5px;
+  }
 }
 
 @media (max-width: 576px) {
@@ -746,6 +938,12 @@
   .seller-actions {
     text-align: center;
     margin-top: 10px;
+  }
+  
+  .product-badges-detail .badge-enhanced {
+    font-size: 0.75rem;
+    padding: 8px 12px;
+    margin-bottom: 6px;
   }
 }
 </style>
@@ -873,14 +1071,17 @@ function updatePrice() {
     });
   }
 
-  const newPrice = productData.basePrice + totalAdjustment;
-  const priceElement = document.getElementById("product-price");
-  if (priceElement) {
-    priceElement.style.color = "#007bff";
-    priceElement.textContent = "Rs." + newPrice.toFixed(2);
-    setTimeout(function () {
-      priceElement.style.color = "";
-    }, 500);
+  // Only update price if there are actual variations selected
+  if (totalAdjustment !== 0) {
+    const newPrice = productData.basePrice + totalAdjustment;
+    const priceElement = document.getElementById("product-price");
+    if (priceElement) {
+      priceElement.style.color = "#007bff";
+      priceElement.textContent = "Rs." + newPrice.toFixed(0);
+      setTimeout(function () {
+        priceElement.style.color = "";
+      }, 500);
+    }
   }
 }
 
@@ -974,8 +1175,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
   const variationForm = document.getElementById("variation-form");
   if (variationForm) {
-    updateVariation();
-
+    // REMOVED updateVariation() call from here to prevent overriding Django price
+    
     const allInputs = variationForm.querySelectorAll("input, select");
     allInputs.forEach(function (input) {
       input.addEventListener("change", updateVariation);

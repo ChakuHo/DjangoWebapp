@@ -2,11 +2,11 @@
 
 <div
   id="siteCarousel"
-  class="carousel slide mb-4"
+  class="carousel slide mb-4 modern-carousel"
   data-ride="carousel"
-  data-interval="10000"
+  data-interval="8000"
 >
-  <ol class="carousel-indicators">
+  <ol class="carousel-indicators modern-indicators">
     {% for b in banners %}
     <li
       data-target="#siteCarousel"
@@ -15,82 +15,351 @@
     ></li>
     {% endfor %}
   </ol>
-  <div class="carousel-inner rounded" style="overflow: hidden">
+  <div class="carousel-inner rounded-lg" style="overflow: hidden">
     {% for b in banners %}
     <div class="carousel-item {% if forloop.first %}active{% endif %}">
       {% with href=b.target_href %} {% if href %}
-      <a
-        href="{{ href }}"
-      >
+      <a href="{{ href }}" class="carousel-link">
         {% if b.image %}
         <img
           src="{{ b.image.url }}"
-          class="d-block w-100 img-fluid"
+          class="d-block w-100 img-fluid carousel-image"
           alt="{{ b.alt_text|default:b.title }}"
           loading="lazy"
-          style="height: 300px !important; object-fit: cover; object-position: center;"
         />
         {% else %}
         <img
           src="{% static 'images/banners/placeholder.jpg' %}"
-          class="d-block w-100 img-fluid"
+          class="d-block w-100 img-fluid carousel-image"
           alt="Banner"
           loading="lazy"
         />
         {% endif %}
+        <div class="carousel-overlay"></div>
       </a>
-      {% else %} {% if b.image %}
-      <img
-        src="{{ b.image.url }}"
-        class="d-block w-100 img-fluid"
-        alt="{{ b.alt_text|default:b.title }}"
-        loading="lazy"
-      />
-      {% else %}
-      <img
-        src="{% static 'images/banners/placeholder.jpg' %}"
-        class="d-block w-100 img-fluid"
-        alt="Banner"
-        loading="lazy"
-      />
-      {% endif %} {% endif %} {% endwith %} {% if b.title or b.subtitle %}
-      <div class="carousel-caption d-none d-md-block">
+      {% else %} 
+      <div class="carousel-link">
+        {% if b.image %}
+        <img
+          src="{{ b.image.url }}"
+          class="d-block w-100 img-fluid carousel-image"
+          alt="{{ b.alt_text|default:b.title }}"
+          loading="lazy"
+        />
+        {% else %}
+        <img
+          src="{% static 'images/banners/placeholder.jpg' %}"
+          class="d-block w-100 img-fluid carousel-image"
+          alt="Banner"
+          loading="lazy"
+        />
+        {% endif %}
+        <div class="carousel-overlay"></div>
+      </div>
+      {% endif %} {% endwith %} 
+      
+      {% if b.title or b.subtitle %}
+      <div class="carousel-caption modern-caption">
         {% if b.title %}
-        <h5>{{ b.title }}</h5>
-        {% endif %} {% if b.subtitle %}
-        <p>{{ b.subtitle }}</p>
+        <h3 class="carousel-title">{{ b.title }}</h3>
+        {% endif %} 
+        {% if b.subtitle %}
+        <p class="carousel-subtitle">{{ b.subtitle }}</p>
+        {% endif %}
+        {% if href %}
+        <a href="{{ href }}" class="btn btn-primary btn-sm carousel-btn">
+          Shop Now <i class="fa fa-arrow-right ml-1"></i>
+        </a>
         {% endif %}
       </div>
       {% endif %}
     </div>
     {% endfor %}
   </div>
-  <a
-    class="carousel-control-prev"
-    href="#siteCarousel"
-    role="button"
-    data-slide="prev"
-  >
-    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+  
+  <a class="carousel-control-prev modern-control" href="#siteCarousel" role="button" data-slide="prev">
+    <span class="carousel-control-prev-icon modern-icon" aria-hidden="true">
+      <i class="fa fa-chevron-left"></i>
+    </span>
     <span class="sr-only">Previous</span>
   </a>
-  <a
-    class="carousel-control-next"
-    href="#siteCarousel"
-    role="button"
-    data-slide="next"
-  >
-    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+  <a class="carousel-control-next modern-control" href="#siteCarousel" role="button" data-slide="next">
+    <span class="carousel-control-next-icon modern-icon" aria-hidden="true">
+      <i class="fa fa-chevron-right"></i>
+    </span>
     <span class="sr-only">Next</span>
   </a>
 </div>
+
+<style>
+/* Modern Carousel Styling */
+.modern-carousel {
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.carousel-image {
+  height: 400px !important;
+  object-fit: cover;
+  object-position: center;
+  transition: transform 0.5s ease;
+}
+
+.carousel-item:hover .carousel-image {
+  transform: scale(1.05);
+}
+
+.carousel-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.1));
+  z-index: 1;
+}
+
+.modern-caption {
+  position: absolute;
+  bottom: 30px;
+  left: 30px;
+  right: 30px;
+  z-index: 2;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(15px);
+  padding: 20px 25px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  animation: slideInUp 0.8s ease-out;
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.carousel-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 8px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.carousel-subtitle {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 15px;
+  line-height: 1.4;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.carousel-btn {
+  background: linear-gradient(45deg, #007bff, #0056b3);
+  border: none;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: 500;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  transition: all 0.3s ease;
+}
+
+.carousel-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(0, 123, 255, 0.4);
+}
+
+.modern-indicators {
+  bottom: 20px;
+  z-index: 3;
+}
+
+.modern-indicators li {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin: 0 4px;
+  background: rgba(255, 255, 255, 0.4);
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  transition: all 0.3s ease;
+}
+
+.modern-indicators li.active {
+  background: #007bff;
+  border-color: #007bff;
+  transform: scale(1.2);
+}
+
+.modern-control {
+  z-index: 3;
+  width: 50px;
+  height: 50px;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  top: 50%;
+  transform: translateY(-50%);
+  transition: all 0.3s ease;
+}
+
+.modern-control:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.carousel-control-prev.modern-control {
+  left: 20px;
+}
+
+.carousel-control-next.modern-control {
+  right: 20px;
+}
+
+.modern-icon {
+  background: none;
+  width: auto;
+  height: auto;
+}
+
+.modern-icon i {
+  font-size: 16px;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.carousel-link {
+  position: relative;
+  display: block;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+  .carousel-image {
+    height: 250px !important;
+  }
+  
+  .modern-caption {
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    padding: 15px 20px;
+  }
+  
+  .carousel-title {
+    font-size: 1.2rem;
+  }
+  
+  .carousel-subtitle {
+    font-size: 0.8rem;
+  }
+  
+  .modern-control {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .modern-icon i {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 576px) {
+  .carousel-image {
+    height: 200px !important;
+  }
+  
+  .modern-caption {
+    bottom: 15px;
+    left: 15px;
+    right: 15px;
+    padding: 12px 15px;
+  }
+  
+  .carousel-title {
+    font-size: 1rem;
+  }
+  
+  .carousel-subtitle {
+    font-size: 0.75rem;
+    margin-bottom: 10px;
+  }
+  
+  .carousel-btn {
+    padding: 6px 12px;
+    font-size: 0.75rem;
+  }
+}
+</style>
+
 {% else %}
 <div class="intro-banner-wrap mb-4">
-  <img
-    src="{% static 'banners/homepage.jpg' %}"
-    class="img-fluid rounded"
-    alt="Banner"
-  />
-  <!-- FIX: static path -->
+  <div class="modern-banner">
+    <img
+      src="{% static 'images/banners/homepage.jpg' %}"
+      class="img-fluid rounded-lg banner-image"
+      alt="Welcome Banner"
+    />
+    <div class="banner-overlay">
+      <div class="banner-content">
+        <h2>Welcome to Our Store</h2>
+        <p>Discover amazing products at great prices</p>
+        <a href="{% url 'products:product' %}" class="btn btn-primary">Shop Now</a>
+      </div>
+    </div>
+  </div>
 </div>
+
+<style>
+.modern-banner {
+  position: relative;
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.banner-image {
+  width: 100%;
+  height: 300px;
+  object-fit: cover;
+}
+
+.banner-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.2));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.banner-content {
+  text-align: center;
+  color: white;
+}
+
+.banner-content h2 {
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.banner-content p {
+  font-size: 1rem;
+  margin-bottom: 1.5rem;
+}
+</style>
 {% endif %}

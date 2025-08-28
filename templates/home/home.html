@@ -1,4 +1,5 @@
 {% extends "master/base.html" %} {% load static %} {% block content %}
+
 <!-- ========================= SECTION MAIN ========================= -->
 <section class="section-intro padding-y-sm">
   <div class="container">
@@ -11,75 +12,305 @@
 <section class="section-name padding-y-sm">
   <div class="container">
     <header class="section-heading">
-      <a href="/store/" class="btn btn-outline-primary float-right">See all</a>
+      <a href="{% url 'products:product' %}" class="btn btn-outline-primary float-right see-all-btn">See all</a>
       <h3 class="section-title">Popular Products</h3>
     </header>
     <!-- sect-heading -->
 
-    <!-- <div class="row">
-      {% for product in products %}
-      <div class="col-md-3">
-        <div class="card card-product-grid">
-          <a
-            href="/store/category/{{ product.category.name|slugify }}/{{ product.slug }}/"
-            class="img-wrap"
-          >
-            {% if product.image %}
-            <img src="{{ product.image.url }}" />
-            {% else %}
-            <img src="https://via.placeholder.com/300x300?text=No+Image" />
-            {% endif %}
-          </a>
-          <figcaption class="info-wrap">
-            <a
-              href="/store/category/{{ product.category.name|slugify }}/{{ product.slug }}/"
-              class="title"
-            >
-              {{ product.name }}
-            </a>
-            <div class="price mt-1">Rs. {{ product.price }}</div>
-          </figcaption>
-        </div>
-      </div>
-      {% empty %}
-      <div class="col-12">
-        <p>No products found.</p>
-      </div>
-      {% endfor %}
-    </div> -->
-    <!-- row.// -->
-
     <div class="row">
       {% for product in products %}
-      <div class="col-md-3">
+      <div class="col-md-3 mb-4">
         <div class="card card-product-grid">
           {% if product.get_url %}
           <a href="{{ product.get_url }}" class="img-wrap">
             {% else %}
             <a href="#" class="img-wrap disabled">
-              {% endif %} {% if product.image %}
+              {% endif %} 
+              
+              {% if product.image %}
               <img src="{{ product.image.url }}" />
               {% else %}
               <img src="https://via.placeholder.com/300x300?text=No+Image" />
               {% endif %}
+              
+              <!-- Product badges -->
+              <div class="product-badges">
+                {% if product.is_on_sale %}
+                  <span class="badge badge-danger sale-badge">
+                    {{ product.discount_percentage|default:"SALE" }}% OFF
+                  </span>
+                {% endif %}
+                {% if product.product_type == 'thrift' %}
+                  <span class="badge badge-success thrift-badge">♻️ THRIFT</span>
+                {% elif product.product_type == 'refurbished' %}
+                  <span class="badge badge-info refurbished-badge">🔧 REFURBISHED</span>
+                {% endif %}
+                {% if product.condition %}
+                  <span class="badge badge-secondary condition-badge">{{ product.get_condition_display|default:product.condition }}</span>
+                {% endif %}
+              </div>
             </a>
+            
             <figcaption class="info-wrap">
-              <a href="{{ product.get_url }}" class="title">
-                {{ product.name }}
+              <div class="fix-height">
+                <a href="{{ product.get_url }}" class="title">
+                  {{ product.name }}
+                </a>
+                <div class="price-wrap mt-2">
+                  {% if product.is_on_sale and product.original_price %}
+                    <span class="price price-discounted">Rs. {{ product.get_final_price|floatformat:0 }}</span>
+                    <del class="price-old">Rs. {{ product.original_price|floatformat:0 }}</del>
+                    <small class="text-success d-block">Save Rs. {{ product.get_savings|floatformat:0 }}</small>
+                  {% else %}
+                    <span class="price price-regular">Rs. {{ product.price|floatformat:0 }}</span>
+                  {% endif %}
+                </div>
+                
+                {% if product.stock and product.stock < 6 %}
+                <p class="text-warning small mb-1">
+                  Only {{ product.stock }} left in stock!
+                </p>
+                {% endif %}
+                
+                {% if product.product_type == 'thrift' and product.years_used %}
+                <p class="text-muted small mb-1">
+                  Used for {{ product.years_used }} year{{ product.years_used|pluralize }}
+                </p>
+                {% endif %}
+              </div>
+              
+              {% if product.stock <= 0 %}
+              <button class="btn btn-block btn-danger" disabled>
+                Out of Stock
+              </button>
+              {% else %}
+              <a href="{{ product.get_url }}" class="btn btn-block btn-primary btn-modern">
+                View Details
               </a>
-              <div class="price mt-1">Rs. {{ product.price }}</div>
+              {% endif %}
             </figcaption>
-          </a>
         </div>
       </div>
       {% empty %}
       <div class="col-12">
-        <p>No products found.</p>
+        <div class="text-center py-5">
+          <i class="fa fa-search fa-3x text-muted mb-3"></i>
+          <h4>No products found.</h4>
+          <p class="text-muted">Check back later for amazing deals!</p>
+        </div>
       </div>
       {% endfor %}
     </div>
   </div>
-
   <!-- container // -->
 </section>
+
+<style>
+/* Enhanced Home Page Styling */
+.card-product-grid {
+  transition: all 0.3s ease;
+  border: none;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+.card-product-grid:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.img-wrap {
+  height: 220px;
+  overflow: hidden;
+  position: relative;
+  background: #f8f9fa;
+}
+
+.img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.card-product-grid:hover .img-wrap img {
+  transform: scale(1.1);
+}
+
+.product-badges {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 5;
+}
+
+.product-badges .badge {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 4px 8px;
+  border-radius: 15px;
+}
+
+.sale-badge {
+  background: linear-gradient(45deg, #ff6b6b, #ff5722) !important;
+  animation: pulse 2s infinite;
+  color: white !important;
+}
+
+.thrift-badge {
+  background: linear-gradient(45deg, #4caf50, #2e7d32) !important;
+  color: white !important;
+}
+
+.refurbished-badge {
+  background: linear-gradient(45deg, #2196f3, #1976d2) !important;
+  color: white !important;
+}
+
+.condition-badge {
+  background: #6c757d !important;
+  color: white !important;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.info-wrap {
+  padding: 1.2rem;
+}
+
+.fix-height {
+  min-height: 120px;
+}
+
+.title {
+  color: #333;
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 1rem;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.title:hover {
+  color: #007bff;
+  text-decoration: none;
+}
+
+/* Updated Price Colors */
+.price {
+  font-weight: bold;
+  font-size: 1.2em;
+}
+
+.price-discounted {
+  color: #28a745 !important; /* Green for discounted prices */
+}
+
+.price-regular {
+  color: #007bff !important; /* Blue for regular prices */
+}
+
+.price-old {
+  color: #6c757d;
+  font-size: 0.9em;
+  text-decoration: line-through;
+}
+
+.btn-modern {
+  border-radius: 8px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+}
+
+.btn-modern:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+/* Fix for See All button */
+.see-all-btn {
+  position: relative;
+  z-index: 10;
+  margin-bottom: 10px;
+  font-weight: 600;
+  border-width: 2px;
+  padding: 8px 20px;
+  transition: all 0.3s ease;
+}
+
+.see-all-btn:hover {
+  background-color: #007bff;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+.section-heading {
+  position: relative;
+  margin-bottom: 2rem;
+  overflow: visible;
+}
+
+.section-title {
+  font-weight: 700;
+  color: #333;
+  position: relative;
+  padding-bottom: 15px;
+}
+
+.section-title:after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 50px;
+  height: 3px;
+  background: linear-gradient(45deg, #007bff, #0056b3);
+  border-radius: 2px;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+  .col-md-3 {
+    margin-bottom: 1.5rem;
+  }
+  
+  .img-wrap {
+    height: 200px;
+  }
+  
+  .fix-height {
+    min-height: 100px;
+  }
+}
+
+@media (max-width: 576px) {
+  .card-product-grid {
+    margin-bottom: 1rem;
+  }
+  
+  .img-wrap {
+    height: 180px;
+  }
+  
+  .product-badges .badge {
+    font-size: 10px;
+    padding: 3px 6px;
+  }
+}
+</style>
+
 {% endblock %}
