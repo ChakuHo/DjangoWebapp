@@ -2,7 +2,7 @@
 
 <section class="section-content padding-y">
   <div class="container">
-    <div class="card mx-auto" style="max-width: 600px;">
+    <div class="card mx-auto" style="max-width: 700px;">
       <div class="card-header text-center">
         <h4><i class="fa fa-store text-primary"></i> Become a Seller</h4>
         <p class="text-muted">Join thousands of sellers on our platform</p>
@@ -22,16 +22,16 @@
             <small class="text-muted">Reach thousands of customers</small>
           </div>
           <div class="col-md-4 text-center mb-3">
-            <i class="fa fa-shield-alt fa-2x text-primary mb-2"></i>
-            <h6>Secure Payments</h6>
-            <small class="text-muted">Safe and reliable transactions</small>
+            <i class="fa fa-qrcode fa-2x text-primary mb-2"></i>
+            <h6>QR Payments</h6>
+            <small class="text-muted">Get paid via QR codes</small>
           </div>
         </div>
 
         <hr>
 
         <!-- Application Form -->
-        <form method="POST" action="{% url 'become_seller' %}">
+        <form method="POST" action="{% url 'become_seller' %}" enctype="multipart/form-data" id="seller-form">
           {% csrf_token %}
           
           {% if messages %}
@@ -45,49 +45,135 @@
             {% endfor %}
           {% endif %}
 
-          <div class="form-group">
-            <label for="business_name">Business Name *</label>
-            <input 
-              type="text" 
-              name="business_name" 
-              id="business_name"
-              class="form-control" 
-              placeholder="Enter your business name"
-              required
-              maxlength="100"
-            >
-            <small class="form-text text-muted">This will be displayed to customers</small>
-          </div>
+          <!-- Business Information -->
+          <div class="card mb-4">
+            <div class="card-header">
+              <h6 class="mb-0"><i class="fa fa-business-time text-primary"></i> Business Information</h6>
+            </div>
+            <div class="card-body">
+              <div class="form-group">
+                <label for="business_name">Business Name *</label>
+                <input 
+                  type="text" 
+                  name="business_name" 
+                  id="business_name"
+                  class="form-control" 
+                  placeholder="Enter your business name"
+                  required
+                  maxlength="100"
+                >
+                <small class="form-text text-muted">This will be displayed to customers</small>
+              </div>
 
-          <div class="form-group">
-            <label for="business_description">Business Description</label>
-            <textarea 
-              name="business_description" 
-              id="business_description"
-              class="form-control" 
-              rows="4"
-              placeholder="Tell us about your business (optional)"
-              maxlength="500"
-            ></textarea>
-            <small class="form-text text-muted">Describe what you sell (optional but recommended)</small>
-          </div>
-
-          <!-- Terms and Conditions -->
-          <div class="form-group">
-            <div class="form-check">
-              <input type="checkbox" class="form-check-input" id="agree_terms" required>
-              <label class="form-check-label" for="agree_terms">
-                I agree to the <a href="#" target="_blank">Terms and Conditions</a> and <a href="#" target="_blank">Seller Guidelines</a> *
-              </label>
+              <div class="form-group">
+                <label for="business_description">Business Description</label>
+                <textarea 
+                  name="business_description" 
+                  id="business_description"
+                  class="form-control" 
+                  rows="4"
+                  placeholder="Tell us about your business (optional)"
+                  maxlength="500"
+                ></textarea>
+                <small class="form-text text-muted">Describe what you sell (optional but recommended)</small>
+              </div>
             </div>
           </div>
 
-          <div class="form-group">
-            <div class="form-check">
-              <input type="checkbox" class="form-check-input" id="authentic_products">
-              <label class="form-check-label" for="authentic_products">
-                I confirm that I will only sell authentic, legal products
-              </label>
+          <!-- Payment QR Code Section -->
+          <div class="card mb-4">
+            <div class="card-header">
+              <h6 class="mb-0"><i class="fa fa-qrcode text-success"></i> Payment QR Code *</h6>
+              <small class="text-muted">Upload your QR code so customers can pay you directly</small>
+            </div>
+            <div class="card-body">
+              <div class="alert alert-info">
+                <i class="fa fa-info-circle"></i>
+                <strong>Required:</strong> You must upload a QR code to receive payments. This can be from eSewa, Khalti, your bank, or any other digital payment service.
+              </div>
+
+              <div class="form-group">
+                <label for="qr_payment_method">Payment Method *</label>
+                <select name="qr_payment_method" id="qr_payment_method" class="form-control" required>
+                  <option value="">Select payment method</option>
+                  <option value="esewa">📱 eSewa</option>
+                  <option value="bank">🏦 Bank QR (NPayQ, ConnectIPS)</option>
+                  <option value="fonepay">📞 FonePay</option>
+                  <option value="connectips">🔗 ConnectIPS</option>
+                  <option value="other">🔄 Other</option>
+                </select>
+                <small class="form-text text-muted">Which payment service is this QR code from?</small>
+              </div>
+
+              <div class="form-group">
+                <label for="qr_payment_info">Payment Info *</label>
+                <input 
+                  type="text" 
+                  name="qr_payment_info" 
+                  id="qr_payment_info"
+                  class="form-control" 
+                  placeholder="e.g., 9812345678 or Your Name"
+                  required
+                  maxlength="100"
+                >
+                <small class="form-text text-muted">Your phone number, account name, or other identifier for this payment method</small>
+              </div>
+
+              <div class="form-group">
+                <label for="payment_qr_code">Upload QR Code Image *</label>
+                <input 
+                  type="file" 
+                  name="payment_qr_code" 
+                  id="payment_qr_code"
+                  class="form-control-file" 
+                  accept="image/*"
+                  required
+                >
+                <small class="form-text text-muted">
+                  <i class="fa fa-camera"></i> Upload a clear image of your QR code. Supported formats: JPG, PNG, GIF (Max: 5MB)
+                </small>
+              </div>
+
+              <!-- QR Code Preview -->
+              <div id="qr-preview" class="text-center mt-3" style="display: none;">
+                <h6>QR Code Preview:</h6>
+                <img id="qr-preview-img" src="" alt="QR Code Preview" class="img-thumbnail" style="max-width: 200px;">
+              </div>
+            </div>
+          </div>
+
+          <!-- Terms and Conditions -->
+          <div class="card mb-4">
+            <div class="card-header">
+              <h6 class="mb-0"><i class="fa fa-file-contract text-warning"></i> Terms & Conditions</h6>
+            </div>
+            <div class="card-body">
+              <div class="form-group">
+                <div class="form-check">
+                  <input type="checkbox" class="form-check-input" id="agree_terms" required>
+                  <label class="form-check-label" for="agree_terms">
+                    I agree to the <a href="#" target="_blank">Terms and Conditions</a> and <a href="#" target="_blank">Seller Guidelines</a> *
+                  </label>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <div class="form-check">
+                  <input type="checkbox" class="form-check-input" id="authentic_products" required>
+                  <label class="form-check-label" for="authentic_products">
+                    I confirm that I will only sell authentic, legal products *
+                  </label>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <div class="form-check">
+                  <input type="checkbox" class="form-check-input" id="qr_responsibility" required>
+                  <label class="form-check-label" for="qr_responsibility">
+                    I understand that I am responsible for maintaining my QR code and payment account *
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -100,7 +186,8 @@
 
           <div class="text-center">
             <small class="text-muted">
-              Applications are typically reviewed within 1-2 business days
+              Applications are typically reviewed within 1-2 business days<br>
+              Make sure your QR code is clear and valid for faster approval
             </small>
           </div>
         </form>
@@ -115,5 +202,112 @@
     </div>
   </div>
 </section>
+
+<style>
+.card-header h6 {
+  color: #495057;
+  font-weight: 600;
+}
+
+#qr-preview-img {
+  border: 2px solid #28a745;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.form-check-label {
+  cursor: pointer;
+}
+
+.alert-info {
+  border-left: 4px solid #17a2b8;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const qrFileInput = document.getElementById('payment_qr_code');
+    const qrPreview = document.getElementById('qr-preview');
+    const qrPreviewImg = document.getElementById('qr-preview-img');
+    const form = document.getElementById('seller-form');
+    
+    // QR Code preview
+    qrFileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            // Validate file size (5MB max)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('File size must be less than 5MB');
+                this.value = '';
+                qrPreview.style.display = 'none';
+                return;
+            }
+            
+            // Validate file type
+            if (!file.type.match('image.*')) {
+                alert('Please select an image file');
+                this.value = '';
+                qrPreview.style.display = 'none';
+                return;
+            }
+            
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                qrPreviewImg.src = e.target.result;
+                qrPreview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        } else {
+            qrPreview.style.display = 'none';
+        }
+    });
+    
+    // Form validation
+    form.addEventListener('submit', function(e) {
+        const requiredFields = [
+            'business_name',
+            'qr_payment_method', 
+            'qr_payment_info',
+            'payment_qr_code'
+        ];
+        
+        let isValid = true;
+        
+        requiredFields.forEach(fieldName => {
+            const field = document.querySelector(`[name="${fieldName}"]`);
+            if (!field.value.trim()) {
+                isValid = false;
+                field.classList.add('is-invalid');
+                field.focus();
+            } else {
+                field.classList.remove('is-invalid');
+            }
+        });
+        
+        // Check required checkboxes
+        const requiredCheckboxes = ['agree_terms', 'authentic_products', 'qr_responsibility'];
+        requiredCheckboxes.forEach(checkboxId => {
+            const checkbox = document.getElementById(checkboxId);
+            if (!checkbox.checked) {
+                isValid = false;
+                alert('Please accept all terms and conditions');
+                checkbox.focus();
+            }
+        });
+        
+        if (!isValid) {
+            e.preventDefault();
+            alert('Please fill in all required fields and accept terms');
+            return;
+        }
+        
+        // Show loading state
+        const submitBtn = this.querySelector('button[type="submit"]');
+        submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Submitting...';
+        submitBtn.disabled = true;
+    });
+});
+</script>
 
 {% endblock %}

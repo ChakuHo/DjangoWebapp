@@ -40,7 +40,7 @@
                     <h5 class="card-title">Received Orders</h5>
                     <h4 class="text-success">{{ received_orders_count|default:0 }}</h4>
                     {% if user.profile.seller_status == 'approved' %}
-                      <a href="{% url 'received_orders' %}" class="btn btn-outline-success btn-sm">Manage Orders</a>
+                      <a href="{% url 'seller_received_orders' %}" class="btn btn-outline-success btn-sm">Manage Orders</a>
                     {% else %}
                       <small class="text-muted">Become a seller</small>
                     {% endif %}
@@ -133,9 +133,9 @@
                 </div>
                 <div class="col-md-4">
                   <div class="mb-3">
-                    <i class="fa fa-money-bill-wave fa-2x text-warning mb-2"></i>
-                    <h6>Earn Revenue</h6>
-                    <small class="text-muted">Secure payments</small>
+                    <i class="fa fa-qrcode fa-2x text-warning mb-2"></i>
+                    <h6>QR Payments</h6>
+                    <small class="text-muted">Instant payments</small>
                   </div>
                 </div>
               </div>
@@ -174,13 +174,62 @@
           </article>
 
         {% elif user.profile.seller_status == 'approved' %}
-          <!-- Approved Seller Dashboard - Enhanced -->
+          <!-- Approved Seller Dashboard - Enhanced with QR Management -->
           <article class="card mb-4 border-success">
             <header class="card-header bg-success text-white">
               <i class="fa fa-check-circle"></i> <strong>Seller Dashboard</strong>
               <span class="badge badge-light text-success ml-2">✅ Verified Seller</span>
             </header>
             <div class="card-body">
+              <!-- QR Payment Status - NEW SECTION -->
+              <div class="card mb-4">
+                <div class="card-header">
+                  <h6 class="mb-0"><i class="fa fa-qrcode text-success"></i> Payment Settings</h6>
+                </div>
+                <div class="card-body">
+                  <div class="row align-items-center">
+                    <div class="col-md-8">
+                      {% if profile.has_payment_qr %}
+                        <div class="qr-status-success">
+                          <p class="mb-2">
+                            <i class="fa fa-check-circle text-success"></i>
+                            <strong>QR Code Active:</strong> {{ profile.get_qr_display_name }}
+                          </p>
+                          <small class="text-muted">
+                            <i class="fa fa-info-circle"></i> 
+                            Account: {{ profile.qr_payment_info }} | 
+                            Customers can pay you via QR code
+                          </small>
+                        </div>
+                      {% else %}
+                        <div class="qr-status-warning">
+                          <p class="text-warning mb-2">
+                            <i class="fa fa-exclamation-triangle"></i>
+                            <strong>QR Code Not Set Up</strong>
+                          </p>
+                          <small class="text-muted">
+                            You need to upload a QR code to receive payments from customers!
+                          </small>
+                        </div>
+                      {% endif %}
+                    </div>
+                    <div class="col-md-4 text-right">
+                      {% if profile.has_payment_qr %}
+                        <div class="qr-preview-mini mb-2">
+                          <img src="{{ profile.payment_qr_code.url }}" 
+                               alt="QR Code" 
+                               style="width: 60px; height: 60px; border: 2px solid #28a745; border-radius: 8px;">
+                        </div>
+                      {% endif %}
+                      <a href="{% url 'update_qr' %}" class="btn btn-{% if profile.has_payment_qr %}outline-success{% else %}warning{% endif %} btn-sm">
+                        <i class="fa fa-qrcode"></i> 
+                        {% if profile.has_payment_qr %}Manage QR{% else %}Setup QR{% endif %}
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <!-- Enhanced Seller Stats -->
               <div class="row mb-4">
                 <div class="col-md-3">
@@ -221,7 +270,7 @@
                 </div>
               </div>
 
-              <!-- Quick Actions Enhanced -->
+              <!-- Quick Actions Enhanced with QR Verification -->
               <div class="row mb-3">
                 <div class="col-md-4 mb-2">
                   <a href="{% url 'add_product' %}" class="btn btn-primary btn-block">
@@ -234,11 +283,54 @@
                   </a>
                 </div>
                 <div class="col-md-4 mb-2">
-                  <a href="{% url 'received_orders' %}" class="btn btn-outline-success btn-block">
+                  <a href="{% url 'seller_received_orders' %}" class="btn btn-outline-success btn-block">
                     <i class="fa fa-shopping-bag"></i> View Orders
                   </a>
                 </div>
+                <div class="col-md-4 mb-2">
+                  <a href="{% url 'update_qr' %}" class="btn btn-outline-{% if profile.has_payment_qr %}success{% else %}warning{% endif %} btn-block">
+                    <i class="fa fa-qrcode"></i> QR Settings
+                  </a>
+                </div>
+                <!-- NEW: QR Payment Verification Button -->
+                <div class="col-md-4 mb-2">
+                  <a href="{% url 'verify_qr_payments' %}" class="btn btn-outline-info btn-block">
+                    <i class="fa fa-check-circle"></i> Verify QR Payments
+                  </a>
+                </div>
+                <div class="col-md-4 mb-2">
+                  <a href="{% url 'chat_list' %}" class="btn btn-outline-secondary btn-block">
+                    <i class="fa fa-comments"></i> Messages
+                  </a>
+                </div>
               </div>
+
+              <!-- NEW: QR Payment Verification Status -->
+              {% if profile.has_payment_qr %}
+              <div class="card bg-light mb-3">
+                <div class="card-body">
+                  <h6 class="card-title">
+                    <i class="fa fa-shield-check text-info"></i> QR Payment Verification
+                  </h6>
+                  <div class="row">
+                    <div class="col-md-8">
+                      <p class="mb-2">
+                        <i class="fa fa-info-circle text-info"></i>
+                        <strong>Manage customer QR payments that need verification</strong>
+                      </p>
+                      <small class="text-muted">
+                        When customers pay via QR code, you'll need to verify the payments to complete their orders.
+                      </small>
+                    </div>
+                    <div class="col-md-4 text-right">
+                      <a href="{% url 'verify_qr_payments' %}" class="btn btn-info">
+                        <i class="fa fa-check-circle"></i> Verify Payments
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% endif %}
 
               <!-- Business Info Enhanced -->
               <div class="card bg-light">
@@ -249,7 +341,7 @@
                   <div class="row">
                     <div class="col-md-6">
                       <p><strong>Business Name:</strong> {{ user.profile.business_name }}</p>
-                      <p><strong>Seller Since:</strong> {{ user.profile.seller_approved_date|date:"M d, Y" }}</p>
+                      <p><strong>Seller Since:</strong> {{ user.profile.seller_application_date|date:"M d, Y" }}</p>
                     </div>
                     <div class="col-md-6">
                       {% if user.profile.business_description %}
@@ -329,5 +421,56 @@
     </div>
   </div>
 </section>
+
+<style>
+.qr-status-success {
+  background: #d4edda;
+  padding: 15px;
+  border-radius: 8px;
+  border-left: 4px solid #28a745;
+}
+
+.qr-status-warning {
+  background: #fff3cd;
+  padding: 15px;
+  border-radius: 8px;
+  border-left: 4px solid #ffc107;
+}
+
+.qr-preview-mini img {
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+  transition: transform 0.3s ease;
+}
+
+.qr-preview-mini img:hover {
+  transform: scale(1.1);
+}
+
+.timeline-item {
+  border-left: 2px solid #e9ecef;
+  padding-left: 15px;
+  position: relative;
+}
+
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: 10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #007bff;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  transition: transform 0.2s ease;
+}
+
+.btn-block {
+  margin-bottom: 8px;
+}
+</style>
 
 {% endblock %}

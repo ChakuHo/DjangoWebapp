@@ -8,9 +8,7 @@ urlpatterns = [
     path('order-complete/<int:order_id>/', views.order_complete, name='order_complete'),
     path('esewa-success/', views.esewa_success, name='esewa_success'),
     path('esewa-failure/', views.esewa_failure, name='esewa_failure'),
-    path('khalti-verify/', views.khalti_verify, name='khalti_verify'),
     path('esewa-start/<int:order_id>/', views.esewa_start, name='esewa_start'),
     path('esewa-return/<int:order_id>/', views.esewa_return, name='esewa_return'),
-    path('khalti-return/<int:order_id>/', views.khalti_return, name='khalti_return'),
-
+    path('confirm-qr-payment/<int:order_id>/', views.confirm_qr_payment, name='confirm_qr_payment'),
 ]

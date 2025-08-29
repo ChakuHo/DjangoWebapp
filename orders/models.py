@@ -48,17 +48,29 @@ class Order(models.Model):
     completed_date = models.DateTimeField(null=True, blank=True)
     tracking_number = models.CharField(max_length=100, blank=True)
 
-    # NEW FIELDS FOR PAYMENT PROCESSING
-    payment_status = models.CharField(max_length=20, choices=[
+    # ENHANCED PAYMENT PROCESSING FIELDS
+    payment_status = models.CharField(max_length=30, choices=[
         ('pending', 'Pending'),
         ('initiated', 'Payment Initiated'),
+        ('pending_qr_confirmation', 'Pending QR Confirmation'),
         ('completed', 'Payment Completed'),
         ('failed', 'Payment Failed'),
         ('refunded', 'Refunded')
     ], default='pending')    
 
     payment_gateway_response = models.TextField(blank=True, null=True, help_text="Raw response from payment gateway")
-    payment_reference = models.CharField(max_length=100, blank=True, null=True, help_text="Payment gateway reference ID")
+    payment_reference = models.CharField(max_length=100, blank=True, null=True, help_text="Payment gateway reference ID or QR reference")
+    
+    # QR PAYMENT SPECIFIC FIELDS
+    qr_payment_confirmed_at = models.DateTimeField(null=True, blank=True, help_text="When QR payment was confirmed")
+    qr_payment_notes = models.TextField(blank=True, help_text="Additional notes for QR payment")
+
+    qr_payment_transaction_id = models.CharField(max_length=100, blank=True, null=True)
+    qr_payment_screenshot = models.ImageField(upload_to='payment_screenshots/', blank=True, null=True)
+    qr_payment_verified_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='verified_payments')
+    qr_payment_verified_at = models.DateTimeField(null=True, blank=True)
+
+
 
     def __str__(self):
         return f"Order #{self.id} by {self.user.username}"
@@ -78,6 +90,13 @@ class Order(models.Model):
                 return "Cash on Delivery"
             else:
                 return "Pay on Delivery"
+        elif self.payment_method == 'QR Payment':
+            if self.payment_status == 'completed':
+                return f"Paid via QR Code (Ref: {self.payment_reference})"
+            elif self.payment_status == 'pending_qr_confirmation':
+                return f"QR Payment Pending (Ref: {self.payment_reference})"
+            else:
+                return "QR Payment"
         else:
             if self.payment_status == 'completed':
                 return "Payment Completed"
@@ -94,11 +113,12 @@ class Order(models.Model):
             return "💰"
         elif self.payment_method == 'eSewa':
             return "💳"
-        elif self.payment_method == 'Khalti':
+        elif self.payment_method == 'QR Payment':
             return "📱"
         else:
             return "💳"
-
+        
+        
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Product, on_delete=models.CASCADE)

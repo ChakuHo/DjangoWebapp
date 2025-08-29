@@ -28,7 +28,6 @@ class Profile(models.Model):
         ('ne', 'Nepali')
     ], default='en', blank=True)
     
-  
     is_seller = models.BooleanField(default=False)
     seller_verified = models.BooleanField(default=False)
     seller_status = models.CharField(max_length=20, choices=[
@@ -43,19 +42,66 @@ class Profile(models.Model):
     seller_approved_date = models.DateTimeField(null=True, blank=True)
     business_name = models.CharField(max_length=100, blank=True)
     business_description = models.TextField(blank=True)
+    
+    # NEW QR CODE PAYMENT FIELDS
+    payment_qr_code = models.ImageField(
+        upload_to='seller_qr_codes/', 
+        blank=True, 
+        null=True,
+        help_text="Upload your QR code for payments (eSewa, Khalti, Bank QR, etc.)"
+    )
+    qr_payment_method = models.CharField(
+        max_length=50, 
+        blank=True,
+        choices=[
+            ('esewa', 'eSewa'),
+            ('bank', 'Bank QR'),
+            ('fonepay', 'FonePay'),
+            ('connectips', 'ConnectIPS'),
+            ('other', 'Other')
+        ],
+        help_text="Which payment method does this QR code support?"
+    )
+    qr_payment_info = models.CharField(
+        max_length=100, 
+        blank=True,
+        help_text="Additional info like phone number or account name"
+    )
 
+    def has_payment_qr(self):
+        """Check if profile has a payment QR code"""
+        return bool(self.payment_qr_code)
 
+    def get_qr_display_name(self):
+        """Get display name for QR payment method"""
+        method_names = {
+            'esewa': 'eSewa',
+            'khalti': 'Khalti', 
+            'fonepay': 'FonePay',
+            'connectips': 'ConnectIPS',
+            'imepay': 'IME Pay',
+            'other': 'Other'
+        }
+        return method_names.get(self.qr_payment_method, 'Digital Wallet')    
     
     def __str__(self):
         return self.user.username
     
-
     def can_sell(self):
         return self.seller_status == 'approved'
     
     def is_seller_pending(self):
         return self.seller_status == 'pending'
-
+    
+    def has_payment_qr(self):
+        """Check if seller has uploaded a payment QR code"""
+        return bool(self.payment_qr_code)
+    
+    def get_qr_display_name(self):
+        """Get display name for QR payment method"""
+        if self.qr_payment_method:
+            return dict(self._meta.get_field('qr_payment_method').choices).get(self.qr_payment_method, 'QR Payment')
+        return 'QR Payment'
 
 class ChatRoom(models.Model):
     participants = models.ManyToManyField(User, related_name='chat_rooms')
@@ -100,5 +146,3 @@ def create_user_profile(sender, instance, created, **kwargs):
 @receiver(post_save, sender=User)
 def save_user_profile(sender, instance, **kwargs):
     instance.profile.save()
-
-

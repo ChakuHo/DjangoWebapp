@@ -209,37 +209,39 @@ const PLACEHOLDER_IMAGE = "{% static 'images/placeholder.png' %}";
                   </div>
                 </div>
 
-                <!-- Khalti Payment -->
+                <!-- QR Payment Option -->
                 <div class="card border mb-2">
-                  <div class="card-header p-0" id="heading-khalti">
-                    <label class="payment-option khalti-option w-100 p-3 mb-0 cursor-pointer" data-toggle="collapse" data-target="#pay_khalti">
+                  <div class="card-header p-0" id="heading-qr">
+                    <label class="payment-option qr-option w-100 p-3 mb-0 cursor-pointer" data-toggle="collapse" data-target="#pay_qr">
                       <div class="row align-items-center">
                         <div class="col-2">
                           <input type="radio" 
                                  class="payment-radio"
                                  name="payment_method"
-                                 value="Khalti" />
+                                 value="QR Payment" />
                         </div>
                         <div class="col-6">
                           <div class="payment-info">
-                            <h6 class="mb-1 font-weight-bold">Khalti Digital Wallet</h6>
-                            <small class="text-muted">Mobile & PIN Authentication</small>
+                            <h6 class="mb-1 font-weight-bold">QR Code Payment</h6>
+                            <small class="text-muted">Scan & Pay Instantly</small>
                           </div>
                         </div>
                         <div class="col-4 text-right">
-                          <div class="khalti-logo">
-                            <i class="fa fa-mobile-alt text-white"></i>
-                            <span class="logo-text">Khalti</span>
+                          <div class="qr-logo">
+                            <i class="fa fa-qrcode text-white fa-lg"></i>
                           </div>
                         </div>
                       </div>
                     </label>
                   </div>
-                  <div id="pay_khalti" class="collapse" data-parent="#accordion_pay">
+                  <div id="pay_qr" class="collapse" data-parent="#accordion_pay">
                     <div class="card-body bg-light">
                       <div class="alert alert-info border-left-primary">
-                        <i class="fa fa-shield-alt text-primary"></i>
-                        <strong>Bank-Level Security</strong> - Pay using your mobile number and secure PIN.
+                        <i class="fa fa-mobile-alt text-primary"></i>
+                        <strong>Quick QR Payment</strong> - Scan QR codes to pay sellers directly using eSewa, Khalti, or other digital wallets.
+                      </div>
+                      <div class="small text-muted">
+                        <i class="fa fa-info-circle"></i> You'll see individual QR codes for each seller in your cart.
                       </div>
                     </div>
                   </div>
@@ -439,59 +441,51 @@ const PLACEHOLDER_IMAGE = "{% static 'images/placeholder.png' %}";
   letter-spacing: 0.5px;
 }
 
-/* Khalti Enhanced Styling */
-.khalti-option {
-  background: linear-gradient(135deg, #ffffff 0%, #fefffe 100%);
-  border: 2px solid #f3e8ff;
+/* QR Payment Enhanced Styling */
+.qr-option {
+  background: linear-gradient(135deg, #ffffff 0%, #f0fff4 100%);
+  border: 2px solid #e8f5e8;
 }
 
-.khalti-option:hover {
-  background: linear-gradient(135deg, #f3e8ff 0%, #faf5ff 100%);
-  border-color: #a855f7;
-  box-shadow: 0 8px 25px rgba(168, 85, 247, 0.25);
+.qr-option:hover {
+  background: linear-gradient(135deg, #e8f5e8 0%, #f0fff4 100%);
+  border-color: #28a745;
+  box-shadow: 0 8px 25px rgba(40, 167, 69, 0.25);
 }
 
-.khalti-option:has(.payment-radio:checked) {
-  background: linear-gradient(135deg, #ede9fe 0%, #f5f3ff 100%);
-  border-color: #7c3aed;
-  box-shadow: 0 5px 15px rgba(124, 58, 237, 0.3);
+.qr-option:has(.payment-radio:checked) {
+  background: linear-gradient(135deg, #d4edda 0%, #f0fff4 100%);
+  border-color: #28a745;
+  box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
 }
 
-.khalti-logo {
-  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
-  padding: 10px 18px;
-  border-radius: 25px;
-  color: white;
-  font-weight: 700;
-  box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4);
+.qr-logo {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  padding: 12px 15px;
+  border-radius: 50%;
+  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
   position: relative;
   overflow: hidden;
 }
 
-.khalti-logo::before {
+.qr-logo::before {
   content: '';
   position: absolute;
   top: -2px;
   left: -2px;
   right: -2px;
   bottom: -2px;
-  background: linear-gradient(45deg, #a855f7, #7c3aed, #6d28d9);
-  border-radius: 25px;
+  background: linear-gradient(45deg, #20c997, #28a745, #1e7e34);
+  border-radius: 50%;
   z-index: -1;
-  animation: khalti-glow 3s ease-in-out infinite alternate;
+  animation: qr-glow 3s ease-in-out infinite alternate;
 }
 
-@keyframes khalti-glow {
+@keyframes qr-glow {
   0% { opacity: 0.8; transform: scale(1); }
   100% { opacity: 1; transform: scale(1.05); }
 }
 
-.khalti-logo .logo-text {
-  margin-left: 6px;
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-}
 
 /* Cash on Delivery Enhanced Styling */
 .cod-option {

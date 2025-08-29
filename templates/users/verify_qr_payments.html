@@ -1,0 +1,315 @@
+{% extends 'master/base.html' %}
+{% load static %}
+
+{% block title %}Verify QR Payments{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">
+                        <i class="fa fa-qrcode"></i> QR Payment Verification Center
+                    </h4>
+                    <small>Review customer payment proofs and verify transactions</small>
+                </div>
+                <div class="card-body">
+                    
+                    <!-- Stats Summary -->
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="card border-warning text-center">
+                                <div class="card-body">
+                                    <h3 class="text-warning">{{ pending_orders.count }}</h3>
+                                    <small class="text-muted">Pending Verification</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card border-success text-center">
+                                <div class="card-body">
+                                    <h3 class="text-success">{{ verified_orders.count }}</h3>
+                                    <small class="text-muted">Verified Today</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card border-info text-center">
+                                <div class="card-body">
+                                    <h3 class="text-info">Rs. {{ total_pending_amount|default:0|floatformat:2 }}</h3>
+                                    <small class="text-muted">Total Pending</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Pending Payments Section -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="text-warning">
+                                <i class="fa fa-clock"></i> Awaiting Your Verification ({{ pending_orders.count }})
+                            </h5>
+                            
+                            {% if pending_orders %}
+                            {% for order in pending_orders %}
+                            <div class="card mb-4 border-warning">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <!-- Left: Order & Customer Info -->
+                                        <div class="col-md-4">
+                                            <h6 class="text-primary">
+                                                <i class="fa fa-shopping-cart"></i> Order #{{ order.order_number }}
+                                            </h6>
+                                            <p class="mb-2">
+                                                <strong>Customer:</strong> {{ order.user.first_name }} {{ order.user.last_name }}<br>
+                                                <strong>Email:</strong> {{ order.user.email }}<br>
+                                                <strong>Phone:</strong> {{ order.user.profile.phone_number|default:"Not provided" }}
+                                            </p>
+                                            
+                                            <div class="alert alert-info">
+                                                <strong class="text-info">Amount to Verify:</strong><br>
+                                                <h4 class="text-success mb-0">Rs. {{ order.grand_total|floatformat:2 }}</h4>
+                                            </div>
+                                            
+                                            <p class="mb-1">
+                                                <strong>Reference:</strong> 
+                                                <code class="bg-light p-1">{{ order.payment_reference }}</code>
+                                            </p>
+                                            <small class="text-muted">
+                                                <i class="fa fa-clock"></i> Submitted: {{ order.qr_payment_confirmed_at|date:"M d, Y H:i A" }}
+                                            </small>
+                                        </div>
+                                        
+                                        <!-- Center: Payment Details & Screenshot -->
+                                        <div class="col-md-4">
+                                            <h6 class="text-success">
+                                                <i class="fa fa-receipt"></i> Payment Proof
+                                            </h6>
+                                            
+                                            <!-- Transaction ID -->
+                                            {% if order.qr_payment_transaction_id %}
+                                                <div class="mb-3">
+                                                    <strong>Transaction ID:</strong><br>
+                                                    <code class="bg-warning text-dark p-2 d-block">{{ order.qr_payment_transaction_id }}</code>
+                                                    <small class="text-muted">Verify this ID in your payment app</small>
+                                                </div>
+                                            {% else %}
+                                                <div class="alert alert-danger">
+                                                    <i class="fa fa-exclamation-triangle"></i> No Transaction ID provided!
+                                                </div>
+                                            {% endif %}
+                                            
+                                            <!-- Payment Screenshot -->
+                                            {% if order.qr_payment_screenshot %}
+                                                <div class="mb-3">
+                                                    <strong>Payment Screenshot:</strong><br>
+                                                    <div class="payment-screenshot">
+                                                        <img src="{{ order.qr_payment_screenshot.url }}" 
+                                                             alt="Payment Screenshot" 
+                                                             class="img-fluid border rounded shadow-sm"
+                                                             style="max-width: 100%; max-height: 200px; cursor: pointer;"
+                                                             onclick="openImageModal('{{ order.qr_payment_screenshot.url }}', 'Payment Screenshot - Order #{{ order.order_number }}')">
+                                                        <small class="text-muted d-block mt-1">
+                                                            <i class="fa fa-search-plus"></i> Click to enlarge
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            {% else %}
+                                                <div class="alert alert-warning">
+                                                    <i class="fa fa-image"></i> No screenshot provided
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        
+                                        <!-- Right: Items & Actions -->
+                                        <div class="col-md-4">
+                                            <h6 class="text-dark">
+                                                <i class="fa fa-box"></i> Items Ordered
+                                            </h6>
+                                            {% for item in order.items.all %}
+                                                {% if item.seller == request.user %}
+                                                <div class="border-bottom pb-2 mb-2">
+                                                    <strong>{{ item.product.name }}</strong><br>
+                                                    <small class="text-muted">
+                                                        Qty: {{ item.quantity }} × Rs. {{ item.price|floatformat:2 }} = Rs. {{ item.get_total_price|floatformat:2 }}
+                                                    </small>
+                                                </div>
+                                                {% endif %}
+                                            {% endfor %}
+                                            
+                                            <!-- Verification Actions -->
+                                            <div class="mt-3">
+                                                <form method="post" class="d-inline">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="order_id" value="{{ order.id }}">
+                                                    <button type="submit" name="action" value="verify" 
+                                                            class="btn btn-success btn-block mb-2"
+                                                            onclick="return confirm('✅ VERIFY this payment?\n\nOrder: #{{ order.order_number }}\nAmount: Rs. {{ order.grand_total }}\nTransaction: {{ order.qr_payment_transaction_id|default:"No ID" }}\n\nThis will confirm the order and notify the customer.')">
+                                                        <i class="fa fa-check-circle"></i> VERIFY PAYMENT
+                                                    </button>
+                                                </form>
+                                                
+                                                <form method="post" class="d-inline">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="order_id" value="{{ order.id }}">
+                                                    <button type="submit" name="action" value="reject" 
+                                                            class="btn btn-danger btn-block"
+                                                            onclick="return confirm('❌ REJECT this payment?\n\nOrder: #{{ order.order_number }}\nAmount: Rs. {{ order.grand_total }}\n\nThis will cancel the order. Make sure the payment was not received!')">
+                                                        <i class="fa fa-times-circle"></i> REJECT PAYMENT
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Additional Notes -->
+                                    {% if order.qr_payment_notes %}
+                                    <div class="row mt-3">
+                                        <div class="col-12">
+                                            <div class="alert alert-light">
+                                                <strong><i class="fa fa-sticky-note"></i> Customer Notes:</strong><br>
+                                                {{ order.qr_payment_notes }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                            {% else %}
+                            <div class="alert alert-success text-center">
+                                <i class="fa fa-check-circle fa-3x mb-3"></i>
+                                <h5>All Caught Up! 🎉</h5>
+                                <p class="mb-0">No QR payments waiting for verification.</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Recently Verified History -->
+                    {% if verified_orders %}
+                    <div class="row">
+                        <div class="col-12">
+                            <h5 class="text-success">
+                                <i class="fa fa-check-circle"></i> Recently Verified
+                            </h5>
+                            
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover">
+                                    <thead class="bg-light">
+                                        <tr>
+                                            <th>Order #</th>
+                                            <th>Customer</th>
+                                            <th>Amount</th>
+                                            <th>Transaction ID</th>
+                                            <th>Screenshot</th>
+                                            <th>Verified Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for order in verified_orders %}
+                                        <tr>
+                                            <td><strong>#{{ order.order_number }}</strong></td>
+                                            <td>{{ order.user.first_name }} {{ order.user.last_name }}</td>
+                                            <td><span class="text-success">Rs. {{ order.grand_total|floatformat:2 }}</span></td>
+                                            <td>
+                                                {% if order.qr_payment_transaction_id %}
+                                                    <code>{{ order.qr_payment_transaction_id }}</code>
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if order.qr_payment_screenshot %}
+                                                    <img src="{{ order.qr_payment_screenshot.url }}" 
+                                                         style="width: 30px; height: 30px; object-fit: cover; cursor: pointer;"
+                                                         class="rounded border"
+                                                         onclick="openImageModal('{{ order.qr_payment_screenshot.url }}', 'Verified Payment - Order #{{ order.order_number }}')"
+                                                         title="Click to view">
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <small class="text-muted">{{ order.qr_payment_verified_at|date:"M d, H:i" }}</small>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="text-center mt-4">
+                        <a href="{% url 'dashboard' %}" class="btn btn-secondary">
+                            <i class="fa fa-arrow-left"></i> Back to Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Image Modal -->
+<div class="modal fade" id="imageModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="imageModalTitle">Payment Screenshot</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="modalImage" src="" alt="Payment Screenshot" class="img-fluid">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Open image in modal
+function openImageModal(imageUrl, title) {
+    document.getElementById('modalImage').src = imageUrl;
+    document.getElementById('imageModalTitle').textContent = title;
+    $('#imageModal').modal('show');
+}
+
+// Auto-refresh every 30 seconds for new payments
+setInterval(function() {
+    if ({{ pending_orders.count }} > 0) {
+        console.log('🔔 Checking for new QR payments...');
+        // You can add actual refresh here if needed
+        // location.reload();
+    }
+}, 30000);
+</script>
+
+<style>
+.payment-screenshot img:hover {
+    transform: scale(1.05);
+    transition: transform 0.2s ease;
+}
+
+.card:hover {
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transition: box-shadow 0.2s ease;
+}
+
+.border-warning {
+    border: 2px solid #ffc107 !important;
+}
+
+.table img:hover {
+    transform: scale(2);
+    transition: transform 0.2s ease;
+}
+</style>
+{% endblock %}

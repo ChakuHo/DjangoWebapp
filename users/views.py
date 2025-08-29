@@ -17,7 +17,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from .models import ChatRoom, ChatMessage
 from django.http import JsonResponse
-
+from orders.views import send_order_confirmation_email
 
 
 def send_registration_confirmation_email(user):
@@ -183,7 +183,7 @@ def register_view(request):
     return render(request, 'users/register.html')
 
 
-@login_required
+
 @login_required
 def dashboard(request):
     try:
@@ -198,6 +198,15 @@ def dashboard(request):
     received_orders_count = 0
     if profile.seller_status == 'approved':
         received_orders_count = OrderItem.objects.filter(seller=request.user).count()
+
+    # Add pending QR count for sidebar (NEW)
+    pending_qr_count = 0
+    if profile.seller_status == 'approved':
+        pending_qr_count = Order.objects.filter(
+            items__seller=request.user,
+            payment_method='QR Payment',
+            payment_status='pending_verification'
+        ).distinct().count()
 
     # Add seller stats if they're a seller
     seller_stats = {}
@@ -244,6 +253,15 @@ def dashboard(request):
                 'icon': 'fa-bell',
                 'badge_color': 'warning'
             })
+        
+        # Add QR payment notifications to recent activities (NEW)
+        if pending_qr_count > 0:
+            recent_activities.append({
+                'message': f'{pending_qr_count} QR payment(s) awaiting verification',
+                'created_at': timezone.now(),  # Make sure to import timezone
+                'icon': 'fa-qrcode',
+                'badge_color': 'warning'
+            })
     
     # Sort activities by date
     recent_activities.sort(key=lambda x: x['created_at'], reverse=True)
@@ -259,88 +277,80 @@ def dashboard(request):
         'recent_activities': recent_activities,
         'wishlist_count': 0,  # You can implement this later
         'unread_messages_count': 0,  # You can implement this later
+        'pending_qr_count': pending_qr_count,  # ADD THIS
     }
     return render(request, 'users/dashboard.html', context)
 
 
 @login_required
 def received_orders(request):
-    """Display items that the CUSTOMER has received (delivered orders) - FIXED SYNTAX"""
-    from django.db.models import Q
-    from products.models import Review
+    """QR Payment verification page for sellers"""
+    profile = request.user.profile
     
-    print(f"\n=== DEBUG: USER {request.user.username} RECEIVED ORDERS ===")
+    # Only approved sellers can access
+    if profile.seller_status != 'approved':
+        messages.error(request, 'You need to be an approved seller to access this page.')
+        return redirect('dashboard')
+
+    # Handle verification actions
+    if request.method == 'POST':
+        order_id = request.POST.get('order_id')
+        action = request.POST.get('action')
+        
+        try:
+            order = get_object_or_404(Order, 
+                id=order_id, 
+                items__seller=request.user,
+                payment_method='QR Payment',
+                payment_status='pending_verification'
+            )
+            
+            if action == 'verify':
+                order.payment_status = 'completed'
+                order.status = 'Confirmed'
+                order.order_status = 'confirmed'
+                order.qr_payment_verified_by = request.user
+                order.qr_payment_verified_at = timezone.now()
+                order.save()
+                
+                # Send confirmation email
+                send_order_confirmation_email(order)
+                messages.success(request, f'✅ Payment verified for Order #{order.order_number}. Customer notified!')
+                
+            elif action == 'reject':
+                order.payment_status = 'rejected'
+                order.status = 'Payment Rejected'
+                order.order_status = 'cancelled'
+                order.save()
+                messages.warning(request, f'❌ Payment rejected for Order #{order.order_number}')
+                
+        except Order.DoesNotExist:
+            messages.error(request, 'Order not found or unauthorized access.')
+        except Exception as e:
+            messages.error(request, f'Error: {str(e)}')
+
+    # Get pending orders for this seller
+    pending_orders = Order.objects.filter(
+        items__seller=request.user,
+        payment_method='QR Payment',
+        payment_status='pending_verification'
+    ).distinct().order_by('-created_at')
     
-    # Check if user has ANY orders at all
-    total_orders = Order.objects.filter(user=request.user).count()
-    print(f"Total orders for user: {total_orders}")
+    # Get recently verified orders
+    verified_orders = Order.objects.filter(
+        items__seller=request.user,
+        payment_method='QR Payment',
+        payment_status='completed',
+        qr_payment_verified_by=request.user
+    ).distinct().order_by('-qr_payment_verified_at')[:10]
     
-    # Check if user has ANY order items at all
-    total_order_items = OrderItem.objects.filter(order__user=request.user).count()
-    print(f"Total order items for user: {total_order_items}")
-    
-    # Check ordered=True items
-    ordered_items = OrderItem.objects.filter(order__user=request.user, ordered=True).count()
-    print(f"Order items with ordered=True: {ordered_items}")
-    
-    # Check what statuses exist
-    existing_statuses = Order.objects.filter(user=request.user).values_list('status', 'order_status').distinct()
-    print(f"Existing order statuses: {list(existing_statuses)}")
-    
-    # Try to get ALL order items first (ignore status)
-    all_items = OrderItem.objects.filter(
-        order__user=request.user
-    ).select_related('order', 'product', 'seller').order_by('-order__created_at')
-    
-    print(f"All order items (ignoring status): {all_items.count()}")
-    
-    # FIXED: Combine everything into Q objects OR separate filter calls
-    # Method 1: All in Q objects
-    received_items = OrderItem.objects.filter(
-        Q(order__user=request.user) &
-        Q(ordered=True) & 
-        (
-            Q(order__order_status__in=['delivered', 'completed']) | 
-            Q(order__status__icontains='delivered') |
-            Q(order__status__icontains='completed')
-        )
-    ).select_related('order', 'product', 'seller').order_by('-order__created_at')
-    
-    print(f"Items with delivered/completed status: {received_items.count()}")
-    
-    # If still empty, try getting ALL order items for this user with ordered=True
-    if not received_items.exists():
-        print("No delivered orders found, trying all items with ordered=True...")
-        received_items = OrderItem.objects.filter(
-            order__user=request.user,
-            ordered=True
-        ).select_related('order', 'product', 'seller').order_by('-order__created_at')
-        print(f"Items with ordered=True: {received_items.count()}")
-    
-    # If STILL empty, show ALL items (for debugging)
-    if not received_items.exists():
-        print("No ordered=True items found, showing ALL items for debugging...")
-        received_items = all_items
-    
-    print(f"Final received_items count: {received_items.count()}")
-    print("=== END DEBUG ===\n")
-    
-    # Count unique orders
-    unique_orders_count = Order.objects.filter(user=request.user).count()
-    
-    # Get reviewed product IDs
-    reviewed_product_ids = list(Review.objects.filter(
-        user=request.user
-    ).values_list('product_id', flat=True))
-    
-    # Count pending reviews
-    pending_reviews_count = received_items.exclude(product_id__in=reviewed_product_ids).count()
+    # Calculate total pending amount
+    total_pending_amount = sum(order.grand_total for order in pending_orders)
     
     context = {
-        'received_items': received_items,
-        'unique_orders_count': unique_orders_count,
-        'pending_reviews_count': pending_reviews_count,
-        'reviewed_product_ids': reviewed_product_ids,
+        'pending_orders': pending_orders,
+        'verified_orders': verified_orders,
+        'total_pending_amount': total_pending_amount,
     }
     return render(request, 'users/received_orders.html', context)
 
@@ -517,7 +527,7 @@ def received_orders(request):
 
 @login_required
 def become_seller(request):
-    """Apply to become a seller"""
+    """Apply to become a seller with QR code upload"""
     profile = request.user.profile
 
     # Check if already a seller or applied
@@ -528,20 +538,45 @@ def become_seller(request):
     if request.method == 'POST':
         business_name = request.POST.get('business_name', '').strip()
         business_description = request.POST.get('business_description', '').strip()
+        qr_payment_method = request.POST.get('qr_payment_method', '').strip()
+        qr_payment_info = request.POST.get('qr_payment_info', '').strip()
+        payment_qr_code = request.FILES.get('payment_qr_code')
 
+        # Validation
         if not business_name:
             messages.error(request, 'Business name is required.')
             return render(request, 'users/become_seller.html')
+        
+        if not qr_payment_method:
+            messages.error(request, 'Please select a payment method for your QR code.')
+            return render(request, 'users/become_seller.html')
+            
+        if not qr_payment_info:
+            messages.error(request, 'Please provide payment information (phone number, account name, etc.).')
+            return render(request, 'users/become_seller.html')
+            
+        if not payment_qr_code:
+            messages.error(request, 'Please upload your payment QR code.')
+            return render(request, 'users/become_seller.html')
 
+        # Validate QR code file
+        if payment_qr_code.size > 5 * 1024 * 1024:  # 5MB limit
+            messages.error(request, 'QR code image must be less than 5MB.')
+            return render(request, 'users/become_seller.html')
 
+        # Update profile
         profile.business_name = business_name
         profile.business_description = business_description
+        profile.qr_payment_method = qr_payment_method
+        profile.qr_payment_info = qr_payment_info
+        profile.payment_qr_code = payment_qr_code
         profile.seller_status = 'pending'
         profile.seller_application_date = timezone.now()
         profile.save()
 
-        messages.success(request, 'Seller application submitted! We will review and get back to you.')
+        messages.success(request, 'Seller application submitted with QR code! We will review and get back to you.')
         return redirect('dashboard')
+    
     return render(request, 'users/become_seller.html')
 
 
@@ -754,6 +789,103 @@ def get_add_product_context():
     }
 
 @login_required
+def verify_qr_payments(request):
+    """Allow sellers to verify QR payments they received"""
+    profile = request.user.profile
+    
+    # Gate: Only approved sellers can access
+    if profile.seller_status != 'approved':
+        messages.error(request, 'You need to be an approved seller to access this page.')
+        return redirect('dashboard')
+
+    # Handle verification actions
+    if request.method == 'POST':
+        order_id = request.POST.get('order_id')
+        action = request.POST.get('action')
+        
+        try:
+            order = get_object_or_404(Order, 
+                id=order_id, 
+                items__seller=request.user,
+                payment_method='QR Payment',
+                payment_status='pending_verification'
+            )
+            
+            if action == 'verify':
+                order.payment_status = 'completed'
+                order.status = 'Confirmed'
+                order.order_status = 'confirmed'
+                order.qr_payment_verified_by = request.user
+                order.qr_payment_verified_at = timezone.now()
+                order.save()
+                
+                # Send confirmation email
+                from orders.views import send_order_confirmation_email
+                send_order_confirmation_email(order)
+                messages.success(request, f'✅ Payment verified for Order #{order.order_number}. Customer notified!')
+                
+            elif action == 'reject':
+                print(f"🚫 REJECTING ORDER #{order.order_number}")
+                
+                # Import the functions
+                from orders.views import send_order_rejection_email, revert_stock_after_rejection
+                
+                # Revert stock first
+                stock_reverted = revert_stock_after_rejection(order)
+                
+                # Update order status
+                order.payment_status = 'rejected'
+                order.status = 'Payment Rejected'
+                order.order_status = 'cancelled'
+                order.save()
+                
+                # Send rejection email
+                email_sent = send_order_rejection_email(order)
+                
+                if stock_reverted and email_sent:
+                    messages.warning(request, f'❌ Payment rejected for Order #{order.order_number}. Stock reverted and customer notified via email.')
+                elif stock_reverted:
+                    messages.warning(request, f'❌ Payment rejected for Order #{order.order_number}. Stock reverted. (Email notification failed)')
+                elif email_sent:
+                    messages.warning(request, f'❌ Payment rejected for Order #{order.order_number}. Customer notified. (Stock reversion failed)')
+                else:
+                    messages.error(request, f'❌ Payment rejected for Order #{order.order_number}. WARNING: Stock reversion and email notification failed!')
+                
+        except Order.DoesNotExist:
+            messages.error(request, 'Order not found or unauthorized access.')
+        except Exception as e:
+            print(f"❌ Error in verification: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            messages.error(request, f'Error: {str(e)}')
+
+    # Get pending orders for this seller
+    pending_orders = Order.objects.filter(
+        items__seller=request.user,
+        payment_method='QR Payment',
+        payment_status='pending_verification'
+    ).distinct().order_by('-created_at')
+    
+    # Get recently verified orders
+    verified_orders = Order.objects.filter(
+        items__seller=request.user,
+        payment_method='QR Payment',
+        payment_status='completed',
+        qr_payment_verified_by=request.user
+    ).distinct().order_by('-qr_payment_verified_at')[:10]
+    
+    # Calculate total pending amount
+    total_pending_amount = sum(order.grand_total for order in pending_orders)
+    
+    context = {
+        'pending_orders': pending_orders,
+        'verified_orders': verified_orders,
+        'total_pending_amount': total_pending_amount,
+    }
+    return render(request, 'users/verify_qr_payments.html', context)
+
+
+@login_required
 def chat_list(request):
     """Display all chat rooms for current user"""
     chat_rooms = ChatRoom.objects.filter(
@@ -913,3 +1045,51 @@ def bulk_update_stock(request):
         except:
             return JsonResponse({'success': False})
     return JsonResponse({'success': False})
+
+
+@login_required
+def update_qr(request):
+    """Update QR payment code - for sellers and pending sellers"""
+    try:
+        profile = request.user.profile
+    except Profile.DoesNotExist:
+        profile = Profile.objects.create(user=request.user)
+
+    # Allow access for approved sellers and pending sellers who want to update their QR
+    if profile.seller_status not in ['approved', 'pending']:
+        messages.error(request, 'You need to apply as a seller first to manage QR codes.')
+        return redirect('become_seller')
+
+    if request.method == 'POST':
+        qr_payment_method = request.POST.get('qr_payment_method', '').strip()
+        qr_payment_info = request.POST.get('qr_payment_info', '').strip()
+        payment_qr_code = request.FILES.get('payment_qr_code')
+
+        # Validation
+        if not qr_payment_method:
+            messages.error(request, 'Please select a payment method for your QR code.')
+            return render(request, 'users/update_qr.html', {'profile': profile})
+            
+        if not qr_payment_info:
+            messages.error(request, 'Please provide payment information (phone number, account name, etc.).')
+            return render(request, 'users/update_qr.html', {'profile': profile})
+
+        # Update profile fields
+        profile.qr_payment_method = qr_payment_method
+        profile.qr_payment_info = qr_payment_info
+
+        # Only update QR code if new file uploaded
+        if payment_qr_code:
+            # Validate QR code file
+            if payment_qr_code.size > 5 * 1024 * 1024:  # 5MB limit
+                messages.error(request, 'QR code image must be less than 5MB.')
+                return render(request, 'users/update_qr.html', {'profile': profile})
+            
+            profile.payment_qr_code = payment_qr_code
+
+        profile.save()
+
+        messages.success(request, 'QR payment information updated successfully!')
+        return redirect('dashboard')
+    
+    return render(request, 'users/update_qr.html', {'profile': profile})

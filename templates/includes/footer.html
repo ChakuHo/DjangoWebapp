@@ -1,126 +1,712 @@
-<!-- ========================= FOOTER =========================
-<footer class="section-footer border-top">
-  <div class="container">
-    <section class="footer-bottom border-top row">
-      <div class="col-md-2">
-        <p class="text-muted">&copy 2025 Market Place</p>
-      </div>
-      <div class="col-md-8 text-md-center">
-        <span class="px-2">https://www.deploying.xyz/</span>
-        <span class="px-2">9822342212</span>
-        <span class="px-2">Kamalpokhari, Kathmandu, Nepal</span>
-      </div>
-      <div class="col-md-2 text-md-right text-muted">
-        <i class="fab fa-lg fa-cc-visa"></i>
-        <i class="fab fa-lg fa-cc-paypal"></i>
-        <i class="fab fa-lg fa-cc-mastercard"></i>
-      </div>
-    </section>
-  </div>
-   //container -->
-<!---</footer> -->
+{% load static %}
 
 <!-- ========================= FOOTER ========================= -->
-<footer class="section-footer border-top">
+<footer class="section-footer border-top modern-footer">
   <div class="container">
+    <!-- Newsletter Section -->
+    <section class="footer-newsletter">
+      <div class="row align-items-center">
+        <div class="col-md-6">
+          <h5 class="newsletter-title">
+            <i class="fas fa-envelope-open"></i>
+            Stay Updated with Our Latest Offers
+          </h5>
+          <p class="newsletter-text">Get exclusive deals and updates delivered to your inbox.</p>
+        </div>
+        <div class="col-md-6">
+          <form class="newsletter-form" id="newsletterForm">
+            <div class="input-group">
+              <input type="email" class="form-control newsletter-input" placeholder="Enter your email" required>
+              <div class="input-group-append">
+                <button class="btn btn-primary newsletter-btn" type="submit">
+                  <i class="fas fa-paper-plane"></i> Subscribe
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+
     <section class="footer-top padding-y">
       <div class="row">
-        <aside class="col-md-3 col-12">
-          <h6 class="title">About</h6>
-          <ul class="list-unstyled">
-            <li><a href="#">About us</a></li>
-            <li><a href="#">Services</a></li>
-            <li><a href="#">Rules and terms</a></li>
-            <li><a href="#">Privacy</a></li>
+        <aside class="col-lg-3 col-md-6 col-12 footer-column">
+          <h6 class="footer-title">Quick Links</h6>
+          <ul class="footer-links">
+            <li><a href="{% url 'home' %}"><i class="fas fa-home"></i> Home</a></li>
+            <li><a href="{% url 'products:product' %}"><i class="fas fa-store"></i> Shop</a></li>
+            <li><a href="{% url 'contact' %}"><i class="fas fa-envelope"></i> Contact Us</a></li>
+            {% if user.is_authenticated %}
+              <li><a href="{% url 'dashboard' %}"><i class="fas fa-user-circle"></i> My Account</a></li>
+            {% else %}
+              <li><a href="{% url 'login' %}"><i class="fas fa-sign-in-alt"></i> Login</a></li>
+              <li><a href="{% url 'register' %}"><i class="fas fa-user-plus"></i> Register</a></li>
+            {% endif %}
           </ul>
         </aside>
-        <aside class="col-md-3 col-12">
-          <h6 class="title">My account</h6>
-          <ul class="list-unstyled">
-            <li><a href="#">User Login</a></li>
-            <li><a href="#">User register</a></li>
-            <li><a href="#">Account Setting</a></li>
-            <li><a href="#">My Orders</a></li>
+
+        <aside class="col-lg-3 col-md-6 col-12 footer-column">
+          <h6 class="footer-title">Customer Service</h6>
+          <ul class="footer-links">
+            <li><a href="#" onclick="openModal('faqModal')"><i class="fas fa-question-circle"></i> FAQ</a></li>
+            <li><a href="#" onclick="openModal('shippingModal')"><i class="fas fa-shipping-fast"></i> Shipping Info</a></li>
+            <li><a href="#" onclick="openModal('returnsModal')"><i class="fas fa-undo"></i> Returns & Exchanges</a></li>
+            <li><a href="#" onclick="openModal('supportModal')"><i class="fas fa-headset"></i> Customer Support</a></li>
           </ul>
         </aside>
-        <aside class="col-md-3 col-12">
-          <h6 class="title">Support</h6>
-          <ul class="list-unstyled">
-            <li><a href="#">FAQ</a></li>
-            <li><a href="#">Contact us</a></li>
-            <li><a href="#">Live chat</a></li>
+
+        <aside class="col-lg-3 col-md-6 col-12 footer-column">
+          <h6 class="footer-title">Categories</h6>
+          <ul class="footer-links">
+            {% for category in categories|slice:":4" %}
+            <li>
+              <a href="{% url 'products:products_by_category' category.slug %}">
+                <i class="fas fa-tag"></i> {{ category.category_name }}
+              </a>
+            </li>
+            {% endfor %}
+            {% if categories|length > 4 %}
+            <li><a href="{% url 'products:product' %}"><i class="fas fa-ellipsis-h"></i> View All Categories</a></li>
+            {% endif %}
           </ul>
         </aside>
-        <aside class="col-md-3 col-12">
-          <h6 class="title">Store</h6>
-          <ul class="list-unstyled">
-            <li><a href="{% url 'products:product' %}">Our products</a></li>
-            <li><a href="#">Delivery</a></li>
-            <li><a href="#">Returns</a></li>
-            <li><a href="#">Help</a></li>
-          </ul>
+
+        <aside class="col-lg-3 col-md-6 col-12 footer-column">
+          <h6 class="footer-title">Connect With Us</h6>
+          <div class="social-links">
+            <a href="#" class="social-link facebook" title="Facebook">
+              <i class="fab fa-facebook-f"></i>
+            </a>
+            <a href="#" class="social-link twitter" title="Twitter">
+              <i class="fab fa-twitter"></i>
+            </a>
+            <a href="#" class="social-link instagram" title="Instagram">
+              <i class="fab fa-instagram"></i>
+            </a>
+            <a href="#" class="social-link youtube" title="YouTube">
+              <i class="fab fa-youtube"></i>
+            </a>
+          </div>
+          
+          <div class="contact-info">
+            {% if site_settings and site_settings.phone %}
+            <div class="contact-item">
+              <i class="fas fa-phone"></i>
+              <a href="tel:{{ site_settings.phone }}">{{ site_settings.phone }}</a>
+            </div>
+            {% endif %}
+            
+            {% if site_settings and site_settings.email %}
+            <div class="contact-item">
+              <i class="fas fa-envelope"></i>
+              <a href="mailto:{{ site_settings.email }}">{{ site_settings.email }}</a>
+            </div>
+            {% endif %}
+            
+            {% if site_settings and site_settings.address %}
+            <div class="contact-item">
+              <i class="fas fa-map-marker-alt"></i>
+              <span>{{ site_settings.address }}</span>
+            </div>
+            {% endif %}
+          </div>
         </aside>
       </div>
     </section>
     
-    <section class="footer-bottom border-top row">
-      <div class="col-md-2">
-        {% if site_settings and site_settings.logo %}
-        <img src="{{ site_settings.logo.url }}" class="logo" height="40" alt="Logo">
-        {% endif %}
-        <p class="text-muted">
-          &copy; 2025 
-          {% if site_settings and site_settings.site_title %}
-            {{ site_settings.site_title }}
-          {% else %}
-            Market Place
-          {% endif %}
-        </p>
-      </div>
-      
-      <div class="col-md-8 text-md-center">
-        {% if site_settings %}
-          {% if site_settings.website_url %}
-            <span class="px-2">
-              <a href="{{ site_settings.website_url }}" target="_blank" class="text-muted">
-                {{ site_settings.website_url }}
-              </a>
-            </span>
-          {% endif %}
-          
-          {% if site_settings.phone %}
-            <span class="px-2">
-              <a href="tel:{{ site_settings.phone }}" class="text-muted">
-                {{ site_settings.phone }}
-              </a>
-            </span>
-          {% endif %}
-          
-          {% if site_settings.address %}
-            <span class="px-2">{{ site_settings.address }}</span>
-          {% endif %}
-          
-          {% if site_settings.email %}
-            <span class="px-2">
-              <a href="mailto:{{ site_settings.email }}" class="text-muted">
-                {{ site_settings.email }}
-              </a>
-            </span>
-          {% endif %}
-        {% else %}
-          <!-- Fallback if no site settings -->
-          <span class="px-2">https://www.deploying.xyz/</span>
-          <span class="px-2">9822342212</span>
-          <span class="px-2">Kamalpokhari, Kathmandu, Nepal</span>
-        {% endif %}
-      </div>
-      
-      <div class="col-md-2 text-md-right text-muted">
-        <i class="fab fa-lg fa-cc-visa"></i>
-        <i class="fab fa-lg fa-cc-paypal"></i>
-        <i class="fab fa-lg fa-cc-mastercard"></i>
+    <section class="footer-bottom border-top">
+      <div class="row align-items-center">
+        <div class="col-md-4">
+          <div class="footer-brand">
+            {% if site_settings and site_settings.logo %}
+            <img src="{{ site_settings.logo.url }}" class="footer-logo" alt="Logo">
+            {% endif %}
+            <p class="copyright-text">
+              &copy; 2025 
+              {% if site_settings and site_settings.site_title %}
+                {{ site_settings.site_title }}
+              {% else %}
+                Market Place
+              {% endif %}
+              <br><small>All rights reserved.</small>
+            </p>
+          </div>
+        </div>
+        
+        <div class="col-md-4 text-center">
+          <div class="footer-links-bottom">
+            <a href="#" onclick="openModal('privacyModal')">Privacy Policy</a>
+            <span class="separator">|</span>
+            <a href="#" onclick="openModal('termsModal')">Terms of Service</a>
+            <span class="separator">|</span>
+            <a href="{% url 'contact' %}">Support</a>
+          </div>
+        </div>
+        
+        <div class="col-md-4 text-md-right">
+          <div class="payment-methods">
+            <span class="payment-text">We Accept:</span>
+            <div class="payment-icons">
+              <i class="fab fa-cc-visa payment-icon" title="Visa"></i>
+              <i class="fab fa-cc-mastercard payment-icon" title="Mastercard"></i>
+              <i class="fab fa-cc-paypal payment-icon" title="PayPal"></i>
+              <i class="fab fa-cc-stripe payment-icon" title="Stripe"></i>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   </div>
-  <!-- //container -->
+
+  <!-- Back to Top Button -->
+  <button class="back-to-top" id="backToTop" title="Back to Top">
+    <i class="fas fa-chevron-up"></i>
+  </button>
 </footer>
+
+<!-- Modals for Quick Info -->
+<div class="modal fade" id="faqModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Frequently Asked Questions</h5>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="faq-item">
+          <h6>How do I track my order?</h6>
+          <p>Once your order is shipped, you'll receive a tracking number via email.</p>
+        </div>
+        <div class="faq-item">
+          <h6>What is your return policy?</h6>
+          <p>We offer 30-day returns for unused items in original packaging.</p>
+        </div>
+        <div class="faq-item">
+          <h6>How long does delivery take?</h6>
+          <p>Standard delivery takes 3-5 business days within Nepal.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="shippingModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Shipping Information</h5>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <h6>Delivery Options:</h6>
+        <ul>
+          <li><strong>Standard Delivery:</strong> 3-5 business days - Rs. 100</li>
+          <li><strong>Express Delivery:</strong> 1-2 business days - Rs. 200</li>
+          <li><strong>Free Delivery:</strong> Orders over Rs. 2000</li>
+        </ul>
+        <p><strong>Coverage:</strong> We deliver throughout Nepal.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="returnsModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Returns & Exchanges</h5>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <h6>Return Policy:</h6>
+        <ul>
+          <li>30-day return window</li>
+          <li>Items must be unused and in original packaging</li>
+          <li>Free returns for defective items</li>
+          <li>Customer pays return shipping for other returns</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="privacyModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Privacy Policy</h5>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <h6>Information We Collect:</h6>
+        <p>We collect information you provide directly to us, such as when you create an account, make a purchase, or contact us.</p>
+        <h6>How We Use Your Information:</h6>
+        <p>We use the information to provide, maintain, and improve our services, process transactions, and communicate with you.</p>
+        <h6>Information Sharing:</h6>
+        <p>We do not sell, trade, or rent your personal information to third parties.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="termsModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Terms of Service</h5>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <h6>Acceptance of Terms:</h6>
+        <p>By using our service, you agree to these terms.</p>
+        <h6>Use of Service:</h6>
+        <p>You may use our service for lawful purposes only.</p>
+        <h6>Account Terms:</h6>
+        <p>You are responsible for maintaining the confidentiality of your account.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* Modern Footer Styles */
+.modern-footer {
+  background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+  color: #ecf0f1;
+  margin-top: 50px;
+}
+
+.footer-newsletter {
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+  padding: 30px 0;
+  margin: 0 -15px;
+  border-radius: 15px 15px 0 0;
+}
+
+.newsletter-title {
+  color: white;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.newsletter-title i {
+  margin-right: 10px;
+  color: #f39c12;
+}
+
+.newsletter-text {
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 0;
+}
+
+.newsletter-form {
+  margin-top: 15px;
+}
+
+.newsletter-input {
+  border: none;
+  border-radius: 25px 0 0 25px;
+  padding: 12px 20px;
+  font-size: 14px;
+}
+
+.newsletter-input:focus {
+  box-shadow: none;
+  border-color: #f39c12;
+}
+
+.newsletter-btn {
+  background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+  border: none;
+  border-radius: 0 25px 25px 0;
+  padding: 12px 25px;
+  transition: all 0.3s ease;
+}
+
+.newsletter-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(243, 156, 18, 0.3);
+}
+
+.footer-top {
+  padding: 40px 0;
+}
+
+.footer-column {
+  margin-bottom: 30px;
+}
+
+.footer-title {
+  color: #3498db;
+  font-weight: 600;
+  margin-bottom: 20px;
+  position: relative;
+  padding-bottom: 10px;
+}
+
+.footer-title::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 30px;
+  height: 2px;
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+}
+
+.footer-links {
+  list-style: none;
+  padding: 0;
+}
+
+.footer-links li {
+  margin-bottom: 10px;
+}
+
+.footer-links a {
+  color: #bdc3c7;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+}
+
+.footer-links a i {
+  width: 16px;
+  margin-right: 10px;
+  color: #3498db;
+}
+
+.footer-links a:hover {
+  color: #3498db;
+  text-decoration: none;
+  transform: translateX(5px);
+}
+
+.social-links {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+.social-link {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.social-link.facebook { background: linear-gradient(135deg, #3b5998 0%, #2d4373 100%); }
+.social-link.twitter { background: linear-gradient(135deg, #1da1f2 0%, #0d8bd9 100%); }
+.social-link.instagram { background: linear-gradient(135deg, #e1306c 0%, #c13584 100%); }
+.social-link.youtube { background: linear-gradient(135deg, #ff0000 0%, #cc0000 100%); }
+
+.social-link:hover {
+  transform: translateY(-3px) scale(1.1);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.contact-info {
+  space-y: 10px;
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  color: #bdc3c7;
+}
+
+.contact-item i {
+  width: 16px;
+  margin-right: 10px;
+  color: #3498db;
+}
+
+.contact-item a {
+  color: #bdc3c7;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.contact-item a:hover {
+  color: #3498db;
+  text-decoration: none;
+}
+
+.footer-bottom {
+  padding: 25px 0;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.footer-logo {
+  height: 40px;
+  border-radius: 5px;
+}
+
+.copyright-text {
+  margin: 0;
+  color: #bdc3c7;
+  font-size: 14px;
+}
+
+.footer-links-bottom {
+  margin: 10px 0;
+}
+
+.footer-links-bottom a {
+  color: #bdc3c7;
+  text-decoration: none;
+  transition: color 0.3s ease;
+  margin: 0 5px;
+}
+
+.footer-links-bottom a:hover {
+  color: #3498db;
+  text-decoration: none;
+}
+
+.separator {
+  color: #7f8c8d;
+  margin: 0 10px;
+}
+
+.payment-methods {
+  text-align: right;
+}
+
+.payment-text {
+  display: block;
+  color: #bdc3c7;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+.payment-icons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.payment-icon {
+  font-size: 24px;
+  color: #bdc3c7;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.payment-icon:hover {
+  color: #3498db;
+  transform: translateY(-2px);
+}
+
+/* Back to Top Button */
+.back-to-top {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  width: 50px;
+  height: 50px;
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  z-index: 1000;
+  box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+}
+
+.back-to-top.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.back-to-top:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+}
+
+/* Modal Styles */
+.modal-content {
+  border-radius: 15px;
+  border: none;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+  color: white;
+  border-radius: 15px 15px 0 0;
+}
+
+.modal-header .close {
+  color: white;
+  opacity: 0.8;
+}
+
+.faq-item {
+  border-bottom: 1px solid #ecf0f1;
+  padding-bottom: 15px;
+  margin-bottom: 15px;
+}
+
+.faq-item:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.faq-item h6 {
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .footer-newsletter {
+    text-align: center;
+  }
+  
+  .newsletter-form {
+    margin-top: 20px;
+  }
+  
+  .social-links {
+    justify-content: center;
+  }
+  
+  .payment-methods {
+    text-align: center;
+    margin-top: 20px;
+  }
+  
+  .payment-icons {
+    justify-content: center;
+  }
+  
+  .footer-brand {
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .back-to-top {
+    bottom: 20px;
+    right: 20px;
+    width: 45px;
+    height: 45px;
+  }
+}
+
+/* Animation for footer elements */
+.footer-column {
+  animation: fadeInUp 0.6s ease forwards;
+}
+
+.footer-column:nth-child(1) { animation-delay: 0.1s; }
+.footer-column:nth-child(2) { animation-delay: 0.2s; }
+.footer-column:nth-child(3) { animation-delay: 0.3s; }
+.footer-column:nth-child(4) { animation-delay: 0.4s; }
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Newsletter form handling
+    const newsletterForm = document.getElementById('newsletterForm');
+    if (newsletterForm) {
+        newsletterForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const email = this.querySelector('input[type="email"]').value;
+            
+            // Show success message (you can integrate with your backend here)
+            alert('Thank you for subscribing! We\'ll keep you updated with our latest offers.');
+            this.reset();
+        });
+    }
+
+    // Back to top button
+    const backToTopBtn = document.getElementById('backToTop');
+    
+    window.addEventListener('scroll', function() {
+        if (window.pageYOffset > 300) {
+            backToTopBtn.classList.add('show');
+        } else {
+            backToTopBtn.classList.remove('show');
+        }
+    });
+
+    backToTopBtn.addEventListener('click', function() {
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    });
+
+    // Social links hover effect
+    const socialLinks = document.querySelectorAll('.social-link');
+    socialLinks.forEach(link => {
+        link.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-3px) scale(1.1)';
+        });
+        
+        link.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0) scale(1)';
+        });
+    });
+
+    // Payment icons animation
+    const paymentIcons = document.querySelectorAll('.payment-icon');
+    paymentIcons.forEach(icon => {
+        icon.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px) scale(1.1)';
+        });
+        
+        icon.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0) scale(1)';
+        });
+    });
+});
+
+// Modal functions
+function openModal(modalId) {
+    $('#' + modalId).modal('show');
+}
+
+// Add smooth scrolling to all anchor links in footer
+document.querySelectorAll('.footer-links a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+            target.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+        }
+    });
+});
+</script>

@@ -30,5 +30,6 @@ urlpatterns = [
     path('delete-product/<int:product_id>/', views.delete_product, name='delete_product'),
     path('bulk-update-stock/', views.bulk_update_stock, name='bulk_update_stock'),
 
-
+    path('update-qr/', views.update_qr, name='update_qr'),
+    path('verify-qr-payments/', views.verify_qr_payments, name='verify_qr_payments'),
 ]

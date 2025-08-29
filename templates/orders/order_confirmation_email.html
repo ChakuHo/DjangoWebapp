@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Order Confirmation</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #007bff; color: white; padding: 20px; text-align: center; }
+        .content { padding: 20px; background: #f8f9fa; }
+        .order-details { background: white; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .total { font-size: 18px; font-weight: bold; color: #28a745; }
+        .payment-method { 
+            background: #e8f5e9; 
+            padding: 15px; 
+            border-radius: 8px; 
+            border-left: 4px solid #28a745; 
+            margin: 15px 0; 
+        }
+        .qr-payment-icon { font-size: 20px; color: #28a745; }
+        .reference-highlight {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+            margin: 10px 0;
+        }
+        .reference-code {
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            font-weight: bold;
+            color: #2c3e50;
+            background: #f1c40f;
+            padding: 5px 10px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 Order Confirmed!</h1>
+            <p>Thank you for your purchase</p>
+        </div>
+        <div class="content">
+            <h2>Hello {{ order.user.first_name|default:order.user.username }},</h2>
+            <p>Your payment has been successfully processed!</p>
+            
+            <div class="order-details">
+                <h3>Order #{{ order.id }}</h3>
+                <p><strong>Order Number:</strong> {{ order.order_number }}</p>
+                <p><strong>Total:</strong> <span class="total">Rs. {{ order.grand_total|floatformat:2 }}</span></p>
+                
+                <!-- Enhanced Payment Method Display -->
+                <div class="payment-method">
+                    {% if order.payment_method == 'QR Payment' %}
+                        <span class="qr-payment-icon">📱</span>
+                        <strong>Payment Method:</strong> QR Code Payment
+                        <br><small>Payment completed via QR code scan</small>
+                        
+                        {% if order.payment_reference %}
+                        <div class="reference-highlight">
+                            <strong>Payment Reference:</strong><br>
+                            <span class="reference-code">{{ order.payment_reference }}</span>
+                            <br><small>Save this reference for any future queries</small>
+                        </div>
+                        {% endif %}
+                        
+                    {% elif order.payment_method == 'Cash on Delivery' %}
+                        <span style="color: #ffc107;">💰</span>
+                        <strong>Payment Method:</strong> Cash on Delivery
+                        <br><small>Pay when your order arrives</small>
+                    {% elif order.payment_method == 'eSewa' %}
+                        <span style="color: #28a745;">💳</span>
+                        <strong>Payment Method:</strong> eSewa Digital Wallet
+                        <br><small>Payment completed successfully</small>
+                        {% if order.payment_reference %}
+                        <br><small>Reference: {{ order.payment_reference }}</small>
+                        {% endif %}
+                    {% else %}
+                        <strong>Payment Method:</strong> {{ order.payment_method }}
+                    {% endif %}
+                </div>
+                
+                <p><strong>Status:</strong> {{ order.status }}</p>
+                <p><strong>Order Date:</strong> {{ order.created_at|date:"M d, Y H:i" }}</p>
+                {% if order.qr_payment_confirmed_at %}
+                <p><strong>Payment Confirmed:</strong> {{ order.qr_payment_confirmed_at|date:"M d, Y H:i" }}</p>
+                {% endif %}
+            </div>
+
+            {% if order.payment_method == 'QR Payment' %}
+            <div style="background: #fff3cd; padding: 15px; border-radius: 5px; border-left: 4px solid #ffc107; margin: 15px 0;">
+                <h4 style="color: #856404;">📱 QR Payment Completed Successfully</h4>
+                <p style="margin: 10px 0; color: #856404;">
+                    <strong>Reference Number:</strong> <span class="reference-code">{{ order.payment_reference }}</span>
+                </p>
+                <p style="margin: 0; color: #856404;">
+                    Thank you for using QR code payment! Keep this reference number for your records.
+                </p>
+            </div>
+            {% endif %}
+            
+            <p style="margin-top: 20px;">
+                <strong>What's next?</strong><br>
+                • Your order is confirmed and being processed<br>
+                • You'll receive shipping updates via email<br>
+                • Estimated delivery: 3-5 business days<br>
+                {% if order.payment_reference %}
+                • For any queries, use reference: <strong>{{ order.payment_reference }}</strong>
+                {% endif %}
+            </p>
+            
+            <p style="margin-top: 20px; text-align: center; color: #666;">
+                Thank you for shopping with us!<br>
+                <strong>Islington Marketplace Team</strong>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

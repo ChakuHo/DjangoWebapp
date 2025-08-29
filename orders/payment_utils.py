@@ -53,82 +53,24 @@ class ESewaPayment:
         except Exception as e:
             return {'success': False, 'error': str(e)}
 
-class KhaltiPayment:
+# QR Payment class for future enhancements
+class QRPayment:
     @staticmethod
-    def initiate_payment(order):
-        """NEW Khalti ePayment API"""
-        try:
-            # Convert to paisa (Khalti uses paisa)
-            amount_in_paisa = int(order.grand_total * 100)
-            
-            url = f"{settings.KHALTI_SETTINGS['API_URL']}epayment/initiate/"
-            
-            payload = {
-                "return_url": f"http://127.0.0.1:8000/orders/khalti-return/{order.id}/",
-                "website_url": "http://127.0.0.1:8000/",
-                "amount": amount_in_paisa,
-                "purchase_order_id": f"ORDER-{order.id}",
-                "purchase_order_name": f"Order #{order.id}",
-                "customer_info": {
-                    "name": f"{order.user.first_name} {order.user.last_name}",
-                    "email": order.user.email,
-                    "phone": "9800000001"  # You can get this from user profile
-                }
-            }
-            
-            headers = {
-                'Authorization': f'key {settings.KHALTI_SETTINGS["SECRET_KEY"]}',
-                'Content-Type': 'application/json',
-            }
-            
-            print(f"💜 Khalti Initiate URL: {url}")
-            print(f"💜 Khalti Payload: {payload}")
-            
-            response = requests.post(url, json=payload, headers=headers, timeout=30)
-            
-            print(f"💜 Khalti Response Status: {response.status_code}")
-            print(f"💜 Khalti Response: {response.text}")
-            
-            if response.status_code == 200:
-                response_data = response.json()
-                return {
-                    'success': True,
-                    'payment_url': response_data.get('payment_url'),
-                    'pidx': response_data.get('pidx')
-                }
-            else:
-                return {'success': False, 'error': f"API returned {response.status_code}: {response.text}"}
-                
-        except Exception as e:
-            print(f"❌ Khalti Initiate Error: {str(e)}")
-            return {'success': False, 'error': str(e)}
+    def initiate_payment(order, seller_qr_data):
+        """Prepare QR payment data"""
+        return {
+            'success': True,
+            'order_id': order.id,
+            'seller_qr_data': seller_qr_data,
+            'total_amount': order.grand_total
+        }
     
     @staticmethod
-    def verify_payment(pidx):
-        """Verify Khalti ePayment"""
-        try:
-            url = f"{settings.KHALTI_SETTINGS['API_URL']}epayment/lookup/"
-            
-            payload = {"pidx": pidx}
-            
-            headers = {
-                'Authorization': f'key {settings.KHALTI_SETTINGS["SECRET_KEY"]}',
-                'Content-Type': 'application/json',
-            }
-            
-            print(f"💜 Khalti Verify URL: {url}")
-            print(f"💜 Khalti Verify Payload: {payload}")
-            
-            response = requests.post(url, json=payload, headers=headers, timeout=30)
-            
-            print(f"💜 Khalti Verify Response: {response.status_code} - {response.text}")
-            
-            if response.status_code == 200:
-                response_data = response.json()
-                return {'success': True, 'data': response_data}
-            else:
-                return {'success': False, 'error': f"Verification failed: {response.text}"}
-                
-        except Exception as e:
-            print(f"❌ Khalti Verify Error: {str(e)}")
-            return {'success': False, 'error': str(e)}
+    def confirm_payment(order):
+        """Confirm QR payment (manual confirmation)"""
+        return {
+            'success': True,
+            'payment_method': 'QR Payment',
+            'reference': f"QR-{order.id}",
+            'status': 'completed'
+        }

@@ -1,0 +1,396 @@
+{% extends 'master/base.html' %}
+{% load static %}
+
+{% block title %}QR Payment - Order #{{ order.id }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- Header -->
+            <div class="card shadow-lg border-0 mb-4">
+                <div class="card-header bg-success text-white text-center py-4">
+                    <h3 class="mb-2">
+                        <i class="fa fa-qrcode fa-2x"></i><br>
+                        QR Payment Required
+                    </h3>
+                    <p class="mb-0">Scan QR codes below to complete your payment</p>
+                </div>
+                
+                <!-- Order Summary -->
+                <div class="card-body bg-light">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <h6 class="text-muted">Order Number</h6>
+                            <strong>#{{ order.order_number }}</strong>
+                        </div>
+                        <div class="col-md-3">
+                            <h6 class="text-muted">Payment Reference</h6>
+                            <strong class="text-primary">{{ qr_reference }}</strong>
+                        </div>
+                        <div class="col-md-3">
+                            <h6 class="text-muted">Subtotal</h6>
+                            <strong>Rs. {{ subtotal|floatformat:2 }}</strong>
+                        </div>
+                        <div class="col-md-3">
+                            <h6 class="text-muted">Total Amount</h6>
+                            <strong class="text-success">Rs. {{ total_amount|floatformat:2 }}</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- QR Codes Section -->
+            <div class="row">
+                {% for seller_qr in seller_qr_codes %}
+                <div class="col-lg-6 mb-4">
+                    <div class="card shadow border-0 h-100">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">
+                                <i class="fa fa-store"></i> 
+                                {{ seller_qr.business_name }}
+                            </h5>
+                            <small>{{ seller_qr.get_qr_display_name }} Payment</small>
+                        </div>
+                        <div class="card-body text-center">
+                            <!-- QR Code Image -->
+                            <div class="qr-code-container mb-3">
+                                <img src="{{ seller_qr.qr_code.url }}" 
+                                     alt="QR Code for {{ seller_qr.business_name }}"
+                                     class="img-fluid qr-code-image border border-success rounded"
+                                     style="max-width: 250px; width: 100%;">
+                            </div>
+                            
+                            <!-- Payment Amount -->
+                            <div class="alert alert-success">
+                                <h4 class="mb-0">
+                                    <i class="fa fa-rupee-sign"></i> 
+                                    Pay: Rs. {{ seller_qr.amount|floatformat:2 }}
+                                </h4>
+                            </div>
+                            
+                            <!-- Payment Info -->
+                            <div class="payment-info">
+                                <p class="mb-2">
+                                    <strong>Payment Method:</strong> {{ seller_qr.get_qr_display_name }}
+                                </p>
+                                <p class="mb-0 text-muted">
+                                    <strong>Account Info:</strong> {{ seller_qr.qr_payment_info }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Payment Instructions -->
+            <div class="card shadow border-0 mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="fa fa-info-circle"></i> Payment Instructions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>📱 How to Pay:</h6>
+                            <ol class="pl-3">
+                                <li>Open your digital wallet app (eSewa, Khalti, etc.)</li>
+                                <li>Scan the QR code(s) above</li>
+                                <li>Enter the exact amount shown</li>
+                                <li>Complete the payment</li>
+                                <li>Note down your Transaction ID</li>
+                                <li>Submit payment proof below</li>
+                            </ol>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>⚠️ Important Notes:</h6>
+                            <ul class="pl-3">
+                                <li>Pay the <strong>exact amount</strong> shown for each seller</li>
+                                <li>Use reference: <strong>{{ qr_reference }}</strong></li>
+                                <li>Keep payment receipts for verification</li>
+                                <li>Transaction ID is required for verification</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- UPDATED Payment Confirmation Section -->
+            <div class="card shadow border-0">
+                <div class="card-body">
+                    <h5 class="mb-4 text-center">
+                        <i class="fa fa-shield-check text-warning"></i> Payment Verification Required
+                    </h5>
+                    
+                    <div class="alert alert-warning">
+                        <h6><i class="fa fa-exclamation-triangle"></i> Important Security Notice:</h6>
+                        <p class="mb-0">To prevent fraud, we require transaction proof. Your order will be verified within 24 hours.</p>
+                    </div>
+                    
+                    <form method="POST" action="{% url 'confirm_qr_payment' order.id %}" id="confirm-payment-form" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="hidden" name="qr_reference" value="{{ qr_reference }}">
+                        
+                        <!-- Transaction ID Input -->
+                        <div class="form-group mb-4">
+                            <label for="transaction_id" class="font-weight-bold">
+                                <i class="fa fa-receipt text-primary"></i> Transaction ID *
+                            </label>
+                            <input type="text" 
+                                   class="form-control form-control-lg" 
+                                   id="transaction_id" 
+                                   name="transaction_id" 
+                                   placeholder="Enter your payment transaction ID"
+                                   minlength="5"
+                                   required>
+                            <small class="form-text text-muted">
+                                <strong>Where to find Transaction ID:</strong><br>
+                                • <strong>eSewa:</strong> Check your payment history or SMS<br>
+                                • <strong>Khalti:</strong> Look in transaction details<br>
+                                • <strong>Other apps:</strong> Check payment confirmation screen
+                            </small>
+                        </div>
+                        
+                        <!-- Payment Screenshot Upload -->
+                        <div class="form-group mb-4">
+                            <label for="payment_screenshot" class="font-weight-bold">
+                                <i class="fa fa-camera text-success"></i> Payment Screenshot (Recommended)
+                            </label>
+                            <input type="file" 
+                                   class="form-control-file" 
+                                   id="payment_screenshot" 
+                                   name="payment_screenshot" 
+                                   accept="image/*">
+                            <small class="form-text text-muted">
+                                Upload a clear screenshot of your successful payment for faster verification
+                            </small>
+                            
+                            <!-- Image Preview -->
+                            <div id="image-preview" style="display: none;" class="mt-3">
+                                <img id="preview-img" src="" alt="Screenshot Preview" class="img-fluid border rounded" style="max-width: 300px;">
+                            </div>
+                        </div>
+
+                        <!-- Payment Details Summary -->
+                        <div class="alert alert-info">
+                            <h6><i class="fa fa-info-circle"></i> Payment Summary:</h6>
+                            <ul class="mb-0">
+                                <li><strong>Reference:</strong> {{ qr_reference }}</li>
+                                <li><strong>Total Amount:</strong> Rs. {{ total_amount|floatformat:2 }}</li>
+                                <li><strong>Sellers:</strong> {{ seller_qr_codes|length }} seller(s)</li>
+                            </ul>
+                        </div>
+                        
+                        <!-- Confirmation Checkbox -->
+                        <div class="form-check mb-4">
+                            <input class="form-check-input" type="checkbox" id="payment-confirmation" required>
+                            <label class="form-check-label font-weight-bold" for="payment-confirmation">
+                                I confirm that I have completed all QR payments and provided accurate transaction details. I understand that false information may result in order cancellation.
+                            </label>
+                        </div>
+                        
+                        <!-- Submit Button -->
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-success btn-lg px-5 mb-3" id="confirm-btn" disabled>
+                                <i class="fa fa-check-circle"></i> Submit Payment Proof
+                            </button>
+                            <br>
+                            <a href="{% url 'checkout' %}" class="btn btn-outline-secondary">
+                                <i class="fa fa-arrow-left"></i> Back to Checkout
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Payment Reference Modal -->
+<div class="modal fade" id="referenceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">Payment Reference</h5>
+                <button type="button" class="close text-white" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body text-center">
+                <h4>{{ qr_reference }}</h4>
+                <p>Use this reference number in your payment description</p>
+                <button class="btn btn-info" onclick="copyReference()">
+                    <i class="fa fa-copy"></i> Copy Reference
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.qr-code-image {
+    transition: transform 0.3s ease;
+    cursor: pointer;
+}
+
+.qr-code-image:hover {
+    transform: scale(1.05);
+}
+
+.payment-info {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 10px;
+    margin-top: 15px;
+}
+
+.card {
+    transition: transform 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+.qr-code-container {
+    background: white;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+@media (max-width: 768px) {
+    .qr-code-image {
+        max-width: 200px;
+    }
+    
+    .col-md-3 {
+        margin-bottom: 15px;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const checkbox = document.getElementById('payment-confirmation');
+    const confirmBtn = document.getElementById('confirm-btn');
+    const form = document.getElementById('confirm-payment-form');
+    const transactionInput = document.getElementById('transaction_id');
+    const screenshotInput = document.getElementById('payment_screenshot');
+    
+    // Enable/disable confirm button
+    function updateButtonState() {
+        const hasTransaction = transactionInput && transactionInput.value.trim().length >= 5;
+        const isChecked = checkbox && checkbox.checked;
+        
+        if (confirmBtn) {
+            confirmBtn.disabled = !(hasTransaction && isChecked);
+            
+            if (hasTransaction && isChecked) {
+                confirmBtn.classList.remove('btn-secondary');
+                confirmBtn.classList.add('btn-success');
+            } else {
+                confirmBtn.classList.remove('btn-success');
+                confirmBtn.classList.add('btn-secondary');
+            }
+        }
+    }
+    
+    // Event listeners
+    if (checkbox) {
+        checkbox.addEventListener('change', updateButtonState);
+    }
+    if (transactionInput) {
+        transactionInput.addEventListener('input', updateButtonState);
+    }
+    
+    // Screenshot preview
+    if (screenshotInput) {
+        screenshotInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const preview = document.getElementById('image-preview');
+            const previewImg = document.getElementById('preview-img');
+            
+            if (file && preview && previewImg) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImg.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            } else if (preview) {
+                preview.style.display = 'none';
+            }
+        });
+    }
+    
+    // Form submission
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const transactionId = transactionInput ? transactionInput.value.trim() : '';
+            
+            if (!transactionId || transactionId.length < 5) {
+                e.preventDefault();
+                alert('Please enter a valid transaction ID (at least 5 characters)');
+                return;
+            }
+            
+            if (!checkbox || !checkbox.checked) {
+                e.preventDefault();
+                alert('Please confirm that you have completed all payments');
+                return;
+            }
+            
+            // Show loading state
+            if (confirmBtn) {
+                confirmBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Submitting Proof...';
+                confirmBtn.disabled = true;
+            }
+        });
+    }
+    
+    // QR code click to zoom
+    document.querySelectorAll('.qr-code-image').forEach(img => {
+        img.addEventListener('click', function() {
+            const modal = `
+                <div class="modal fade" id="qrModal" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">QR Code - Full Size</h5>
+                                <button type="button" class="close" data-dismiss="modal">
+                                    <span>&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body text-center">
+                                <img src="${this.src}" class="img-fluid" style="max-width: 100%;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Remove existing modal if any
+            const existingModal = document.getElementById('qrModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            // Add new modal
+            document.body.insertAdjacentHTML('beforeend', modal);
+            $('#qrModal').modal('show');
+        });
+    });
+});
+
+function copyReference() {
+    const reference = '{{ qr_reference }}';
+    navigator.clipboard.writeText(reference).then(function() {
+        alert('Reference copied to clipboard!');
+    });
+}
+</script>
+{% endblock %}

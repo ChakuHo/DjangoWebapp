@@ -4,6 +4,9 @@ from products.models import Product, ProductVariation
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib import messages
 import json
+from django.contrib.auth.decorators import login_required
+from django.urls import reverse
+from django.http import HttpResponseRedirect
 
 def _cart_id(request):
     cart = request.session.session_key
@@ -265,3 +268,132 @@ def merge_session_cart_to_user(request):
                     
             except Cart.DoesNotExist:
                 pass
+
+def checkout(request):
+    """Enhanced checkout with guest handling"""
+    if not request.user.is_authenticated:
+        # Store cart in session for later retrieval
+        request.session['redirect_after_login'] = 'checkout'
+        messages.info(request, 'Please login or register to continue with checkout.')
+        return redirect('login')
+    
+    # Get user's cart
+    try:
+        cart = Cart.objects.get(user=request.user)
+        cart_items = CartItem.objects.filter(cart=cart, is_active=True)
+        
+        if not cart_items.exists():
+            messages.warning(request, 'Your cart is empty!')
+            return redirect('cart')
+            
+        # Calculate totals
+        total = sum(item.sub_total() for item in cart_items)
+        tax = 0.13 * total
+        grand_total = total + tax
+        
+        # Check stock availability before checkout
+        stock_issues = []
+        for item in cart_items:
+            available_stock = item.get_available_stock()
+            if item.quantity > available_stock:
+                stock_issues.append(f"{item.product.name}: only {available_stock} available")
+        
+        if stock_issues:
+            for issue in stock_issues:
+                messages.error(request, issue)
+            return redirect('cart')
+        
+        context = {
+            'cart_items': cart_items,
+            'total': total,
+            'tax': tax,
+            'grand_total': grand_total,
+        }
+        
+        return render(request, 'checkout/checkout.html', context)
+        
+    except Cart.DoesNotExist:
+        messages.warning(request, 'Your cart is empty!')
+        return redirect('cart')
+
+def preserve_guest_cart(request):
+    """Preserve guest cart data in session before authentication"""
+    if not request.user.is_authenticated:
+        try:
+            session_cart = Cart.objects.get(cart_id=_cart_id(request))
+            session_items = CartItem.objects.filter(cart=session_cart, is_active=True)
+            
+            # Store cart data in session
+            cart_data = []
+            for item in session_items:
+                variation_ids = list(item.variations.values_list('id', flat=True))
+                cart_data.append({
+                    'product_id': item.product.id,
+                    'quantity': item.quantity,
+                    'variation_ids': variation_ids
+                })
+            
+            if cart_data:
+                request.session['guest_cart_data'] = cart_data
+                
+        except Cart.DoesNotExist:
+            pass
+
+def restore_cart_after_login(request):
+    """Restore cart after user logs in"""
+    if request.user.is_authenticated:
+        # First, merge any existing session cart
+        merge_session_cart_to_user(request)
+        
+        # Then restore from preserved cart data if exists
+        guest_cart_data = request.session.get('guest_cart_data')
+        if guest_cart_data:
+            user_cart, created = Cart.objects.get_or_create(user=request.user)
+            
+            for item_data in guest_cart_data:
+                try:
+                    product = Product.objects.get(id=item_data['product_id'])
+                    
+                    # Get variations if any
+                    variations = []
+                    if item_data.get('variation_ids'):
+                        variations = ProductVariation.objects.filter(
+                            id__in=item_data['variation_ids']
+                        )
+                    
+                    # Check if item already exists in user cart
+                    existing_items = CartItem.objects.filter(
+                        product=product, 
+                        cart=user_cart, 
+                        is_active=True
+                    )
+                    
+                    # Find exact match including variations
+                    existing_item = None
+                    for existing in existing_items:
+                        existing_variation_ids = set(existing.variations.values_list('id', flat=True))
+                        new_variation_ids = set(item_data.get('variation_ids', []))
+                        if existing_variation_ids == new_variation_ids:
+                            existing_item = existing
+                            break
+                    
+                    if existing_item:
+                        # Add quantities
+                        existing_item.quantity += item_data['quantity']
+                        existing_item.save()
+                    else:
+                        # Create new cart item
+                        new_item = CartItem.objects.create(
+                            product=product,
+                            cart=user_cart,
+                            quantity=item_data['quantity']
+                        )
+                        if variations:
+                            new_item.variations.set(variations)
+                            
+                except Product.DoesNotExist:
+                    continue
+            
+            # Clear the preserved cart data
+            del request.session['guest_cart_data']
+            messages.success(request, 'Your cart has been restored!')

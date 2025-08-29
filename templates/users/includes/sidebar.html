@@ -19,6 +19,13 @@
     <a class="list-group-item {% if request.resolver_match.url_name == 'seller_received_orders' %}active{% endif %}" href="{% url 'seller_received_orders' %}"> 
       <i class="fa fa-shopping-bag text-success"></i> Orders from Customers 
     </a>
+    <!-- QR Payment Verification with Badge -->
+    <a class="list-group-item {% if request.resolver_match.url_name == 'verify_qr_payments' %}active{% endif %} position-relative" href="{% url 'verify_qr_payments' %}"> 
+      <i class="fa fa-qrcode text-warning"></i> Verify QR Payments
+      {% if pending_qr_count > 0 %}
+        <span class="badge badge-danger badge-pill float-right animate-pulse">{{ pending_qr_count }}</span>
+      {% endif %}
+    </a>
     {% else %}
     <span class="list-group-item text-muted"> 
       <i class="fa fa-lock"></i> My Selling Items 
@@ -26,6 +33,10 @@
     </span>
     <span class="list-group-item text-muted"> 
       <i class="fa fa-lock"></i> Orders from Customers 
+      <small class="text-muted d-block">Seller approval required</small>
+    </span>
+    <span class="list-group-item text-muted"> 
+      <i class="fa fa-lock"></i> Verify QR Payments 
       <small class="text-muted d-block">Seller approval required</small>
     </span>
     {% endif %}
@@ -44,3 +55,31 @@
   </a>
   <!--   SIDEBAR .//END   -->
 </aside>
+
+<style>
+/* Animated badge for pending QR payments */
+.animate-pulse {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.badge-danger {
+    background-color: #dc3545 !important;
+    color: white !important;
+    font-weight: bold;
+}
+</style>

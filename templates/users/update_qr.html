@@ -1,0 +1,372 @@
+{% extends "master/base.html" %} 
+{% load static %} 
+{% block content %}
+
+<section class="section-content padding-y">
+  <div class="container">
+    <div class="card mx-auto" style="max-width: 700px;">
+      <div class="card-header text-center">
+        <h4><i class="fa fa-qrcode text-success"></i> Manage Payment QR Code</h4>
+        <p class="text-muted">Set up your QR code to receive payments from customers</p>
+      </div>
+      
+      <div class="card-body">
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+              {{ message }}
+              <button type="button" class="close" data-dismiss="alert">
+                <span>&times;</span>
+              </button>
+            </div>
+          {% endfor %}
+        {% endif %}
+
+        <!-- Current QR Code Display -->
+        {% if profile.payment_qr_code %}
+        <div class="card mb-4 border-success">
+          <div class="card-header bg-success text-white">
+            <h6 class="mb-0"><i class="fa fa-check-circle"></i> Current QR Code</h6>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-4 text-center">
+                <img src="{{ profile.payment_qr_code.url }}" 
+                     alt="Current QR Code" 
+                     class="img-fluid qr-display" 
+                     style="max-width: 150px; border: 3px solid #28a745; border-radius: 15px;">
+              </div>
+              <div class="col-md-8">
+                <div class="qr-info">
+                  <p class="mb-2">
+                    <i class="fa fa-mobile-alt text-success"></i>
+                    <strong>Payment Method:</strong> 
+                    <span class="badge badge-success">{{ profile.get_qr_display_name }}</span>
+                  </p>
+                  <p class="mb-2">
+                    <i class="fa fa-info-circle text-info"></i>
+                    <strong>Payment Info:</strong> {{ profile.qr_payment_info }}
+                  </p>
+                  <p class="mb-0">
+                    <i class="fa fa-check-circle text-success"></i>
+                    <small class="text-success">QR Code is active and ready to receive payments</small>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% else %}
+        <div class="alert alert-warning">
+          <div class="row align-items-center">
+            <div class="col-md-8">
+              <i class="fa fa-exclamation-triangle fa-2x"></i>
+              <strong>No QR Code Found!</strong><br>
+              <p class="mb-0">You need to upload a QR code to receive payments from customers.</p>
+            </div>
+            <div class="col-md-4 text-right">
+              <i class="fa fa-qrcode fa-4x text-warning"></i>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Update Form -->
+        <form method="POST" action="{% url 'update_qr' %}" enctype="multipart/form-data" id="qr-form">
+          {% csrf_token %}
+          
+          <div class="card mb-4">
+            <div class="card-header">
+              <h6 class="mb-0">
+                <i class="fa fa-edit text-primary"></i> 
+                {% if profile.payment_qr_code %}Update QR Code{% else %}Add QR Code{% endif %}
+              </h6>
+              <small class="text-muted">Choose your preferred payment method and upload the QR code</small>
+            </div>
+            <div class="card-body">
+              <div class="form-group">
+                <label for="qr_payment_method">Payment Method *</label>
+                <select name="qr_payment_method" id="qr_payment_method" class="form-control" required>
+                  <option value="">Select payment method</option>
+                  <option value="esewa" {% if profile.qr_payment_method == 'esewa' %}selected{% endif %}>
+                    📱 eSewa Digital Wallet
+                  </option>
+                  <option value="bank" {% if profile.qr_payment_method == 'bank' %}selected{% endif %}>
+                    🏦 Bank QR (NPayQ, ConnectIPS, SCT)
+                  </option>
+                  <option value="fonepay" {% if profile.qr_payment_method == 'fonepay' %}selected{% endif %}>
+                    📞 FonePay
+                  </option>
+                  <option value="connectips" {% if profile.qr_payment_method == 'connectips' %}selected{% endif %}>
+                    🔗 ConnectIPS
+                  </option>
+                  <option value="other" {% if profile.qr_payment_method == 'other' %}selected{% endif %}>
+                    🔄 Other Digital Payment
+                  </option>
+                </select>
+                <small class="form-text text-muted">Which payment service is this QR code from?</small>
+              </div>
+
+              <div class="form-group">
+                <label for="qr_payment_info">Payment Account Info *</label>
+                <input 
+                  type="text" 
+                  name="qr_payment_info" 
+                  id="qr_payment_info"
+                  class="form-control" 
+                  placeholder="e.g., 9812345678 or Your Account Name"
+                  value="{{ profile.qr_payment_info }}"
+                  required
+                  maxlength="100"
+                >
+                <small class="form-text text-muted">
+                  Your phone number, account name, or identifier for this payment method
+                </small>
+              </div>
+
+              <div class="form-group">
+                <label for="payment_qr_code">
+                  {% if profile.payment_qr_code %}
+                    Replace QR Code Image
+                  {% else %}
+                    Upload QR Code Image *
+                  {% endif %}
+                </label>
+                <input 
+                  type="file" 
+                  name="payment_qr_code" 
+                  id="payment_qr_code"
+                  class="form-control-file" 
+                  accept="image/*"
+                  {% if not profile.payment_qr_code %}required{% endif %}
+                >
+                <small class="form-text text-muted">
+                  <i class="fa fa-camera"></i> Upload a clear image of your QR code (JPG, PNG, GIF - Max: 5MB)
+                </small>
+              </div>
+
+              <!-- Preview -->
+              <div id="qr-preview" class="text-center mt-3" style="display: none;">
+                <div class="preview-container">
+                  <h6 class="text-primary">📱 New QR Code Preview:</h6>
+                  <img id="qr-preview-img" src="" alt="QR Code Preview" 
+                       class="img-thumbnail" 
+                       style="max-width: 200px; border: 3px solid #007bff; border-radius: 10px;">
+                </div>
+              </div>
+
+              <!-- Instructions -->
+              <div class="alert alert-info mt-3">
+                <h6><i class="fa fa-info-circle"></i> QR Code Guidelines:</h6>
+                <ul class="mb-0">
+                  <li>✅ Use a clear, high-quality image</li>
+                  <li>✅ Ensure the QR code is not blurry or damaged</li>
+                  <li>✅ Test your QR code before uploading</li>
+                  <li>✅ Make sure the account is active and can receive payments</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="row">
+            <div class="col-md-6">
+              <button type="submit" class="btn btn-success btn-block btn-lg" id="submit-btn">
+                <i class="fa fa-save"></i> 
+                {% if profile.payment_qr_code %}Update QR Code{% else %}Save QR Code{% endif %}
+              </button>
+            </div>
+            <div class="col-md-6">
+              <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary btn-block btn-lg">
+                <i class="fa fa-arrow-left"></i> Back to Dashboard
+              </a>
+            </div>
+          </div>
+        </form>
+
+        {% if profile.payment_qr_code %}
+        <!-- Remove QR Code Section -->
+        <div class="card mt-4 border-danger">
+          <div class="card-header bg-danger text-white">
+            <h6 class="mb-0"><i class="fa fa-exclamation-triangle"></i> Danger Zone</h6>
+          </div>
+          <div class="card-body text-center">
+            <p class="text-muted">
+              Removing your QR code will disable QR payments. Customers won't be able to pay you via QR code until you upload a new one.
+            </p>
+            <form method="POST" action="{% url 'remove_qr' %}" class="d-inline">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-outline-danger" 
+                      onclick="return confirm('⚠️ Are you sure you want to remove your QR code?\n\nThis will:\n• Disable QR payments\n• Require customers to use other payment methods\n• This action cannot be undone\n\nContinue?')">
+                <i class="fa fa-trash"></i> Remove QR Code
+              </button>
+            </form>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+.card-header h6 {
+  color: #495057;
+  font-weight: 600;
+}
+
+.qr-display {
+  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+  transition: transform 0.3s ease;
+}
+
+.qr-display:hover {
+  transform: scale(1.05);
+}
+
+.qr-info {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  border-left: 4px solid #28a745;
+}
+
+#qr-preview-img {
+  border: 3px solid #007bff;
+  border-radius: 15px;
+  box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+  transition: transform 0.3s ease;
+}
+
+#qr-preview-img:hover {
+  transform: scale(1.05);
+}
+
+.preview-container {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 10px;
+  border: 2px dashed #007bff;
+}
+
+.form-control:focus {
+  border-color: #28a745;
+  box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  border: none;
+  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+}
+
+.btn-success:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+}
+
+.alert-info {
+  border-left: 4px solid #17a2b8;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const qrFileInput = document.getElementById('payment_qr_code');
+    const qrPreview = document.getElementById('qr-preview');
+    const qrPreviewImg = document.getElementById('qr-preview-img');
+    const form = document.getElementById('qr-form');
+    const submitBtn = document.getElementById('submit-btn');
+    
+    // QR Code preview functionality
+    qrFileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            // Validate file size (5MB max)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('⚠️ File size must be less than 5MB. Please choose a smaller image.');
+                this.value = '';
+                qrPreview.style.display = 'none';
+                return;
+            }
+            
+            // Validate file type
+            if (!file.type.match('image.*')) {
+                alert('⚠️ Please select an image file (JPG, PNG, GIF).');
+                this.value = '';
+                qrPreview.style.display = 'none';
+                return;
+            }
+            
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                qrPreviewImg.src = e.target.result;
+                qrPreview.style.display = 'block';
+                
+                // Smooth scroll to preview
+                qrPreview.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            };
+            reader.readAsDataURL(file);
+        } else {
+            qrPreview.style.display = 'none';
+        }
+    });
+    
+    // Form validation
+    form.addEventListener('submit', function(e) {
+        const requiredFields = ['qr_payment_method', 'qr_payment_info'];
+        let isValid = true;
+        
+        // Check required fields
+        requiredFields.forEach(fieldName => {
+            const field = document.querySelector(`[name="${fieldName}"]`);
+            if (!field.value.trim()) {
+                isValid = false;
+                field.classList.add('is-invalid');
+                field.focus();
+            } else {
+                field.classList.remove('is-invalid');
+            }
+        });
+        
+        // Check if file is required (for new QR codes)
+        const hasExistingQR = {{ profile.payment_qr_code|yesno:"true,false" }};
+        if (!hasExistingQR && !qrFileInput.files.length) {
+            isValid = false;
+            alert('⚠️ Please upload a QR code image.');
+            qrFileInput.focus();
+        }
+        
+        if (!isValid) {
+            e.preventDefault();
+            alert('⚠️ Please fill in all required fields correctly.');
+            return;
+        }
+        
+        // Show loading state
+        submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Saving...';
+        submitBtn.disabled = true;
+        
+        // Re-enable button after 5 seconds (fallback)
+        setTimeout(() => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fa fa-save"></i> {% if profile.payment_qr_code %}Update QR Code{% else %}Save QR Code{% endif %}';
+        }, 5000);
+    });
+    
+    // Real-time validation
+    document.querySelectorAll('#qr_payment_method, #qr_payment_info').forEach(field => {
+        field.addEventListener('input', function() {
+            if (this.value.trim()) {
+                this.classList.remove('is-invalid');
+                this.classList.add('is-valid');
+            } else {
+                this.classList.remove('is-valid');
+            }
+        });
+    });
+});
+</script>
+
+{% endblock %}
