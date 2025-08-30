@@ -59,7 +59,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
-]
+    'middleware.message_middleware.MessageCleanupMiddleware',]
 
 ROOT_URLCONF = 'marketplace.urls'
 

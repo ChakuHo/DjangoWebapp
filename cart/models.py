@@ -17,7 +17,7 @@ class CartItem(models.Model):
     quantity = models.IntegerField(default=0)
     is_active = models.BooleanField(default=True)
     
-    # ⭐ NEW: Safe variation fields (optional)
+    #  Safe variation fields
     variations = models.ManyToManyField(ProductVariation, blank=True)
     variation_data = models.TextField(blank=True, help_text="JSON data of selected variations")
 
@@ -73,3 +73,15 @@ class CartItem(models.Model):
             variations = ', '.join(self.get_variations_display())
             return f"{self.product.name} ({variations})"
         return self.product.name
+    
+    def clean(self):
+        """Validate that user is not buying their own product"""
+        from django.core.exceptions import ValidationError
+        
+        if hasattr(self.cart, 'user') and self.cart.user:
+            if self.product.seller == self.cart.user:
+                raise ValidationError("You cannot buy your own product.")
+    
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)

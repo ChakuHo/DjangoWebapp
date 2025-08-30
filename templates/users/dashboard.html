@@ -1,4 +1,6 @@
-{% extends "master/base.html" %} {% load static %} {% block content %}
+{% extends "master/base.html" %} 
+{% load static %} 
+{% block content %}
 
 <!-- Enhanced Dashboard with New Widgets -->
 <section class="section-conten padding-y bg">
@@ -9,17 +11,69 @@
       <main class="col-md-9">
         <!-- User Welcome Section with Enhanced Stats -->
         <article class="card mb-4">
-          <header class="card-header bg-primary text-white">
-            <strong class="d-inline-block mr-3">
-              <i class="fa fa-user-circle"></i> Welcome back,
-            </strong>
-            <span>{% if user.get_full_name %}{{ user.get_full_name }}{% else %}{{ user.username }}{% endif %}!</span>
+          <header class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <div>
+              <strong class="d-inline-block mr-3">
+                <i class="fa fa-user-circle"></i> Welcome back,
+              </strong>
+              <span>{% if user.get_full_name %}{{ user.get_full_name }}{% else %}{{ user.username }}{% endif %}!</span>
+            </div>
+            
+            <!-- Notification Bell -->
+            <div class="notification-container">
+              <div class="dropdown">
+                <button class="btn btn-link text-white notification-bell" type="button" id="notificationDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                  <i class="fa fa-bell fa-lg"></i>
+                  <span class="notification-badge badge badge-danger" id="notificationCount">{{ total_notifications|default:0 }}</span>
+                </button>
+                <div class="dropdown-menu dropdown-menu-right notification-dropdown" aria-labelledby="notificationDropdown">
+                  <div class="notification-header">
+                    <h6 class="mb-0">Notifications</h6>
+                    {% if total_notifications > 0 %}
+                      <small class="text-muted">{{ total_notifications }} new</small>
+                    {% endif %}
+                  </div>
+                  
+                  <div class="notification-list">
+                    {% if notifications %}
+                      {% for notification in notifications %}
+                        <a href="{{ notification.url }}" class="dropdown-item notification-item {% if not notification.is_read %}unread{% endif %}">
+                          <div class="d-flex align-items-start">
+                            <div class="notification-icon mr-3">
+                              <i class="fa {{ notification.icon }} text-{{ notification.color }}"></i>
+                            </div>
+                            <div class="notification-content">
+                              <p class="mb-1">{{ notification.message }}</p>
+                              <small class="text-muted">{{ notification.created_at|timesince }} ago</small>
+                            </div>
+                          </div>
+                        </a>
+                      {% endfor %}
+                    {% else %}
+                      <div class="dropdown-item-text text-center py-4">
+                        <i class="fa fa-bell-slash fa-2x text-muted mb-2"></i>
+                        <p class="text-muted mb-0">No new notifications</p>
+                      </div>
+                    {% endif %}
+                  </div>
+                  
+                  {% if total_notifications > 0 %}
+                    <div class="notification-footer">
+                      <a href="#" class="btn btn-sm btn-outline-primary btn-block" id="markAllRead">
+                        Mark all as read
+                      </a>
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
           </header>
+          
           <div class="card-body">
             <!-- Enhanced Stats Row -->
             <div class="row">
               <div class="col-md-3">
-                <div class="card border-primary" style="text-align: center">
+                <div class="card border-primary" style="text-align: center;">
                   <div class="card-body py-3">
                     <i class="fa fa-shopping-cart fa-2x text-primary mb-2"></i>
                     <h5 class="card-title">Total Orders</h5>
@@ -34,7 +88,7 @@
               </div>
               
               <div class="col-md-3">
-                <div class="card border-success" style="text-align: center">
+                <div class="card border-success" style="text-align: center;">
                   <div class="card-body py-3">
                     <i class="fa fa-box fa-2x text-success mb-2"></i>
                     <h5 class="card-title">Received Orders</h5>
@@ -49,7 +103,7 @@
               </div>
 
               <div class="col-md-3">
-                <div class="card border-info" style="text-align: center">
+                <div class="card border-info" style="text-align: center;">
                   <div class="card-body py-3">
                     <i class="fa fa-heart fa-2x text-info mb-2"></i>
                     <h5 class="card-title">Wishlist</h5>
@@ -60,7 +114,7 @@
               </div>
 
               <div class="col-md-3">
-                <div class="card border-warning" style="text-align: center">
+                <div class="card border-warning" style="text-align: center;">
                   <div class="card-body py-3">
                     <i class="fa fa-comments fa-2x text-warning mb-2"></i>
                     <h5 class="card-title">Messages</h5>
@@ -292,7 +346,6 @@
                     <i class="fa fa-qrcode"></i> QR Settings
                   </a>
                 </div>
-                <!-- NEW: QR Payment Verification Button -->
                 <div class="col-md-4 mb-2">
                   <a href="{% url 'verify_qr_payments' %}" class="btn btn-outline-info btn-block">
                     <i class="fa fa-check-circle"></i> Verify QR Payments
@@ -371,7 +424,7 @@
           </article>
         {% endif %}
 
-        <!-- Account Information Enhanced -->
+        <!-- Enhanced Account Information -->
         <article class="card">
           <header class="card-header">
             <i class="fa fa-user text-primary"></i> <strong>Account Information</strong>
@@ -381,48 +434,304 @@
               <div class="col-md-8">
                 <div class="row">
                   <div class="col-md-6">
-                    <p><strong>Username:</strong> {{ user.username }}</p>
-                    <p><strong>Email:</strong> {{ user.email }}</p>
-                    <p><strong>Member since:</strong> {{ user.date_joined|date:"M d, Y" }}</p>
+                    <div class="info-item mb-3">
+                      <label class="info-label">
+                        <i class="fa fa-user text-muted mr-2"></i>Username
+                      </label>
+                      <p class="info-value">{{ user.username }}</p>
+                    </div>
+                    
+                    <div class="info-item mb-3">
+                      <label class="info-label">
+                        <i class="fa fa-envelope text-muted mr-2"></i>Email
+                      </label>
+                      <p class="info-value">{{ user.email }}</p>
+                    </div>
+                    
+                    <div class="info-item mb-3">
+                      <label class="info-label">
+                        <i class="fa fa-calendar text-muted mr-2"></i>Member Since
+                      </label>
+                      <p class="info-value">{{ user.date_joined|date:"M d, Y" }}</p>
+                    </div>
                   </div>
                   <div class="col-md-6">
                     {% if profile.phone_number %}
-                      <p><strong>Phone:</strong> {{ profile.phone_number }}</p>
+                      <div class="info-item mb-3">
+                        <label class="info-label">
+                          <i class="fa fa-phone text-muted mr-2"></i>Phone
+                        </label>
+                        <p class="info-value">{{ profile.phone_number }}</p>
+                      </div>
                     {% endif %}
+                    
                     {% if profile.city %}
-                      <p><strong>City:</strong> {{ profile.city }}</p>
+                      <div class="info-item mb-3">
+                        <label class="info-label">
+                          <i class="fa fa-city text-muted mr-2"></i>City
+                        </label>
+                        <p class="info-value">{{ profile.city }}</p>
+                      </div>
                     {% endif %}
+                    
                     {% if profile.country %}
-                      <p><strong>Country:</strong> {{ profile.country }}</p>
+                      <div class="info-item mb-3">
+                        <label class="info-label">
+                          <i class="fa fa-flag text-muted mr-2"></i>Country
+                        </label>
+                        <p class="info-value">{{ profile.country }}</p>
+                      </div>
+                    {% endif %}
+                    
+                    {% if not profile.phone_number and not profile.city and not profile.country %}
+                      <div class="text-center py-3">
+                        <i class="fa fa-info-circle text-muted mb-2"></i>
+                        <p class="text-muted mb-0">Complete your profile for better experience</p>
+                      </div>
                     {% endif %}
                   </div>
                 </div>
-                <a href="{% url 'edit_profile' %}" class="btn btn-outline-primary btn-sm">
-                  <i class="fa fa-edit"></i> Edit Profile
-                </a>
+                
+                <div class="action-buttons mt-3">
+                  <a href="{% url 'edit_profile' %}" class="btn btn-primary">
+                    <i class="fa fa-edit"></i> Edit Profile
+                  </a>
+                  <a href="{% url 'change_password' %}" class="btn btn-outline-secondary ml-2">
+                    <i class="fa fa-key"></i> Change Password
+                  </a>
+                </div>
               </div>
-              <div class="col-md-4 text-center">
-                {% if profile.profile_picture %}
-                  <img src="{{ profile.profile_picture.url }}" 
-                       alt="Profile" 
-                       class="rounded-circle" 
-                       style="width: 100px; height: 100px; object-fit: cover;">
-                {% else %}
-                  <img src="{% static 'images/default/default-user.png' %}" 
-                       alt="Profile" 
-                       class="rounded-circle" 
-                       style="width: 100px; height: 100px; object-fit: cover;">
-                {% endif %}
+              
+              <!-- Enhanced Profile Picture Section with Initials Support -->
+              <div class="col-md-4">
+                <div class="profile-section text-center">
+                  <div class="profile-picture-container d-flex justify-content-center">
+                    {% if profile.profile_picture %}
+                      <img src="{{ profile.profile_picture.url }}" 
+                           alt="Profile Picture" 
+                           class="profile-image-display rounded-circle shadow">
+                    {% else %}
+                      <div class="profile-initials-display rounded-circle shadow d-flex align-items-center justify-content-center" 
+                           id="dashboard-profile-initials">
+                        <span class="initials-text-display"></span>
+                      </div>
+                    {% endif %}
+                  </div>
+                  
+                  <div class="profile-info mt-3">
+                    <h6 class="profile-name mb-1">
+                      {% if user.get_full_name %}
+                        {{ user.get_full_name }}
+                      {% else %}
+                        {{ user.username }}
+                      {% endif %}
+                    </h6>
+                    
+                    <div class="profile-badges mb-3">
+                      {% if user.profile.seller_status == 'approved' %}
+                        <span class="badge badge-success">
+                          <i class="fa fa-check-circle"></i> Verified Seller
+                        </span>
+                      {% elif user.profile.seller_status == 'pending' %}
+                        <span class="badge badge-warning">
+                          <i class="fa fa-clock"></i> Seller Pending
+                        </span>
+                      {% else %}
+                        <span class="badge badge-secondary">
+                          <i class="fa fa-user"></i> Customer
+                        </span>
+                      {% endif %}
+                      
+                      {% if user.is_superuser %}
+                        <span class="badge badge-danger">
+                          <i class="fa fa-crown"></i> Admin
+                        </span>
+                      {% endif %}
+                    </div>
+                    
+                    <div class="profile-completion">
+                      <div class="completion-info">
+                        <small class="text-muted d-block">Profile Completion</small>
+                        <div class="progress mb-2" style="height: 6px;">
+                          <div class="progress-bar bg-success" 
+                               role="progressbar" 
+                               style="width: 30%;"
+                               aria-valuenow="30" 
+                               aria-valuemin="0" 
+                               aria-valuemax="100">
+                          </div>
+                        </div>
+                        <small class="text-muted profile-completion-text">30% Complete</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </article>
+{% if profile.seller_status == 'approved' %}
+<div class="alert alert-info">
+    <i class="fa fa-info-circle"></i>
+    <strong>Seller Note:</strong> You cannot purchase your own products. They will be automatically removed from your cart.
+</div>
+{% endif %}
       </main>
     </div>
   </div>
 </section>
 
 <style>
+/* Notification Bell Styling */
+.notification-container {
+  position: relative;
+}
+
+.notification-bell {
+  position: relative;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  transition: all 0.3s ease;
+}
+
+.notification-bell:hover {
+  transform: scale(1.1);
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 50%;
+}
+
+.notification-bell:focus {
+  box-shadow: none;
+  outline: none;
+}
+
+.notification-badge {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  font-size: 0.7rem;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: pulse 2s infinite;
+}
+
+.notification-badge:empty {
+  display: none;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+/* Notification Dropdown */
+.notification-dropdown {
+  width: 350px;
+  max-height: 400px;
+  overflow-y: auto;
+  border: none;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  border-radius: 12px;
+  padding: 0;
+}
+
+.notification-header {
+  background: linear-gradient(135deg, #007bff, #0056b3);
+  color: white;
+  padding: 15px 20px;
+  border-radius: 12px 12px 0 0;
+  display: flex;
+  justify-content: between;
+  align-items: center;
+}
+
+.notification-list {
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.notification-item {
+  padding: 15px 20px;
+  border-bottom: 1px solid #f1f3f4;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  color: inherit;
+}
+
+.notification-item:hover {
+  background-color: #f8f9fa;
+  text-decoration: none;
+  color: inherit;
+}
+
+.notification-item.unread {
+  background-color: #e3f2fd;
+  border-left: 4px solid #007bff;
+}
+
+.notification-item.unread:hover {
+  background-color: #bbdefb;
+}
+
+.notification-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #f8f9fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.notification-content {
+  flex: 1;
+}
+
+.notification-content p {
+  font-size: 0.9rem;
+  line-height: 1.4;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.notification-content small {
+  font-size: 0.75rem;
+}
+
+.notification-footer {
+  padding: 15px 20px;
+  background: #f8f9fa;
+  border-radius: 0 0 12px 12px;
+  border-top: 1px solid #e9ecef;
+}
+
+/* Custom scrollbar for notification dropdown */
+.notification-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.notification-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.notification-list::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 10px;
+}
+
+.notification-list::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* QR Status Styling */
 .qr-status-success {
   background: #d4edda;
   padding: 15px;
@@ -446,6 +755,7 @@
   transform: scale(1.1);
 }
 
+/* Timeline Styling */
 .timeline-item {
   border-left: 2px solid #e9ecef;
   padding-left: 15px;
@@ -463,14 +773,334 @@
   background: #007bff;
 }
 
-.card:hover {
-  transform: translateY(-2px);
-  transition: transform 0.2s ease;
-}
-
+/* Button Styling */
 .btn-block {
   margin-bottom: 8px;
 }
+
+/* Account Information Styling */
+.info-item {
+  border-left: 3px solid transparent;
+  padding-left: 12px;
+  transition: all 0.3s ease;
+}
+
+.info-item:hover {
+  border-left-color: #007bff;
+  background-color: #f8f9fa;
+  margin-left: -12px;
+  padding-left: 24px;
+  border-radius: 0 8px 8px 0;
+}
+
+.info-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #6c757d;
+  margin-bottom: 4px;
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.info-value {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #495057;
+  margin-bottom: 0;
+  word-break: break-word;
+}
+
+/* Profile Section Styling */
+.profile-section {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 15px;
+  padding: 25px;
+  position: relative;
+  overflow: hidden;
+}
+
+.profile-section::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 100px;
+  height: 100px;
+  background: linear-gradient(45deg, rgba(0, 123, 255, 0.1), rgba(0, 123, 255, 0.05));
+  border-radius: 50%;
+  z-index: 0;
+}
+
+.profile-picture-container {
+  position: relative;
+  z-index: 1;
+}
+
+/* Profile Image Display */
+.profile-image-display {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border: 4px solid white;
+  transition: all 0.3s ease;
+}
+
+.profile-image-display:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 25px rgba(0, 123, 255, 0.3) !important;
+}
+
+/* Profile Initials Display */
+.profile-initials-display {
+  width: 120px;
+  height: 120px;
+  border: 4px solid white;
+  color: white;
+  font-weight: 700;
+  transition: all 0.3s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.profile-initials-display:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 25px rgba(0, 123, 255, 0.3) !important;
+}
+
+.initials-text-display {
+  font-size: 2.5rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Color variations for initials */
+.profile-initials-display.color-1 { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+.profile-initials-display.color-2 { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+.profile-initials-display.color-3 { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+.profile-initials-display.color-4 { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+.profile-initials-display.color-5 { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+.profile-initials-display.color-6 { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); }
+.profile-initials-display.color-7 { background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%); }
+.profile-initials-display.color-8 { background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%); }
+
+/* Profile Name and Info */
+.profile-name {
+  font-weight: 600;
+  color: #495057;
+  font-size: 1.1rem;
+  position: relative;
+  z-index: 1;
+}
+
+.profile-badges {
+  position: relative;
+  z-index: 1;
+}
+
+.profile-badges .badge {
+  font-size: 0.75rem;
+  padding: 6px 10px;
+  margin: 2px;
+  border-radius: 15px;
+  font-weight: 500;
+}
+
+/* Profile Completion */
+.profile-completion {
+  position: relative;
+  z-index: 1;
+}
+
+.completion-info {
+  background: white;
+  padding: 12px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.progress {
+  border-radius: 10px;
+  background-color: #e9ecef;
+}
+
+.progress-bar {
+  border-radius: 10px;
+  transition: width 0.6s ease;
+}
+
+/* Action Buttons */
+.action-buttons .btn {
+  border-radius: 25px;
+  padding: 8px 20px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.action-buttons .btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 123, 255, 0.3);
+}
+
+/* Card Hover Effects */
+.dashboard-card {
+  transition: all 0.3s ease;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .notification-dropdown {
+    width: 300px;
+  }
+  
+  .notification-header {
+    padding: 12px 15px;
+  }
+  
+  .notification-item {
+    padding: 12px 15px;
+  }
+  
+  .profile-section {
+    padding: 20px 15px;
+  }
+  
+  .profile-image-display,
+  .profile-initials-display {
+    width: 100px;
+    height: 100px;
+  }
+  
+  .initials-text-display {
+    font-size: 2rem;
+    letter-spacing: 2px;
+  }
+  
+  .action-buttons .btn {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+  
+  .action-buttons .btn.ml-2 {
+    margin-left: 0 !important;
+  }
+}
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var hasProfilePic = {% if profile.profile_picture %}true{% else %}false{% endif %};
+    
+    if (!hasProfilePic) {
+        initializeDashboardInitials();
+    }
+    
+    calculateProfileCompletion();
+    setupNotifications();
+    
+    function initializeDashboardInitials() {
+        var firstName = "{{ user.first_name|escapejs }}";
+        var lastName = "{{ user.last_name|escapejs }}";
+        var username = "{{ user.username|escapejs }}";
+        
+        var initials = '';
+        
+        if (firstName && lastName) {
+            initials = firstName.charAt(0) + lastName.charAt(0);
+        } else if (firstName) {
+            initials = firstName.charAt(0) + (firstName.charAt(1) || '');
+        } else if (username) {
+            initials = username.charAt(0) + (username.charAt(1) || '');
+        } else {
+            initials = 'U';
+        }
+        
+        var initialsElement = document.getElementById('dashboard-profile-initials');
+        if (initialsElement) {
+            var initialsText = initialsElement.querySelector('.initials-text-display');
+            if (initialsText) {
+                initialsText.textContent = initials.toUpperCase();
+                var colorIndex = (initials.charCodeAt(0) % 8) + 1;
+                initialsElement.classList.add('color-' + colorIndex);
+            }
+        }
+    }
+    
+    function calculateProfileCompletion() {
+        var completedFields = 0;
+        var totalFields = 8;
+        
+        if ("{{ user.first_name|escapejs }}") completedFields++;
+        if ("{{ user.last_name|escapejs }}") completedFields++;
+        if ("{{ user.email|escapejs }}") completedFields++;
+        if ("{{ profile.phone_number|default:""|escapejs }}") completedFields++;
+        if ("{{ profile.city|default:""|escapejs }}") completedFields++;
+        if ("{{ profile.country|default:""|escapejs }}") completedFields++;
+        if ("{{ profile.address_line_1|default:""|escapejs }}") completedFields++;
+        if ({% if profile.profile_picture %}true{% else %}false{% endif %}) completedFields++;
+        
+        var percentage = Math.round((completedFields / totalFields) * 100);
+        
+        var progressBar = document.querySelector('.progress-bar');
+        var percentageText = document.querySelector('.profile-completion-text');
+        
+        if (progressBar && percentageText) {
+            progressBar.style.width = percentage + '%';
+            progressBar.setAttribute('aria-valuenow', percentage);
+            percentageText.textContent = percentage + '% Complete';
+            
+            progressBar.classList.remove('bg-danger', 'bg-warning', 'bg-success');
+            if (percentage < 50) {
+                progressBar.classList.add('bg-danger');
+            } else if (percentage < 80) {
+                progressBar.classList.add('bg-warning');
+            } else {
+                progressBar.classList.add('bg-success');
+            }
+        }
+    }
+    
+    function setupNotifications() {
+        // Mark all as read functionality
+        var markAllReadBtn = document.getElementById('markAllRead');
+        if (markAllReadBtn) {
+            markAllReadBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                // Add AJAX call here to mark all notifications as read
+                var notificationCount = document.getElementById('notificationCount');
+                if (notificationCount) {
+                    notificationCount.textContent = '0';
+                    notificationCount.style.display = 'none';
+                }
+                
+                // Remove unread class from all notification items
+                var unreadItems = document.querySelectorAll('.notification-item.unread');
+                unreadItems.forEach(function(item) {
+                    item.classList.remove('unread');
+                });
+                
+                // Hide the footer
+                this.parentElement.style.display = 'none';
+            });
+        }
+        
+        // Update notification count display
+        var notificationCount = document.getElementById('notificationCount');
+        if (notificationCount) {
+            var count = parseInt(notificationCount.textContent) || 0;
+            if (count === 0) {
+                notificationCount.style.display = 'none';
+            }
+        }
+    }
+});
+</script>
 
 {% endblock %}

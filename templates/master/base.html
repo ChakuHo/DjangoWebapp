@@ -84,8 +84,19 @@
     </script>
   </head>
   <body>
-    {% include 'includes/navbar.html' %} {% block content %}{% endblock %}
-    <!-- FIX: inside body -->
+    <!-- Navigation -->
+    {% include 'includes/navbar.html' %}
+    
+    <!-- Messages System - Add this right after navbar -->
+    {% include 'includes/messages.html' %}
+    
+    <!-- CSRF Token for AJAX calls -->
+    {% csrf_token %}
+    
+    <!-- Main Content -->
+    {% block content %}{% endblock %}
+    
+    <!-- Footer - FIXED: moved inside body tag -->
+    {% include 'includes/footer.html' %}
   </body>
-  {% include 'includes/footer.html' %}
 </html>

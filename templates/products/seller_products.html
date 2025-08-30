@@ -23,10 +23,14 @@
         {% endif %}
       </div>
       <div class="col-md-4 text-right">
-        <button class="btn btn-primary" onclick="openChat(this)" data-seller-id="{{ seller.id }}">
-          <i class="fa fa-comments"></i> Chat with Seller
+        <button class="btn btn-primary btn-lg chat-seller-btn" 
+                onclick="openChat(this)" 
+                data-seller-id="{{ seller.id }}"
+                title="Start a conversation with {{ seller.get_full_name|default:seller.username }}">
+            <i class="fa fa-comments"></i> Chat with Seller
         </button>
       </div>
+
     </div>
   </div>
 </section>
@@ -133,15 +137,58 @@
   </div>
 </section>
 
-<script>
-function openChat(sellerId) {
-    alert('Chat functionality coming soon! Seller ID: ' + sellerId);
-    // TODO: Implement real chat functionality
+
+<style>
+.chat-seller-btn {
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 10px rgba(0,123,255,0.3);
 }
 
+.chat-seller-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(0,123,255,0.4);
+}
+
+.chat-seller-btn:disabled {
+    transform: none;
+    box-shadow: none;
+}
+</style>
+
+
+
+<script>
 function openChat(button) {
     const sellerId = button.getAttribute("data-seller-id");
-    alert("Chat functionality coming soon! Seller ID: " + sellerId);
+    
+    // Show loading feedback
+    const originalContent = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Opening Chat...';
+    
+    try {
+        // Redirect to chat with seller
+        const sellerUsername = '{{ seller.username }}';
+        const chatUrl = "{% url 'start_chat_with_user' 'PLACEHOLDER' %}".replace('PLACEHOLDER', sellerUsername);
+        window.location.href = chatUrl;
+    } catch (error) {
+        // Restore button if error
+        button.disabled = false;
+        button.innerHTML = originalContent;
+        alert('Error opening chat. Please try again.');
+        console.error('Chat error:', error);
+    }
+}
+
+// Function for product-specific chat (if you add the product chat buttons)
+function openProductChat(productId) {
+    try {
+        const chatUrl = "{% url 'start_chat_about_product' 0 %}".replace('0', productId);
+        window.location.href = chatUrl;
+    } catch (error) {
+        alert('Error opening product chat. Please try again.');
+        console.error('Product chat error:', error);
+    }
 }
 </script>
 

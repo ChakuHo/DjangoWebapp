@@ -1,85 +1,377 @@
 <aside class="col-md-3">
-  <!--   CONSISTENT SIDEBAR   -->
-  <ul class="list-group">
-    <a class="list-group-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard' %}">
-      <i class="fa fa-tachometer-alt"></i> Dashboard
-    </a>
-    <a class="list-group-item {% if 'my-orders' in request.path %}active{% endif %}" href="/orders/my-orders/">
-      <i class="fa fa-shopping-cart"></i> My Orders
-    </a>
-    <a class="list-group-item {% if request.resolver_match.url_name == 'edit_profile' %}active{% endif %}" href="{% url 'edit_profile' %}">
-      <i class="fa fa-user-edit"></i> Edit Profile
+  <ul class="list-group sidebar-menu">
+    <a class="list-group-item sidebar-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard' %}">
+      <i class="fa fa-tachometer-alt sidebar-icon"></i> 
+      <span class="sidebar-text">Dashboard</span>
     </a>
     
-    <!-- SELLER NAVIGATION - Show only if approved seller -->
+    <a class="list-group-item sidebar-item {% if 'my-orders' in request.path %}active{% endif %}" href="/orders/my-orders/">
+      <i class="fa fa-shopping-cart sidebar-icon"></i> 
+      <span class="sidebar-text">My Orders</span>
+    </a>
+    
+    <a class="list-group-item sidebar-item {% if request.resolver_match.url_name in 'chat_list,chat_detail' %}active{% endif %}" href="{% url 'chat_list' %}">
+      <div class="sidebar-item-content">
+        <span class="sidebar-main-content">
+          <i class="fa fa-comments sidebar-icon"></i> 
+          <span class="sidebar-text">Messages</span>
+        </span>
+        {% if user.profile.get_unread_messages_count > 0 %}
+          <span class="sidebar-badge pulse">{{ user.profile.get_unread_messages_count }}</span>
+        {% endif %}
+      </div>
+    </a>
+    
+    <a class="list-group-item sidebar-item {% if request.resolver_match.url_name == 'edit_profile' %}active{% endif %}" href="{% url 'edit_profile' %}">
+      <i class="fa fa-user-edit sidebar-icon"></i> 
+      <span class="sidebar-text">Edit Profile</span>
+    </a>
+    
     {% if user.profile.seller_status == 'approved' %}
-    <a class="list-group-item {% if request.resolver_match.url_name == 'my_selling_items' %}active{% endif %}" href="{% url 'my_selling_items' %}"> 
-      <i class="fa fa-store text-primary"></i> My Selling Items 
+    <a class="list-group-item sidebar-item {% if request.resolver_match.url_name == 'my_selling_items' %}active{% endif %}" href="{% url 'my_selling_items' %}"> 
+      <i class="fa fa-store sidebar-icon text-primary"></i> 
+      <span class="sidebar-text">My Selling Items</span>
     </a>
-    <a class="list-group-item {% if request.resolver_match.url_name == 'seller_received_orders' %}active{% endif %}" href="{% url 'seller_received_orders' %}"> 
-      <i class="fa fa-shopping-bag text-success"></i> Orders from Customers 
+    
+    <a class="list-group-item sidebar-item {% if request.resolver_match.url_name == 'seller_received_orders' %}active{% endif %}" href="{% url 'seller_received_orders' %}"> 
+      <i class="fa fa-shopping-bag sidebar-icon text-success"></i> 
+      <span class="sidebar-text">Orders from Customers</span>
     </a>
-    <!-- QR Payment Verification with Badge -->
-    <a class="list-group-item {% if request.resolver_match.url_name == 'verify_qr_payments' %}active{% endif %} position-relative" href="{% url 'verify_qr_payments' %}"> 
-      <i class="fa fa-qrcode text-warning"></i> Verify QR Payments
-      {% if pending_qr_count > 0 %}
-        <span class="badge badge-danger badge-pill float-right animate-pulse">{{ pending_qr_count }}</span>
-      {% endif %}
+    
+    <a class="list-group-item sidebar-item {% if request.resolver_match.url_name == 'verify_qr_payments' %}active{% endif %}" href="{% url 'verify_qr_payments' %}"> 
+      <div class="sidebar-item-content">
+        <span class="sidebar-main-content">
+          <i class="fa fa-qrcode sidebar-icon text-warning"></i> 
+          <span class="sidebar-text">Verify QR Payments</span>
+        </span>
+        {% if pending_qr_count > 0 %}
+          <span class="sidebar-badge sidebar-badge-warning pulse">{{ pending_qr_count }}</span>
+        {% endif %}
+      </div>
     </a>
     {% else %}
-    <span class="list-group-item text-muted"> 
-      <i class="fa fa-lock"></i> My Selling Items 
-      <small class="text-muted d-block">Seller approval required</small>
+    <span class="list-group-item sidebar-item sidebar-item-disabled"> 
+      <i class="fa fa-lock sidebar-icon"></i> 
+      <span class="sidebar-text">
+        My Selling Items
+        <small class="sidebar-subtitle">Seller approval required</small>
+      </span>
     </span>
-    <span class="list-group-item text-muted"> 
-      <i class="fa fa-lock"></i> Orders from Customers 
-      <small class="text-muted d-block">Seller approval required</small>
+    <span class="list-group-item sidebar-item sidebar-item-disabled"> 
+      <i class="fa fa-lock sidebar-icon"></i> 
+      <span class="sidebar-text">
+        Orders from Customers
+        <small class="sidebar-subtitle">Seller approval required</small>
+      </span>
     </span>
-    <span class="list-group-item text-muted"> 
-      <i class="fa fa-lock"></i> Verify QR Payments 
-      <small class="text-muted d-block">Seller approval required</small>
+    <span class="list-group-item sidebar-item sidebar-item-disabled"> 
+      <i class="fa fa-lock sidebar-icon"></i> 
+      <span class="sidebar-text">
+        Verify QR Payments
+        <small class="sidebar-subtitle">Seller approval required</small>
+      </span>
     </span>
     {% endif %}
     
-    <a class="list-group-item {% if request.resolver_match.url_name == 'received_orders' %}active{% endif %}" href="{% url 'received_orders' %}">
-      <i class="fa fa-box-open text-info"></i> Items Received
+    <a class="list-group-item sidebar-item {% if request.resolver_match.url_name == 'received_orders' %}active{% endif %}" href="{% url 'received_orders' %}">
+      <i class="fa fa-box-open sidebar-icon text-info"></i> 
+      <span class="sidebar-text">Items Received</span>
     </a>
-    <a class="list-group-item {% if request.resolver_match.url_name == 'change_password' %}active{% endif %}" href="{% url 'change_password' %}">
-      <i class="fa fa-key"></i> Change Password
+    
+    <a class="list-group-item sidebar-item {% if request.resolver_match.url_name == 'change_password' %}active{% endif %}" href="{% url 'change_password' %}">
+      <i class="fa fa-key sidebar-icon"></i> 
+      <span class="sidebar-text">Change Password</span>
     </a>
   </ul>
+  
   <br />
-  <a class="btn btn-light btn-block" href="{% url 'logout' %}"
+  
+  <a class="btn btn-light btn-block logout-btn" href="{% url 'logout' %}"
      onclick="return confirm('Are you sure you want to logout?')">
     <i class="fa fa-power-off"></i> <span class="text">Log out</span>
   </a>
-  <!--   SIDEBAR .//END   -->
 </aside>
 
+<!-- ENHANCED SMOOTH SIDEBAR STYLING -->
 <style>
-/* Animated badge for pending QR payments */
-.animate-pulse {
-    animation: pulse 2s infinite;
+/* Performance optimizations */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
+/* Sidebar container with smooth transitions */
+.sidebar-menu {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  overflow: hidden;
+  will-change: transform;
+  transform: translateZ(0); /* Hardware acceleration */
+}
+
+/* sidebar items with smooth transitions */
+.sidebar-item {
+  border: none !important;
+  border-bottom: 1px solid #f1f1f1 !important;
+  padding: 14px 18px;
+  color: #495057;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  background: white;
+  position: relative;
+  overflow: hidden;
+  
+  /* Smooth transitions for all properties */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateZ(0); /* Hardware acceleration */
+  
+  /* Prevent layout shift during transitions */
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+.sidebar-item:last-child {
+  border-bottom: none !important;
+}
+
+/* Smooth hover effect with subtle animation */
+.sidebar-item:hover {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  color: #007bff;
+  text-decoration: none;
+  transform: translateX(2px);
+  box-shadow: inset 3px 0 0 #007bff;
+}
+
+/* Active state with gradient and smooth transitions */
+.sidebar-item.active {
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  color: white;
+  transform: translateX(0);
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+}
+
+.sidebar-item.active:hover {
+  background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+  color: white;
+  transform: translateX(0);
+}
+
+/* icon styling with smooth transitions */
+.sidebar-icon {
+  width: 20px;
+  text-align: center;
+  margin-right: 12px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+/* Icon animation on hover */
+.sidebar-item:hover .sidebar-icon {
+  transform: scale(1.1);
+}
+
+.sidebar-item.active .sidebar-icon {
+  color: white;
+  transform: scale(1.05);
+}
+
+/* Sidebar text with smooth transitions */
+.sidebar-text {
+  transition: all 0.3s ease;
+  flex-grow: 1;
+}
+
+/* sidebar item content for badges */
+.sidebar-item-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.sidebar-main-content {
+  display: flex;
+  align-items: center;
+  flex-grow: 1;
+}
+
+/* badge styling with pulse animation */
+.sidebar-badge {
+  background: #dc3545;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: bold;
+  padding: 3px 7px;
+  border-radius: 12px;
+  min-width: 18px;
+  text-align: center;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.sidebar-badge-warning {
+  background: #ffc107;
+  color: #212529;
+}
+
+/* Pulse animation for badges */
 @keyframes pulse {
-    0% {
-        transform: scale(1);
-        opacity: 1;
-    }
-    50% {
-        transform: scale(1.1);
-        opacity: 0.8;
-    }
-    100% {
-        transform: scale(1);
-        opacity: 1;
-    }
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
 }
 
-.badge-danger {
-    background-color: #dc3545 !important;
-    color: white !important;
-    font-weight: bold;
+.pulse {
+  animation: pulse 2s infinite;
+}
+
+/* Smooth hover effect for badges */
+.sidebar-item:hover .sidebar-badge {
+  transform: scale(1.1);
+}
+
+/* disabled items */
+.sidebar-item-disabled {
+  color: #6c757d !important;
+  cursor: not-allowed;
+  background: #f8f9fa;
+  opacity: 0.7;
+  transition: all 0.3s ease;
+}
+
+.sidebar-item-disabled:hover {
+  background: #f8f9fa !important;
+  color: #6c757d !important;
+  transform: none;
+  box-shadow: none;
+}
+
+.sidebar-subtitle {
+  display: block;
+  font-size: 0.65rem;
+  color: #adb5bd;
+  margin-top: 2px;
+  transition: color 0.3s ease;
+}
+
+/* logout button with smooth transitions */
+.logout-btn {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border: 1px solid #dee2e6;
+  color: #495057;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-weight: 500;
+  
+  /* Smooth transitions */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateZ(0);
+  
+  /* Prevent layout shift */
+  backface-visibility: hidden;
+}
+
+.logout-btn:hover {
+  background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+  color: #495057;
+  border-color: #adb5bd;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.logout-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Page transition loading indicator (optional) */
+.page-loading {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #007bff, #0056b3);
+  z-index: 9999;
+  animation: loading 1s ease-in-out infinite;
+}
+
+@keyframes loading {
+  0% { width: 0%; }
+  100% { width: 100%; }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .sidebar-item {
+    padding: 12px 14px;
+  }
+  
+  .sidebar-icon {
+    margin-right: 10px;
+  }
+  
+  .sidebar-text {
+    font-size: 0.9rem;
+  }
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-item,
+  .sidebar-icon,
+  .sidebar-badge,
+  .logout-btn {
+    transition: none;
+    animation: none;
+  }
+  
+  .pulse {
+    animation: none;
+  }
 }
 </style>
+
+<!--  Add this script for even smoother page transitions -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Add loading indicator for page transitions
+  const sidebarLinks = document.querySelectorAll('.sidebar-item[href]');
+  
+  sidebarLinks.forEach(link => {
+    link.addEventListener('click', function(e) {
+      // Add a subtle loading effect
+      if (!this.classList.contains('active')) {
+        const loadingBar = document.createElement('div');
+        loadingBar.className = 'page-loading';
+        document.body.appendChild(loadingBar);
+        
+        // Remove loading bar after a short delay (fallback)
+        setTimeout(() => {
+          if (loadingBar.parentNode) {
+            loadingBar.parentNode.removeChild(loadingBar);
+          }
+        }, 2000);
+      }
+    });
+  });
+  
+  // Remove loading bar when page actually loads
+  window.addEventListener('load', function() {
+    const loadingBar = document.querySelector('.page-loading');
+    if (loadingBar) {
+      loadingBar.style.animation = 'none';
+      loadingBar.style.width = '100%';
+      setTimeout(() => {
+        if (loadingBar.parentNode) {
+          loadingBar.parentNode.removeChild(loadingBar);
+        }
+      }, 200);
+    }
+  });
+});
+</script>

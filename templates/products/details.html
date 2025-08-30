@@ -1110,8 +1110,9 @@ function updateImages() {
 
 // =============== UTILITY FUNCTIONS ===============
 function openChat(button) {
-  const sellerId = button.getAttribute("data-seller-id");
-  alert("Chat functionality coming soon! Seller ID: " + sellerId);
+    const sellerId = button.getAttribute("data-seller-id");
+    // Redirect to start chat about this product
+    window.location.href = `{% url 'start_chat_about_product' 0 %}`.replace('0', '{{ product.id }}');
 }
 
 // =============== STAR RATING ===============

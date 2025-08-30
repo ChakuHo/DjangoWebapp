@@ -146,3 +146,9 @@ class OrderItem(models.Model):
 
     def has_variations(self):
         return self.variations.exists()
+    
+    def get_unit_price(self):
+        """Calculate unit price from total price and quantity"""
+        if self.quantity > 0:
+            return self.price / self.quantity
+        return 0

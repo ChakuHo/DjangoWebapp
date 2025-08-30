@@ -25,11 +25,15 @@ def _get_cart(request):
             cart = Cart.objects.create(cart_id=_cart_id(request))
     return cart
 
-# In cart/views.py
 def add_cart(request, product_id):
-    """Enhanced add to cart with variation support"""
+    """Enhanced add to cart with variation support and seller validation"""
     product = get_object_or_404(Product, id=product_id)
     cart = _get_cart(request)
+
+    # ✅ FIXED: Prevent seller from buying their own products
+    if request.user.is_authenticated and product.seller == request.user:
+        messages.error(request, "❌ You cannot buy your own product!")
+        return redirect('products:product_detail', product.category.slug, product.slug)
     
     # Parse variations from request (if any)
     selected_variations = []
@@ -117,7 +121,6 @@ def remove_cart(request, product_id, cart_item_id=None):
         if cart_item_id:
             cart_item = CartItem.objects.get(id=cart_item_id, cart=cart)
         else:
-            # Backward compatibility - get first matching product
             cart_item = CartItem.objects.filter(product_id=product_id, cart=cart, is_active=True).first()
         
         if cart_item:
@@ -139,7 +142,6 @@ def remove_cart_item(request, product_id, cart_item_id=None):
         if cart_item_id:
             cart_item = CartItem.objects.get(id=cart_item_id, cart=cart)
         else:
-            # Backward compatibility
             cart_item = CartItem.objects.filter(product_id=product_id, cart=cart, is_active=True).first()
         
         if cart_item:
@@ -152,7 +154,7 @@ def remove_cart_item(request, product_id, cart_item_id=None):
     return redirect('cart')
 
 def cart(request, total=0, quantity=0, cart_items=None):
-    """Enhanced cart view - backward compatible"""
+    """Enhanced cart view with seller validation"""
     try:
         cart = _get_cart(request)
         cart_items = CartItem.objects.filter(cart=cart, is_active=True).prefetch_related(
@@ -160,8 +162,21 @@ def cart(request, total=0, quantity=0, cart_items=None):
             'variations__variation_option'
         )
         
+        # ✅ FIXED: Remove user's own products from cart if any
+        if request.user.is_authenticated:
+            own_products = cart_items.filter(product__seller=request.user)
+            if own_products.exists():
+                own_product_names = [item.product.name for item in own_products]
+                own_products.delete()
+                messages.warning(request, f"🗑️ Removed your own products from cart: {', '.join(own_product_names)}")
+                # Refresh cart_items after deletion
+                cart_items = CartItem.objects.filter(cart=cart, is_active=True).prefetch_related(
+                    'variations__variation_type',
+                    'variations__variation_option'
+                )
+        
         for cart_item in cart_items:
-            total += cart_item.sub_total()  # Uses enhanced sub_total method
+            total += cart_item.sub_total()
             quantity += cart_item.quantity
             
     except ObjectDoesNotExist:
@@ -174,26 +189,23 @@ def cart(request, total=0, quantity=0, cart_items=None):
         'total': total,
         'quantity': quantity,
         'cart_items': cart_items,
-        'items': cart_items,  # ⭐ Add this for checkout compatibility
+        'items': cart_items,
         'tax': tax,
         'grand_total': grand_total
     }
     
     return render(request, 'cart/cart.html', context)
 
-# Stock deduction function for after checkout
 def deduct_stock_after_checkout(cart_items):
     """Call this after successful checkout"""
     for item in cart_items:
         product = item.product
         quantity = item.quantity
         
-        # Deduct main product stock
         if product.stock >= quantity:
             product.stock -= quantity
             product.save()
         
-        # Deduct variation stocks
         for variation in item.variations.all():
             if variation.stock_quantity >= quantity:
                 variation.stock_quantity -= quantity
@@ -203,40 +215,36 @@ def merge_cart_on_login(request):
     """Call this when user logs in to merge session cart with user cart"""
     if request.user.is_authenticated:
         try:
-            # Get session cart
             session_cart = Cart.objects.get(cart_id=_cart_id(request))
             session_cart_items = CartItem.objects.filter(cart=session_cart, is_active=True)
             
-            # Get or create user cart
             user_cart, created = Cart.objects.get_or_create(user=request.user)
             
-            # Merge session cart items into user cart
             for session_item in session_cart_items:
+                # ✅ FIXED: Skip own products during merge
+                if session_item.product.seller == request.user:
+                    continue
+                    
                 try:
-                    # If item already exists in user cart, add quantities
                     user_item = CartItem.objects.get(product=session_item.product, cart=user_cart)
                     user_item.quantity += session_item.quantity
                     user_item.save()
                 except CartItem.DoesNotExist:
-                    # If item doesn't exist in user cart, create it
                     CartItem.objects.create(
                         product=session_item.product,
                         cart=user_cart,
                         quantity=session_item.quantity
                     )
             
-            # Delete session cart after merging
             session_cart_items.delete()
             session_cart.delete()
             
         except Cart.DoesNotExist:
-            # No session cart to merge
             pass
 
 def merge_session_cart_to_user(request):
     """Merge session cart into user cart when user logs in"""
     if request.user.is_authenticated:
-        # Get session cart
         session_cart_id = request.session.session_key
         if session_cart_id:
             try:
@@ -244,25 +252,24 @@ def merge_session_cart_to_user(request):
                 session_items = CartItem.objects.filter(cart=session_cart, is_active=True)
                 
                 if session_items.exists():
-                    # Get or create user cart
                     user_cart, created = Cart.objects.get_or_create(user=request.user)
                     
-                    # Merge each item
                     for session_item in session_items:
+                        # ✅ FIXED: Skip own products during merge
+                        if session_item.product.seller == request.user:
+                            continue
+                            
                         try:
-                            # If item exists in user cart, add quantities
                             user_item = CartItem.objects.get(product=session_item.product, cart=user_cart)
                             user_item.quantity += session_item.quantity
                             user_item.save()
                         except CartItem.DoesNotExist:
-                            # Create new item in user cart
                             CartItem.objects.create(
                                 product=session_item.product,
                                 cart=user_cart,
                                 quantity=session_item.quantity
                             )
                     
-                    # Delete session cart after merging
                     session_items.delete()
                     session_cart.delete()
                     

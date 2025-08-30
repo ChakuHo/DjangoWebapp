@@ -16,8 +16,13 @@ from orders.models import OrderItem
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from .models import ChatRoom, ChatMessage
-from django.http import JsonResponse
 from orders.views import send_order_confirmation_email
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+from django.contrib.auth import logout
+from django.utils import timezone
+from .models import TypingIndicator
+from .notification_utils import get_recent_notifications, get_unread_notification_count
 
 
 def send_registration_confirmation_email(user):
@@ -183,6 +188,7 @@ def register_view(request):
     return render(request, 'users/register.html')
 
 
+# Update your existing dashboard function in users/views.py
 
 @login_required
 def dashboard(request):
@@ -199,7 +205,10 @@ def dashboard(request):
     if profile.seller_status == 'approved':
         received_orders_count = OrderItem.objects.filter(seller=request.user).count()
 
-    # Add pending QR count for sidebar (NEW)
+    # Real unread messages count
+    unread_messages_count = profile.get_unread_messages_count()
+
+    # Add pending QR count for sidebar
     pending_qr_count = 0
     if profile.seller_status == 'approved':
         pending_qr_count = Order.objects.filter(
@@ -219,7 +228,20 @@ def dashboard(request):
             'rejected_products': seller_products.filter(approval_status='rejected').count(),
         }
 
-    # Generate recent activities
+    # 🔔 NOTIFICATION SYSTEM - with safe imports
+    notifications = []
+    total_notifications = 0
+    
+    try:
+        from .notification_utils import get_recent_notifications, get_unread_notification_count
+        notifications = get_recent_notifications(request.user, limit=10)
+        total_notifications = get_unread_notification_count(request.user)
+    except ImportError:
+        # Fallback if notification system isn't ready yet
+        print("Notification system not ready yet")
+        pass
+
+    # Generate recent activities (including chat activity)
     recent_activities = []
     
     # Recent orders
@@ -230,6 +252,19 @@ def dashboard(request):
             'created_at': order.created_at,
             'icon': 'fa-shopping-cart',
             'badge_color': 'primary'
+        })
+    
+    # Recent chat messages 
+    recent_chat_messages = ChatMessage.objects.filter(
+        chat_room__participants=request.user
+    ).exclude(sender=request.user).order_by('-timestamp')[:2]
+    
+    for msg in recent_chat_messages:
+        recent_activities.append({
+            'message': f'New message from {msg.sender.get_full_name() or msg.sender.username}',
+            'created_at': msg.timestamp,
+            'icon': 'fa-comments',
+            'badge_color': 'info'
         })
     
     # Recent seller activities (if seller)
@@ -254,18 +289,18 @@ def dashboard(request):
                 'badge_color': 'warning'
             })
         
-        # Add QR payment notifications to recent activities (NEW)
+        # Add QR payment notifications to recent activities
         if pending_qr_count > 0:
             recent_activities.append({
                 'message': f'{pending_qr_count} QR payment(s) awaiting verification',
-                'created_at': timezone.now(),  # Make sure to import timezone
+                'created_at': timezone.now(),
                 'icon': 'fa-qrcode',
                 'badge_color': 'warning'
             })
     
     # Sort activities by date
     recent_activities.sort(key=lambda x: x['created_at'], reverse=True)
-    recent_activities = recent_activities[:5]  # Keep only 5 most recent
+    recent_activities = recent_activities[:5]
 
     # Additional stats
     context = {
@@ -276,8 +311,11 @@ def dashboard(request):
         'seller_stats': seller_stats,
         'recent_activities': recent_activities,
         'wishlist_count': 0,  # You can implement this later
-        'unread_messages_count': 0,  # You can implement this later
-        'pending_qr_count': pending_qr_count,  # ADD THIS
+        'unread_messages_count': unread_messages_count, 
+        'pending_qr_count': pending_qr_count,
+        # 🔔 NOTIFICATION CONTEXT
+        'notifications': notifications,
+        'total_notifications': total_notifications,
     }
     return render(request, 'users/dashboard.html', context)
 
@@ -355,7 +393,7 @@ def received_orders(request):
     return render(request, 'users/received_orders.html', context)
 
 
-# NEW VIEW: For sellers to see orders they received from customers
+# VIEW: For sellers to see orders they received from customers
 @login_required
 def seller_received_orders(request):
     """Display orders received by seller from customers - FOR SELLERS"""
@@ -601,7 +639,7 @@ def add_product(request):
             brand = request.POST.get('brand', '').strip()
             spec = request.POST.get('spec', '').strip()
 
-            # NEW FIELDS FOR THRIFT/SALE
+            # FIELDS FOR THRIFT/SALE
             product_type = request.POST.get('product_type', 'new')
             condition = request.POST.get('condition', '')
             years_used = request.POST.get('years_used', '')
@@ -637,7 +675,7 @@ def add_product(request):
                 admin_approved=False,
                 approval_status='pending',
                 submitted_for_approval=timezone.now(),
-                # NEW FIELDS
+                # FIELDS
                 product_type=product_type,
                 condition=condition if condition else None,
                 years_used=int(years_used) if years_used else None,
@@ -884,36 +922,92 @@ def verify_qr_payments(request):
     }
     return render(request, 'users/verify_qr_payments.html', context)
 
+#chat system
 
 @login_required
 def chat_list(request):
-    """Display all chat rooms for current user"""
-    chat_rooms = ChatRoom.objects.filter(
-        participants=request.user
-    ).prefetch_related('participants', 'messages').order_by('-updated_at')
-    
-    context = {
-        'chat_rooms': chat_rooms,
-    }
-    return render(request, 'users/chat_list.html', context)
+    """Display all chat rooms for current user with last messages - Enhanced"""
+    try:
+        # Clear any stale typing indicators first
+        from datetime import timedelta
+        cutoff_time = timezone.now() - timedelta(minutes=5)
+        TypingIndicator.objects.filter(created_at__lt=cutoff_time).delete()
+        
+        # Get chat rooms with proper error handling
+        chat_rooms = ChatRoom.objects.filter(
+            participants=request.user,
+            is_active=True  # Only show active chats
+        ).prefetch_related(
+            'participants', 
+            'messages__sender',
+            'product'
+        ).order_by('-updated_at')
+        
+        # Add unread count and last message for each chat
+        chat_data = []
+        for chat in chat_rooms:
+            try:
+                other_participant = chat.get_other_participant(request.user)
+                
+                # Skip chats where we can't find the other participant
+                if not other_participant:
+                    continue
+                    
+                unread_count = ChatMessage.objects.filter(
+                    chat_room=chat,
+                    is_read=False
+                ).exclude(sender=request.user).count()
+                
+                last_message = chat.get_last_message()
+                
+                chat_data.append({
+                    'chat': chat,
+                    'other_participant': other_participant,
+                    'unread_count': unread_count,
+                    'last_message': last_message,
+                })
+            except Exception as e:
+                print(f"Error processing chat {chat.id}: {e}")
+                continue
+        
+        context = {
+            'chat_data': chat_data,
+        }
+        return render(request, 'users/chat_list.html', context)
+        
+    except Exception as e:
+        print(f"Error in chat_list view: {e}")
+        messages.error(request, 'Error loading chats. Please try again.')
+        return redirect('dashboard')
 
 @login_required
 def chat_detail(request, chat_id):
-    """Display specific chat room"""
+    """Display specific chat room with messages"""
     chat_room = get_object_or_404(ChatRoom, id=chat_id, participants=request.user)
     
-    # Mark messages as read
-    ChatMessage.objects.filter(
+    # Get other participant safely
+    other_participant = chat_room.get_other_participant(request.user)
+    if not other_participant:
+        messages.error(request, 'Chat participant not found.')
+        return redirect('chat_list')
+    
+    # Mark messages as read when user views chat
+    unread_messages = ChatMessage.objects.filter(
         chat_room=chat_room,
         is_read=False
-    ).exclude(sender=request.user).update(is_read=True)
+    ).exclude(sender=request.user)
     
-    messages = chat_room.messages.all()
-    other_participant = chat_room.get_other_participant(request.user)
+    for msg in unread_messages:
+        msg.mark_as_read(by_user=request.user)
+    
+    # Update user's last seen
+    request.user.profile.update_last_seen()
+    
+    messages_list = chat_room.messages.select_related('sender').order_by('timestamp')
     
     context = {
         'chat_room': chat_room,
-        'messages': messages,
+        'messages': messages_list,
         'other_participant': other_participant,
     }
     return render(request, 'users/chat_detail.html', context)
@@ -923,51 +1017,219 @@ def start_chat_with_user(request, username):
     """Start or continue chat with specific user"""
     other_user = get_object_or_404(User, username=username)
     
-    # Check if chat already exists
-    chat_room = ChatRoom.objects.filter(
-        participants=request.user
-    ).filter(
-        participants=other_user
-    ).first()
+    if other_user == request.user:
+        messages.error(request, "You cannot chat with yourself!")
+        return redirect('chat_list')
+    
+    # Check if chat already exists between these two users
+    chat_room = None
+    
+    # Find existing chat room between exactly these two users
+    for room in ChatRoom.objects.filter(participants=request.user):
+        if room.participants.count() == 2 and other_user in room.participants.all():
+            chat_room = room
+            break
     
     if not chat_room:
         # Create new chat room
         chat_room = ChatRoom.objects.create()
         chat_room.participants.add(request.user, other_user)
+        
+        # Add a welcome message
+        ChatMessage.objects.create(
+            chat_room=chat_room,
+            sender=request.user,
+            message=f"Hi {other_user.first_name or other_user.username}! 👋"
+        )
+    
+    return redirect('chat_detail', chat_id=chat_room.id)
+
+@login_required 
+def start_chat_about_product(request, product_id):
+    """Start chat with seller about specific product"""
+    from products.models import Product
+    product = get_object_or_404(Product, id=product_id)
+    seller = product.seller
+    
+    if seller == request.user:
+        messages.error(request, "You cannot chat about your own product!")
+        return redirect('products:product_detail', product.category.slug, product.slug)
+    
+    # Check if chat already exists for this product between these users
+    chat_room = ChatRoom.objects.filter(
+        participants=request.user,
+        product=product
+    ).filter(
+        participants=seller
+    ).first()
+    
+    if not chat_room:
+        # Create new product-specific chat
+        chat_room = ChatRoom.objects.create(product=product)
+        chat_room.participants.add(request.user, seller)
+        
+        # Add initial message about the product
+        ChatMessage.objects.create(
+            chat_room=chat_room,
+            sender=request.user,
+            message=f"Hi! I'm interested in your product: {product.name}"
+        )
     
     return redirect('chat_detail', chat_id=chat_room.id)
 
 @login_required
 def send_message(request):
-    """AJAX endpoint to send message"""
+    """AJAX endpoint to send message with enhanced status"""
     if request.method == 'POST':
         chat_id = request.POST.get('chat_id')
-        message_text = request.POST.get('message')
+        message_text = request.POST.get('message', '').strip()
+        
+        if not message_text:
+            return JsonResponse({'success': False, 'error': 'Message cannot be empty'})
         
         if chat_id and message_text:
+            try:
+                chat_room = get_object_or_404(ChatRoom, id=chat_id, participants=request.user)
+                
+                message = ChatMessage.objects.create(
+                    chat_room=chat_room,
+                    sender=request.user,
+                    message=message_text,
+                    status='sent'  #  Set initial status
+                )
+                
+                # Update chat room timestamp
+                chat_room.updated_at = timezone.now()
+                chat_room.save()
+                
+                # Clear typing indicator
+                TypingIndicator.objects.filter(
+                    chat_room=chat_room,
+                    user=request.user
+                ).delete()
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': {
+                        'id': message.id,
+                        'message': message.message,
+                        'sender': message.sender.username,
+                        'sender_name': message.sender.get_full_name() or message.sender.username,
+                        'timestamp': message.get_time_display(),  #  Human-readable time
+                        'status_icon': message.get_status_icon(),  #  Status icon
+                        'is_mine': True
+                    }
+                })
+            except Exception as e:
+                return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request'})
+
+# Typing indicators
+
+@login_required
+def set_typing(request, chat_id):
+    """Set typing indicator"""
+    if request.method == 'POST':
+        try:
             chat_room = get_object_or_404(ChatRoom, id=chat_id, participants=request.user)
             
-            message = ChatMessage.objects.create(
+            # Create or update typing indicator
+            typing_indicator, created = TypingIndicator.objects.get_or_create(
                 chat_room=chat_room,
-                sender=request.user,
-                message=message_text
+                user=request.user
             )
             
-            # Update chat room timestamp
-            chat_room.updated_at = timezone.now()
-            chat_room.save()
-            
-            return JsonResponse({
-                'success': True,
-                'message': {
-                    'id': message.id,
-                    'message': message.message,
-                    'sender': message.sender.username,
-                    'timestamp': message.timestamp.strftime('%Y-%m-%d %H:%M')
-                }
-            })
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
     
-    return JsonResponse({'success': False})
+    return JsonResponse({'success': False, 'error': 'Invalid request'})
+
+
+@login_required
+def clear_typing(request, chat_id):
+    """Clear typing indicator"""
+    if request.method == 'POST':
+        try:
+            chat_room = get_object_or_404(ChatRoom, id=chat_id, participants=request.user)
+            
+            TypingIndicator.objects.filter(
+                chat_room=chat_room,
+                user=request.user
+            ).delete()
+            
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request'})
+
+
+@login_required
+def get_typing_users(request, chat_id):
+    """Get users currently typing"""
+    try:
+        chat_room = get_object_or_404(ChatRoom, id=chat_id, participants=request.user)
+        
+        # Clean up old typing indicators (older than 10 seconds)
+        cutoff_time = timezone.now() - timedelta(seconds=10)
+        TypingIndicator.objects.filter(
+            chat_room=chat_room,
+            created_at__lt=cutoff_time
+        ).delete()
+        
+        # Get current typing users (excluding current user)
+        typing_users = TypingIndicator.objects.filter(
+            chat_room=chat_room
+        ).exclude(user=request.user).select_related('user')
+        
+        users_data = []
+        for indicator in typing_users:
+            users_data.append({
+                'username': indicator.user.username,
+                'full_name': indicator.user.get_full_name() or indicator.user.username
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'typing_users': users_data
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@login_required
+def get_new_messages(request, chat_id):
+    """AJAX endpoint to get new messages with enhanced data"""
+    chat_room = get_object_or_404(ChatRoom, id=chat_id, participants=request.user)
+    last_message_id = request.GET.get('last_id', 0)
+    
+    new_messages = ChatMessage.objects.filter(
+        chat_room=chat_room,
+        id__gt=last_message_id
+    ).exclude(sender=request.user).select_related('sender')
+    
+    # Mark new messages as read
+    for msg in new_messages:
+        msg.mark_as_read(by_user=request.user)
+    
+    messages_data = []
+    for msg in new_messages:
+        messages_data.append({
+            'id': msg.id,
+            'message': msg.message,
+            'sender': msg.sender.username,
+            'sender_name': msg.sender.get_full_name() or msg.sender.username,
+            'timestamp': msg.get_time_display(),  #  Human-readable time
+            'status_icon': msg.get_status_icon(),  # Status icon
+            'is_mine': False
+        })
+    
+    return JsonResponse({
+        'success': True,
+        'messages': messages_data
+    })
+
 
 @login_required
 def update_product_stock(request, product_id):
@@ -1093,3 +1355,170 @@ def update_qr(request):
         return redirect('dashboard')
     
     return render(request, 'users/update_qr.html', {'profile': profile})
+
+@login_required
+def remove_qr(request):
+    """Remove QR payment code - for sellers who want to disable QR payments"""
+    try:
+        profile = request.user.profile
+    except Profile.DoesNotExist:
+        messages.error(request, 'Profile not found.')
+        return redirect('dashboard')
+
+    # Only allow sellers to remove QR codes
+    if profile.seller_status not in ['approved', 'pending']:
+        messages.error(request, 'You need to be a seller to manage QR codes.')
+        return redirect('dashboard')
+
+    if request.method == 'POST':
+        # Remove QR code but keep other seller info
+        if profile.payment_qr_code:
+            profile.payment_qr_code.delete()  # Delete the file
+            profile.payment_qr_code = None
+            profile.save()
+            messages.success(request, '🗑️ QR code removed successfully! QR payments are now disabled.')
+        else:
+            messages.info(request, 'No QR code found to remove.')
+        
+        return redirect('update_qr')
+    
+    # If not POST, redirect back to update_qr page
+    return redirect('update_qr')
+
+
+@require_POST
+@login_required
+def clear_messages(request):
+    """Clear only Django flash messages from the current user's session"""
+    try:
+        # Get the Django messages framework storage
+        storage = messages.get_messages(request)
+        
+        # Only clear Django flash messages, not chat messages
+        for message in storage:
+            pass  # This consumes the Django flash messages
+        
+        # Make sure we don't interfere with chat functionality
+        # Only clear Django messages storage
+        if hasattr(storage, '_loaded_messages'):
+            storage._loaded_messages = []
+            
+        # Clear any session-based message storage
+        if 'django_messages' in request.session:
+            del request.session['django_messages']
+        
+        return JsonResponse({
+            'status': 'success', 
+            'message': 'Notifications cleared',
+            'action': 'django_messages_only'  # Specify what was cleared
+        })
+    
+    except Exception as e:
+        print(f"Error clearing messages: {e}")  # Debug log
+        return JsonResponse({'status': 'error', 'message': str(e)})
+
+
+def clear_user_messages_on_logout(request):
+    """Clear messages when user logs out"""
+    if request.user.is_authenticated:
+        storage = messages.get_messages(request)
+        for message in storage:
+            pass  # Consume all messages
+
+@login_required
+def mark_notification_read(request, notification_id):
+    """Mark single notification as read via AJAX"""
+    if request.method == 'POST':
+        try:
+            from .models import Notification
+            notification = get_object_or_404(Notification, id=notification_id, user=request.user)
+            notification.mark_as_read()
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    return JsonResponse({'success': False})
+
+@login_required
+def mark_all_notifications_read(request):
+    """Mark all notifications as read via AJAX"""
+    if request.method == 'POST':
+        try:
+            from .notification_utils import mark_all_notifications_read as mark_all_read
+            mark_all_read(request.user)
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    return JsonResponse({'success': False})
+
+@login_required
+def get_notifications_ajax(request):
+    """Get notifications via AJAX for real-time updates"""
+    try:
+        from .notification_utils import get_recent_notifications, get_unread_notification_count
+        
+        notifications = get_recent_notifications(request.user, limit=10)
+        total_notifications = get_unread_notification_count(request.user)
+        
+        notifications_data = []
+        for notification in notifications:
+            notifications_data.append({
+                'id': notification.id,
+                'title': notification.title,
+                'message': notification.message,
+                'icon': notification.icon,
+                'color': notification.color,
+                'url': notification.url,
+                'is_read': notification.is_read,
+                'created_at': notification.get_time_display(),
+            })
+        
+        return JsonResponse({
+            'notifications': notifications_data,
+            'total_count': total_notifications
+        })
+    except Exception as e:
+        return JsonResponse({
+            'notifications': [],
+            'total_count': 0,
+            'error': str(e)
+        })
+
+@login_required
+def get_notifications_ajax(request):
+    """Get notifications via AJAX for real-time updates"""
+    from .notification_utils import get_recent_notifications, get_unread_notification_count
+    
+    notifications = get_recent_notifications(request.user, limit=10)
+    total_notifications = get_unread_notification_count(request.user)
+    
+    notifications_data = []
+    for notification in notifications:
+        notifications_data.append({
+            'id': notification.id,
+            'title': notification.title,
+            'message': notification.message,
+            'icon': notification.icon,
+            'color': notification.color,
+            'url': notification.url,
+            'is_read': notification.is_read,
+            'created_at': notification.get_time_display(),
+        })
+    
+    return JsonResponse({
+        'notifications': notifications_data,
+        'total_count': total_notifications
+    })
+
+
+def user_logout(request):
+    # Clear all messages before logout
+    storage = messages.get_messages(request)
+    for message in storage:
+        pass  # Consume all messages
+    
+    # Logout user
+    logout(request)
+    
+    messages.success(request, 'You have been logged out successfully.')
+    
+    return redirect('home')  

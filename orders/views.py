@@ -17,6 +17,7 @@ from django.urls import reverse
 from django.conf import settings
 import logging
 from django.utils import timezone
+from django.db.models import Q, F
 
 logger = logging.getLogger(__name__)
 
@@ -446,7 +447,7 @@ def place_order(request):
                 # Complete COD order immediately
                 deduct_stock_after_checkout(items)
                 items.delete()
-                order.payment_status = 'completed'
+                order.payment_status = 'cod_pending'
                 order.status = 'Confirmed'
                 order.is_ordered = True
                 order.save()
@@ -766,8 +767,76 @@ def confirm_qr_payment(request, order_id):
 
 @login_required
 def my_orders(request):
-    orders = Order.objects.filter(user=request.user).order_by('-created_at')
-    return render(request, 'orders/my_orders.html', {'orders': orders})
+    """Show orders with filtering options"""
+    
+    # Get filter parameter
+    filter_type = request.GET.get('filter', 'active')
+    
+    if filter_type == 'delivered':
+        # Delivered orders
+        orders = Order.objects.filter(
+            user=request.user,
+            status__in=['Delivered', 'delivered', 'Completed', 'completed']
+        ).order_by('-created_at')
+        
+    elif filter_type == 'cancelled':
+        # Cancelled/Rejected orders
+        orders = Order.objects.filter(
+            user=request.user
+        ).filter(
+            Q(status__in=['cancelled', 'Cancelled']) | 
+            Q(payment_status='rejected')
+        ).order_by('-created_at')
+        
+    elif filter_type == 'all':
+        # All orders except initial pending
+        orders = Order.objects.filter(
+            user=request.user
+        ).exclude(
+            payment_status='pending'  # Exclude incomplete checkouts
+        ).order_by('-created_at')
+        
+    else:  # 'active' (default)
+        # Active orders (not delivered, not cancelled)
+        orders = Order.objects.filter(
+            user=request.user,
+            payment_status__in=['completed', 'pending_verification', 'cod_pending']
+        ).exclude(
+            status__in=['Delivered', 'delivered', 'Completed', 'completed', 'cancelled', 'Cancelled']
+        ).order_by('-created_at')
+    
+    # Count different order types for tabs
+    order_counts = {
+        'active': Order.objects.filter(
+            user=request.user,
+            payment_status__in=['completed', 'pending_verification', 'cod_pending']
+        ).exclude(
+            status__in=['Delivered', 'delivered', 'Completed', 'completed', 'cancelled', 'Cancelled']
+        ).count(),
+        
+        'delivered': Order.objects.filter(
+            user=request.user,
+            status__in=['Delivered', 'delivered', 'Completed', 'completed']
+        ).count(),
+        
+        'cancelled': Order.objects.filter(
+            user=request.user
+        ).filter(
+            Q(status__in=['cancelled', 'Cancelled']) | 
+            Q(payment_status='rejected')
+        ).count(),
+        
+        'all': Order.objects.filter(
+            user=request.user
+        ).exclude(payment_status='pending').count()
+    }
+    
+    context = {
+        'orders': orders,
+        'filter_type': filter_type,
+        'order_counts': order_counts,
+    }
+    return render(request, 'orders/my_orders.html', context)
 
 @login_required
 def order_complete(request, order_id):

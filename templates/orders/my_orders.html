@@ -7,66 +7,163 @@
       {% include 'users/includes/sidebar.html' %}
 
       <main class="col-md-9">
-        {% if orders %} {% for order in orders %}
+        <!-- Order Filter Tabs -->
+        <div class="card mb-4">
+          <div class="card-header">
+            <h5><i class="fa fa-shopping-bag"></i> My Orders</h5>
+            <ul class="nav nav-tabs card-header-tabs">
+              <li class="nav-item">
+                <a class="nav-link {% if filter_type == 'active' %}active{% endif %}" 
+                   href="?filter=active">
+                  Active Orders 
+                  {% if order_counts.active > 0 %}
+                    <span class="badge badge-primary">{{ order_counts.active }}</span>
+                  {% endif %}
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link {% if filter_type == 'delivered' %}active{% endif %}" 
+                   href="?filter=delivered">
+                  Delivered 
+                  {% if order_counts.delivered > 0 %}
+                    <span class="badge badge-success">{{ order_counts.delivered }}</span>
+                  {% endif %}
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link {% if filter_type == 'cancelled' %}active{% endif %}" 
+                   href="?filter=cancelled">
+                  Cancelled/Rejected 
+                  {% if order_counts.cancelled > 0 %}
+                    <span class="badge badge-danger">{{ order_counts.cancelled }}</span>
+                  {% endif %}
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link {% if filter_type == 'all' %}active{% endif %}" 
+                   href="?filter=all">
+                  All Orders 
+                  {% if order_counts.all > 0 %}
+                    <span class="badge badge-secondary">{{ order_counts.all }}</span>
+                  {% endif %}
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        {% if orders %}
+        {% for order in orders %}
         <article class="card mb-4">
           <header class="card-header">
-            <div class="row">
-              <div class="col-md-8">
-                <strong class="d-inline-block mr-3"
-                  >Order ID: #{{ order.id }}</strong
-                >
-                <span>Order Date: {{ order.created_at|date:"d M Y" }}</span>
+            <div class="row align-items-center">
+              <div class="col-md-6">
+                <strong class="d-inline-block mr-3">Order #{{ order.order_number|default:order.id }}</strong>
+                <br class="d-sm-none">
+                <small class="text-muted">Placed on {{ order.created_at|date:"d M Y, g:i A" }}</small>
               </div>
-              <div class="col-md-4 text-right">
+              <div class="col-md-6 text-md-right mt-2 mt-md-0">
+                <!-- FIXED Payment Status Badges -->
+                {% if order.payment_status == 'pending' %}
+                  <span class="badge badge-warning badge-pill">
+                    <i class="fa fa-clock"></i> Payment Pending
+                  </span>
+                {% elif order.payment_status == 'pending_verification' %}
+                  <span class="badge badge-info badge-pill">
+                    <i class="fa fa-search"></i> Payment Under Verification
+                  </span>
+                {% elif order.payment_status == 'completed' %}
+                  <span class="badge badge-success badge-pill">
+                    <i class="fa fa-check"></i> Payment Completed
+                  </span>
+                {% elif order.payment_status == 'cod_pending' %}
+                  <span class="badge badge-warning badge-pill">
+                    <i class="fa fa-money"></i> Pay on Delivery
+                  </span>
+                {% elif order.payment_status == 'rejected' %}
+                  <span class="badge badge-danger badge-pill">
+                    <i class="fa fa-times"></i> Payment Rejected
+                  </span>
+                {% endif %}
+                
+                <!-- Order Status -->
                 {% if order.status|lower == 'pending' %}
-                <span class="badge badge-warning"
-                  >{{ order.status|upper }}</span
-                >
-                {% elif order.status|lower == 'delivered' %}
-                <span class="badge badge-success"
-                  >{{ order.status|upper }}</span
-                >
+                  <span class="badge badge-secondary badge-pill ml-1">{{ order.status }}</span>
+                {% elif order.status|lower == 'confirmed' %}
+                  <span class="badge badge-primary badge-pill ml-1">{{ order.status }}</span>
+                {% elif order.status|lower == 'processing' %}
+                  <span class="badge badge-info badge-pill ml-1">{{ order.status }}</span>
                 {% elif order.status|lower == 'shipped' %}
-                <span class="badge badge-info">{{ order.status|upper }}</span>
+                  <span class="badge badge-warning badge-pill ml-1">{{ order.status }}</span>
+                {% elif order.status|lower == 'delivered' or order.status|lower == 'completed' %}
+                  <span class="badge badge-success badge-pill ml-1">{{ order.status }}</span>
+                {% elif order.status|lower == 'cancelled' %}
+                  <span class="badge badge-danger badge-pill ml-1">{{ order.status }}</span>
                 {% else %}
-                <span class="badge badge-secondary"
-                  >{{ order.status|upper }}</span
-                >
+                  <span class="badge badge-secondary badge-pill ml-1">{{ order.status }}</span>
                 {% endif %}
               </div>
             </div>
           </header>
+          
           <div class="card-body">
+            <!-- Order Summary Row -->
             <div class="row mb-3">
-              <div class="col-md-6">
-                <h6 class="text-muted">Delivery Address</h6>
-                <p>
-                  {{ order.user.get_full_name|default:order.user.username }}<br />
-                  {{ order.address }}<br />
-                  {{ order.city }}, {{ order.country }} - {{ order.zip }}
+              <div class="col-md-4">
+                <h6 class="text-muted mb-2"><i class="fa fa-map-marker"></i> Delivery Address</h6>
+                <address class="mb-0">
+                  <strong>{{ order.user.get_full_name|default:order.user.username }}</strong><br>
+                  {{ order.address }}<br>
+                  {{ order.city }}, {{ order.country }}
+                  {% if order.zip %}- {{ order.zip }}{% endif %}
+                </address>
+              </div>
+              
+              <div class="col-md-4">
+                <h6 class="text-muted mb-2"><i class="fa fa-credit-card"></i> Payment Information</h6>
+                <p class="mb-0">
+                  <strong>Method:</strong> {{ order.payment_method }}<br>
+                  {% if order.payment_method == 'QR Payment' and order.qr_payment_transaction_id %}
+                    <strong>Transaction ID:</strong> {{ order.qr_payment_transaction_id }}<br>
+                  {% elif order.payment_reference %}
+                    <strong>Reference:</strong> {{ order.payment_reference }}<br>
+                  {% endif %}
+                  <strong>Status:</strong> 
+                  {% if order.payment_status == 'completed' %}
+                    <span class="text-success">Paid</span>
+                  {% elif order.payment_status == 'cod_pending' %}
+                    <span class="text-warning">Pay on Delivery</span>
+                  {% elif order.payment_status == 'pending_verification' %}
+                    <span class="text-info">Under Verification</span>
+                  {% elif order.payment_status == 'rejected' %}
+                    <span class="text-danger">Rejected</span>
+                  {% else %}
+                    <span class="text-warning">{{ order.payment_status|title }}</span>
+                  {% endif %}
                 </p>
               </div>
-              <div class="col-md-6">
-                <h6 class="text-muted">Payment & Total</h6>
-                <p>
-                  <strong>Payment Method:</strong> {{ order.payment_method }}<br />
-                  <strong>Total Amount:</strong> Rs. {{ order.total|add:order.tax|floatformat:2 }}<br />
-                  <strong>Transaction ID:</strong> {{ order.transaction_id }}
+              
+              <div class="col-md-4">
+                <h6 class="text-muted mb-2"><i class="fa fa-calculator"></i> Order Total</h6>
+                <p class="mb-0">
+                  <strong>Subtotal:</strong> Rs. {{ order.total|floatformat:2 }}<br>
+                  <strong>Tax (13%):</strong> Rs. {{ order.tax|floatformat:2 }}<br>
+                  <strong class="text-primary">Grand Total: Rs. {{ order.grand_total|floatformat:2 }}</strong>
                 </p>
               </div>
             </div>
 
             <!-- Order Items -->
-            <h6 class="text-muted mb-3">Ordered Items</h6>
+            <h6 class="text-muted mb-3"><i class="fa fa-list"></i> Ordered Items ({{ order.items.count }})</h6>
             <div class="table-responsive">
               <table class="table table-hover">
-                <thead>
+                <thead class="thead-light">
                   <tr>
                     <th width="80">Image</th>
-                    <th>Product</th>
-                    <th width="100">Price</th>
+                    <th>Product Details</th>
+                    <th width="100">Unit Price</th>
                     <th width="80">Qty</th>
-                    <th width="120">Total</th>
+                    <th width="120">Subtotal</th>
                     <th width="150">Actions</th>
                   </tr>
                 </thead>
@@ -75,106 +172,166 @@
                   <tr>
                     <td>
                       {% if item.product.image %}
-                      <img
-                        src="{{ item.product.image.url }}"
-                        class="img-xs border rounded"
-                        style="width: 60px; height: 60px; object-fit: cover"
-                      />
+                        <img src="{{ item.product.image.url }}" class="img-thumbnail" 
+                             style="width: 60px; height: 60px; object-fit: cover" 
+                             alt="{{ item.product.name }}">
                       {% else %}
-                      <img
-                        src="https://via.placeholder.com/60x60?text=No+Image"
-                        class="img-xs border rounded"
-                        style="width: 60px; height: 60px; object-fit: cover"
-                      />
+                        <div class="bg-light d-flex align-items-center justify-content-center" 
+                             style="width: 60px; height: 60px;">
+                          <i class="fa fa-image text-muted"></i>
+                        </div>
                       {% endif %}
                     </td>
                     <td>
                       <div>
-                        <strong>{{ item.product.name }}</strong><br />
-                        <small class="text-muted"
-                          >{{ item.product.brand|default:"" }}</small
-                        >
+                        <strong>{{ item.product.name }}</strong>
+                        {% if item.product.brand %}
+                          <br><small class="text-muted">Brand: {{ item.product.brand }}</small>
+                        {% endif %}
+                        
+                        <!-- Show Variations if any -->
+                        {% if item.variations.exists %}
+                          <br>
+                          {% for variation in item.variations.all %}
+                            <small class="badge badge-light mr-1">
+                              {{ variation.variation_type.display_name }}: {{ variation.variation_option.display_value }}
+                            </small>
+                          {% endfor %}
+                        {% endif %}
+                        
+                        <!-- Show Seller Info -->
+                        <br><small class="text-muted">
+                          Sold by: <strong>{{ item.seller.profile.business_name|default:item.seller.username }}</strong>
+                        </small>
                       </div>
                     </td>
-                    <td>Rs. {{ item.product.price|floatformat:2 }}</td>
-                    <td>{{ item.quantity }}</td>
+                    <td>Rs. {{ item.get_unit_price|floatformat:2 }}</td>
+                    <td><span class="badge badge-secondary">{{ item.quantity }}</span></td>
                     <td><strong>Rs. {{ item.price|floatformat:2 }}</strong></td>
                     <td>
-                      <a
-                        href="{{ item.product.get_url }}"
-                        class="btn btn-outline-primary btn-sm"
-                      >
-                        View Product
-                      </a>
-                      {% if order.status|lower == 'delivered' %}
-                      <a href="" class="btn btn-outline-success btn-sm mt-1">
-                        Review
-                      </a>
-                      {% endif %}
+                      <div class="btn-group-vertical btn-group-sm" role="group">
+                        <a href="{{ item.product.get_url }}" class="btn btn-outline-primary btn-sm">
+                          <i class="fa fa-eye"></i> View Product
+                        </a>
+                        
+                        <!-- Review Button - Only for delivered orders -->
+                        {% if order.status|lower == 'delivered' or order.status|lower == 'completed' %}
+                          <a href="{% url 'products:submit_review' item.product.id %}?order_id={{ order.id }}" 
+                             class="btn btn-outline-success btn-sm">
+                            <i class="fa fa-star"></i> Write Review
+                          </a>
+                        {% elif order.payment_status|lower == 'cancelled' or order.payment_status == 'rejected' %}
+                          <span class="btn btn-outline-secondary btn-sm disabled">
+                            <i class="fa fa-ban"></i> Cannot Review
+                          </span>
+                        {% else %}
+                          <small class="text-muted">Review after delivery</small>
+                        {% endif %}
+                        
+                        <!-- Contact Seller Button -->
+                        {% if order.status|lower != 'cancelled' %}
+                          <a href="{% url 'start_chat_with_user' item.seller.username %}" 
+                             class="btn btn-outline-info btn-sm">
+                            <i class="fa fa-comment"></i> Contact Seller
+                          </a>
+                        {% endif %}
+                      </div>
                     </td>
                   </tr>
                   {% empty %}
                   <tr>
-                    <td colspan="6" class="text-center">
-                      No items found in this order.
+                    <td colspan="6" class="text-center text-muted">
+                      <i class="fa fa-exclamation-triangle"></i> No items found in this order.
                     </td>
                   </tr>
                   {% endfor %}
                 </tbody>
-                <tfoot>
-                  <tr>
-                    <th colspan="4" class="text-right">Subtotal:</th>
-                    <th>Rs. {{ order.total|floatformat:2 }}</th>
-                    <th></th>
-                  </tr>
-                  <tr>
-                    <th colspan="4" class="text-right">Tax (13%):</th>
-                    <th>Rs. {{ order.tax|floatformat:2 }}</th>
-                    <th></th>
-                  </tr>
-                  <tr>
-                    <th colspan="4" class="text-right">Grand Total:</th>
-                    <th>
-                      <strong>Rs. {{ order.total|add:order.tax|floatformat:2 }}</strong>
-                    </th>
-                    <th></th>
-                  </tr>
-                </tfoot>
               </table>
             </div>
 
-            <!-- Order Actions -->
-            <div class="text-right mt-3">
-              <a
-                href="{% url 'order_complete' order.id %}"
-                class="btn btn-primary btn-sm"
-              >
-                View Invoice
-              </a>
-              {% if order.status|lower == 'pending' %}
-              <button
-                class="btn btn-outline-danger btn-sm"
-                onclick="alert('Contact support to cancel this order')"
-              >
-                Cancel Order
-              </button>
-              {% endif %}
+            <!-- Order Actions Footer -->
+            <div class="border-top pt-3 mt-3">
+              <div class="row align-items-center">
+                <div class="col-md-8">
+                  <!-- FIXED Payment Status Messages -->
+                  {% if order.payment_method == 'Cash on Delivery' and order.payment_status == 'cod_pending' %}
+                    <div class="alert alert-warning alert-sm mb-0">
+                      <i class="fa fa-money"></i> 
+                      <strong>Cash on Delivery:</strong> Pay Rs. {{ order.grand_total|floatformat:2 }} when your order arrives at your doorstep.
+                    </div>
+                  {% elif order.payment_method == 'QR Payment' and order.payment_status == 'pending_verification' %}
+                    <div class="alert alert-info alert-sm mb-0">
+                      <i class="fa fa-info-circle"></i> 
+                      <strong>QR Payment Verification:</strong> Your payment is being verified by the seller. You'll receive confirmation within 24 hours.
+                    </div>
+                  {% elif order.payment_status == 'rejected' %}
+                    <div class="alert alert-danger alert-sm mb-0">
+                      <i class="fa fa-exclamation-triangle"></i> 
+                      <strong>Payment Rejected:</strong> Your payment was not verified. Please contact support or the seller.
+                    </div>
+                  {% elif order.status|lower == 'cancelled' %}
+                    <div class="alert alert-danger alert-sm mb-0">
+                      <i class="fa fa-ban"></i> 
+                      <strong>Order Cancelled:</strong> This order has been cancelled.
+                    </div>
+                  {% endif %}
+                </div>
+                
+                <div class="col-md-4 text-md-right mt-2 mt-md-0">
+                  <div class="btn-group" role="group">
+                    <a href="{% url 'order_complete' order.id %}" class="btn btn-primary btn-sm">
+                      <i class="fa fa-file-text"></i> View Invoice
+                    </a>
+                    
+                    {% if order.payment_status == 'rejected' %}
+                      <a href="{% url 'checkout' %}" class="btn btn-outline-success btn-sm">
+                        <i class="fa fa-refresh"></i> Reorder
+                      </a>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </article>
-        {% endfor %} {% else %}
-        <!-- Show this when no orders -->
+        {% endfor %} 
+        
+        {% else %}
+        <!-- Enhanced Empty State -->
         <div class="card">
-          <div class="card-body text-center">
-            <i
-              class="fa fa-shopping-bag"
-              style="font-size: 48px; color: #ccc; margin-bottom: 20px"
-            ></i>
-            <h4>No Orders Yet</h4>
-            <p>You haven't placed any orders yet.</p>
-            <a href="{% url 'products:product' %}" class="btn btn-primary"
-              >Start Shopping</a
-            >
+          <div class="card-body text-center py-5">
+            <div class="mb-4">
+              <i class="fa fa-shopping-bag" style="font-size: 64px; color: #dee2e6;"></i>
+            </div>
+            <h4 class="text-muted">
+              {% if filter_type == 'delivered' %}
+                No Delivered Orders
+              {% elif filter_type == 'cancelled' %}
+                No Cancelled Orders
+              {% elif filter_type == 'all' %}
+                No Orders Found
+              {% else %}
+                No Active Orders
+              {% endif %}
+            </h4>
+            <p class="text-muted mb-4">
+              {% if filter_type == 'delivered' %}
+                You don't have any delivered orders yet.
+              {% elif filter_type == 'cancelled' %}
+                You don't have any cancelled orders.
+              {% else %}
+                You haven't placed any orders yet. Start shopping!
+              {% endif %}
+            </p>
+            {% if filter_type != 'delivered' and filter_type != 'cancelled' %}
+              <a href="{% url 'products:product' %}" class="btn btn-primary btn-lg">
+                <i class="fa fa-shopping-cart"></i> Start Shopping
+              </a>
+              <br>
+            {% endif %}
+            <a href="{% url 'dashboard' %}" class="btn btn-link mt-2">
+              <i class="fa fa-arrow-left"></i> Back to Dashboard
+            </a>
           </div>
         </div>
         {% endif %}
@@ -182,4 +339,40 @@
     </div>
   </div>
 </section>
+
+<!-- Custom Styles -->
+<style>
+.badge-pill {
+  border-radius: 50rem;
+}
+
+.alert-sm {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.btn-group-vertical .btn {
+  margin-bottom: 2px;
+}
+
+.btn-group-vertical .btn:last-child {
+  margin-bottom: 0;
+}
+
+.table th {
+  border-top: none;
+  font-weight: 600;
+}
+
+.card-header {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.nav-tabs .nav-link.active {
+  background-color: #fff;
+  border-color: #dee2e6 #dee2e6 #fff;
+}
+</style>
+
 {% endblock %}

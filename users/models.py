@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils import timezone
 
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
@@ -43,7 +44,7 @@ class Profile(models.Model):
     business_name = models.CharField(max_length=100, blank=True)
     business_description = models.TextField(blank=True)
     
-    # NEW QR CODE PAYMENT FIELDS
+    # QR CODE PAYMENT FIELDS
     payment_qr_code = models.ImageField(
         upload_to='seller_qr_codes/', 
         blank=True, 
@@ -67,6 +68,10 @@ class Profile(models.Model):
         blank=True,
         help_text="Additional info like phone number or account name"
     )
+
+    #  Chat activity tracking
+    last_seen = models.DateTimeField(default=timezone.now)
+    is_online = models.BooleanField(default=False)
 
     def has_payment_qr(self):
         """Check if profile has a payment QR code"""
@@ -93,15 +98,18 @@ class Profile(models.Model):
     def is_seller_pending(self):
         return self.seller_status == 'pending'
     
-    def has_payment_qr(self):
-        """Check if seller has uploaded a payment QR code"""
-        return bool(self.payment_qr_code)
+    def get_unread_messages_count(self):
+        """Get count of unread messages for this user"""
+        return ChatMessage.objects.filter(
+            chat_room__participants=self.user,
+            is_read=False
+        ).exclude(sender=self.user).count()
     
-    def get_qr_display_name(self):
-        """Get display name for QR payment method"""
-        if self.qr_payment_method:
-            return dict(self._meta.get_field('qr_payment_method').choices).get(self.qr_payment_method, 'QR Payment')
-        return 'QR Payment'
+    def update_last_seen(self):
+        """Update last seen timestamp"""
+        self.last_seen = timezone.now()
+        self.save(update_fields=['last_seen'])
+
 
 class ChatRoom(models.Model):
     participants = models.ManyToManyField(User, related_name='chat_rooms')
@@ -111,32 +119,121 @@ class ChatRoom(models.Model):
     # For product-specific chats
     product = models.ForeignKey('products.Product', on_delete=models.CASCADE, null=True, blank=True)
     
+    #  Chat room settings
+    is_active = models.BooleanField(default=True)
+    archived_by = models.ManyToManyField(User, related_name='archived_chats', blank=True)
+    
     def __str__(self):
         participant_names = ", ".join([user.username for user in self.participants.all()])
-        return f"Chat: {participant_names}"
+        product_info = f" (About: {self.product.name})" if self.product else ""
+        return f"Chat: {participant_names}{product_info}"
     
     def get_other_participant(self, current_user):
         """Get the other participant in a 2-person chat"""
-        return self.participants.exclude(id=current_user.id).first()
+        try:
+            participants = self.participants.all()
+            for participant in participants:
+                if participant != current_user:
+                    return participant
+            return None
+        except Exception:
+            return None
     
     def get_last_message(self):
         return self.messages.last()
+    
+    def get_unread_count_for_user(self, user):
+        """Get unread message count for specific user"""
+        return self.messages.filter(
+            is_read=False
+        ).exclude(sender=user).count()
+
 
 class ChatMessage(models.Model):
+    # Message status choices
+    STATUS_CHOICES = [
+        ('sent', 'Sent'),
+        ('delivered', 'Delivered'),
+        ('read', 'Read'),
+    ]
+    
     chat_room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name='messages')
     sender = models.ForeignKey(User, on_delete=models.CASCADE)
     message = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
     
-    # Optional: File attachments
+    # Enhanced message status
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='sent')
+    read_at = models.DateTimeField(null=True, blank=True)
+    
+    # File attachments
     attachment = models.FileField(upload_to='chat_attachments/', null=True, blank=True)
+    attachment_type = models.CharField(max_length=20, blank=True)  # image, document, etc.
+    
+    #  Message type for system messages
+    message_type = models.CharField(max_length=20, default='text', choices=[
+        ('text', 'Text'),
+        ('image', 'Image'),
+        ('document', 'Document'),
+        ('system', 'System'),
+    ])
     
     class Meta:
         ordering = ['timestamp']
     
     def __str__(self):
         return f"{self.sender.username}: {self.message[:50]}"
+    
+    def mark_as_read(self, by_user=None):
+        """Mark message as read"""
+        if not self.is_read and self.sender != by_user:
+            self.is_read = True
+            self.status = 'read'
+            self.read_at = timezone.now()
+            self.save(update_fields=['is_read', 'status', 'read_at'])
+    
+    def get_status_icon(self):
+        """Get status icon for message"""
+        icons = {
+            'sent': '✓',
+            'delivered': '✓✓',
+            'read': '✓✓',
+        }
+        return icons.get(self.status, '✓')
+    
+    def get_time_display(self):
+        """Get human-readable time display"""
+        now = timezone.now()
+        diff = now - self.timestamp
+        
+        if diff.days > 7:
+            return self.timestamp.strftime('%m/%d/%Y')
+        elif diff.days > 0:
+            return f"{diff.days} day{'s' if diff.days > 1 else ''} ago"
+        elif diff.seconds > 3600:
+            hours = diff.seconds // 3600
+            return f"{hours} hour{'s' if hours > 1 else ''} ago"
+        elif diff.seconds > 60:
+            minutes = diff.seconds // 60
+            return f"{minutes} minute{'s' if minutes > 1 else ''} ago"
+        else:
+            return "just now"
+
+
+# NEW: Typing indicator model
+class TypingIndicator(models.Model):
+    chat_room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name='typing_indicators')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ['chat_room', 'user']
+    
+    def __str__(self):
+        return f"{self.user.username} typing in {self.chat_room}"
+        
+
 
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
