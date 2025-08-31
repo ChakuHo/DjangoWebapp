@@ -43,8 +43,18 @@ urlpatterns = [
 
     path('clear-messages/', views.clear_messages, name='clear_messages'),
 
-    # Notification URLs
+    #  NOTIFICATION URLs 
     path('notifications/mark-read/<int:notification_id>/', views.mark_notification_read, name='mark_notification_read'),
     path('notifications/mark-all-read/', views.mark_all_notifications_read, name='mark_all_notifications_read'),
     path('notifications/ajax/', views.get_notifications_ajax, name='get_notifications_ajax'),
+
+    path('clear-notifications-only/', views.clear_notifications_only, name='clear_notifications_only'),
+    path('clear-django-messages-only/', views.clear_django_messages_only, name='clear_django_messages_only'),
+    
+    # Wishlist URLs
+    path('wishlist/', views.wishlist_view, name='wishlist'),
+    path('wishlist/add/<int:product_id>/', views.add_to_wishlist, name='add_to_wishlist'),
+    path('wishlist/remove/<int:product_id>/', views.remove_from_wishlist, name='remove_from_wishlist'),
+    path('wishlist/toggle/<int:product_id>/', views.toggle_wishlist, name='toggle_wishlist'),
+    path('wishlist/clear-all/', views.clear_all_wishlist, name='clear_all_wishlist'),
 ]

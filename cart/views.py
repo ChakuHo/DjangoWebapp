@@ -7,6 +7,7 @@ import json
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from django.http import HttpResponseRedirect
+from django.http import JsonResponse
 
 def _cart_id(request):
     cart = request.session.session_key
@@ -30,10 +31,16 @@ def add_cart(request, product_id):
     product = get_object_or_404(Product, id=product_id)
     cart = _get_cart(request)
 
-    # ✅ FIXED: Prevent seller from buying their own products
+    # Prevent seller from buying their own products
     if request.user.is_authenticated and product.seller == request.user:
-        messages.error(request, "❌ You cannot buy your own product!")
-        return redirect('products:product_detail', product.category.slug, product.slug)
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': False,
+                'message': '❌ You cannot buy your own product!'
+            }, status=400)
+        else:
+            messages.error(request, "❌ You cannot buy your own product!")
+            return redirect('products:product_detail', product.category.slug, product.slug)
     
     # Parse variations from request (if any)
     selected_variations = []
@@ -78,9 +85,29 @@ def add_cart(request, product_id):
             if existing_item.quantity < available_stock:
                 existing_item.quantity += 1
                 existing_item.save()
-                messages.success(request, f"{product.name} added to cart!")
+                success_message = f"{product.name} added to cart!"
+                
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    cart_count = CartItem.objects.filter(cart=cart, is_active=True).count()
+                    return JsonResponse({
+                        'success': True,
+                        'message': success_message,
+                        'cart_count': cart_count
+                    })
+                else:
+                    messages.success(request, success_message)
+                    return redirect('cart')
             else:
-                messages.error(request, f"Sorry, only {available_stock} available!")
+                error_message = f"Sorry, only {available_stock} available!"
+                
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': False,
+                        'message': error_message
+                    }, status=400)
+                else:
+                    messages.error(request, error_message)
+                    return redirect('cart')
         else:
             if available_stock > 0:
                 cart_item = CartItem.objects.create(
@@ -92,14 +119,43 @@ def add_cart(request, product_id):
                 if selected_variations:
                     cart_item.variations.set(selected_variations)
                     cart_item.save()
-                messages.success(request, f"{product.name} added to cart!")
+                
+                success_message = f"{product.name} added to cart!"
+                
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    cart_count = CartItem.objects.filter(cart=cart, is_active=True).count()
+                    return JsonResponse({
+                        'success': True,
+                        'message': success_message,
+                        'cart_count': cart_count
+                    })
+                else:
+                    messages.success(request, success_message)
+                    return redirect('cart')
             else:
-                messages.error(request, f"Sorry, {product.name} is out of stock!")
+                error_message = f"Sorry, {product.name} is out of stock!"
+                
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': False,
+                        'message': error_message
+                    }, status=400)
+                else:
+                    messages.error(request, error_message)
+                    return redirect('cart')
                 
     except Exception as e:
-        messages.error(request, "Error adding to cart. Please try again.")
-    
-    return redirect('cart')
+        print(f"Error in add_cart: {e}")  # For debugging
+        error_message = "Error adding to cart. Please try again."
+        
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': False,
+                'message': error_message
+            }, status=500)
+        else:
+            messages.error(request, error_message)
+            return redirect('cart')
 
 def get_available_stock(product, variations):
     """Calculate available stock considering variations"""

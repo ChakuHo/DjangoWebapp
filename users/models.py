@@ -73,6 +73,12 @@ class Profile(models.Model):
     last_seen = models.DateTimeField(default=timezone.now)
     is_online = models.BooleanField(default=False)
 
+# Wishlist
+
+    def get_wishlist_count(self):
+        """Get wishlist count for this user"""
+        return Wishlist.objects.filter(user=self.user).count()    
+
     def has_payment_qr(self):
         """Check if profile has a payment QR code"""
         return bool(self.payment_qr_code)
@@ -233,7 +239,89 @@ class TypingIndicator(models.Model):
     def __str__(self):
         return f"{self.user.username} typing in {self.chat_room}"
         
+class Notification(models.Model):
+    NOTIFICATION_TYPES = [
+        ('system', 'System'),
+        ('order', 'Order'),
+        ('message', 'Message'),
+        ('product_approved', 'Product Approved'),
+        ('product_rejected', 'Product Rejected'),
+        ('qr_payment', 'QR Payment'),
+        ('order_status', 'Order Status'),
+    ]
+    
+    COLOR_CHOICES = [
+        ('primary', 'Primary'),
+        ('secondary', 'Secondary'),
+        ('success', 'Success'),
+        ('danger', 'Danger'),
+        ('warning', 'Warning'),
+        ('info', 'Info'),
+        ('light', 'Light'),
+        ('dark', 'Dark'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES)
+    title = models.CharField(max_length=100)
+    message = models.TextField()
+    icon = models.CharField(max_length=50, default='fa-bell')
+    color = models.CharField(max_length=20, choices=COLOR_CHOICES, default='primary')
+    url = models.URLField(blank=True)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    read_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.user.username}: {self.title}"
+    
+    def mark_as_read(self):
+        """Mark notification as read"""
+        if not self.is_read:
+            self.is_read = True
+            self.read_at = timezone.now()
+            self.save(update_fields=['is_read', 'read_at'])
+    
+    def get_time_display(self):
+        """Get human-readable time display"""
+        now = timezone.now()
+        diff = now - self.created_at
+        
+        if diff.days > 7:
+            return self.created_at.strftime('%m/%d/%Y')
+        elif diff.days > 0:
+            return f"{diff.days} day{'s' if diff.days > 1 else ''} ago"
+        elif diff.seconds > 3600:
+            hours = diff.seconds // 3600
+            return f"{hours} hour{'s' if hours > 1 else ''} ago"
+        elif diff.seconds > 60:
+            minutes = diff.seconds // 60
+            return f"{minutes} minute{'s' if minutes > 1 else ''} ago"
+        else:
+            return "just now"
 
+
+class Wishlist(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='wishlist_items')
+    product = models.ForeignKey('products.Product', on_delete=models.CASCADE)
+    added_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ('user', 'product')
+        ordering = ['-added_at']
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.product.name}"
+
+    @staticmethod
+    def get_wishlist_count(user):
+        """Get wishlist count for user"""
+        if user.is_authenticated:
+            return Wishlist.objects.filter(user=user).count()
+        return 0
 
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):

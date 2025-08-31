@@ -280,6 +280,18 @@ const PLACEHOLDER_IMAGE = "{% static 'images/placeholder.png' %}";
                 </a>
                 {% endif %}
                 
+                <!-- WISHLIST HEART BUTTON - NEW -->
+                {% if user.is_authenticated %}
+                <div class="wishlist-btn-container">
+                  <button class="btn btn-wishlist wishlist-toggle" 
+                          data-product-id="{{ product.id }}"
+                          data-in-wishlist="{% if product.id in user_wishlist_ids %}true{% else %}false{% endif %}"
+                          title="{% if product.id in user_wishlist_ids %}Remove from wishlist{% else %}Add to wishlist{% endif %}">
+                    <i class="fa fa-heart {% if product.id in user_wishlist_ids %}text-danger{% else %}text-muted{% endif %}"></i>
+                  </button>
+                </div>
+                {% endif %}
+                
                 <!-- Product badges -->
                 <div class="product-badges">
                   {% if product.is_on_sale %}
@@ -420,6 +432,56 @@ const PLACEHOLDER_IMAGE = "{% static 'images/placeholder.png' %}";
   object-fit: cover;
 }
 
+/* WISHLIST HEART BUTTON STYLING - NEW */
+.wishlist-btn-container {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+}
+
+.btn-wishlist {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid white;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.btn-wishlist:hover {
+  background: white;
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.btn-wishlist i {
+  font-size: 16px;
+  transition: all 0.3s ease;
+}
+
+.btn-wishlist[data-in-wishlist="true"] i {
+  color: #dc3545 !important;
+  animation: heartBeat 0.6s ease-in-out;
+}
+
+.btn-wishlist[data-in-wishlist="true"]:hover {
+  background: #ffe6e6;
+}
+
+@keyframes heartBeat {
+  0% { transform: scale(1); }
+  14% { transform: scale(1.3); }
+  28% { transform: scale(1); }
+  42% { transform: scale(1.3); }
+  70% { transform: scale(1); }
+}
+
 .product-badges {
   position: absolute;
   top: 10px;
@@ -505,6 +567,16 @@ const PLACEHOLDER_IMAGE = "{% static 'images/placeholder.png' %}";
 .color-swatch[data-color] {
   background-color: var(--swatch-color, #cccccc);
 }
+
+/* Toast notification styling - NEW */
+.toast-notification {
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
 </style>
 
 <script>
@@ -564,6 +636,18 @@ document.addEventListener('DOMContentLoaded', function() {
             applyFilters();
         });
     }
+
+    // WISHLIST FUNCTIONALITY - NEW
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.wishlist-toggle')) {
+            e.preventDefault();
+            const button = e.target.closest('.wishlist-toggle');
+            const productId = button.dataset.productId;
+            const isInWishlist = button.dataset.inWishlist === 'true';
+            
+            toggleWishlist(productId, button, !isInWishlist);
+        }
+    });
 
     function applyFilters() {
         const url = new URL(window.location);
@@ -625,6 +709,119 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Reload page with new filters
         window.location.href = url.toString();
+    }
+
+function toggleWishlist(productId, button, addToWishlist) {
+    const icon = button.querySelector('i');
+    const originalClass = icon.className;
+    
+    // Show loading state
+    icon.className = 'fa fa-spinner fa-spin text-muted';
+    button.disabled = true;
+    
+    const url = addToWishlist ? 
+        `/users/wishlist/add/${productId}/` : 
+        `/users/wishlist/remove/${productId}/`;
+    
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update button state
+            button.dataset.inWishlist = addToWishlist ? 'true' : 'false';
+            icon.className = addToWishlist ? 
+                'fa fa-heart text-danger' : 
+                'fa fa-heart text-muted';
+            
+            // Update button title
+            button.title = addToWishlist ? 
+                'Remove from wishlist' : 
+                'Add to wishlist';
+            
+            // Update wishlist count in sidebar
+            updateWishlistCount(data.wishlist_count);
+            
+            // Show success message
+            showToast(data.message, 'success');
+        } else {
+            // Restore original state
+            icon.className = originalClass;
+            showToast(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        icon.className = originalClass;
+        showToast('An error occurred', 'error');
+    })
+    .finally(() => {
+        button.disabled = false;
+    });
+}
+
+    // UPDATE WISHLIST COUNT - NEW
+    function updateWishlistCount(count) {
+        const wishlistBadges = document.querySelectorAll('.sidebar-badge-danger');
+        wishlistBadges.forEach(badge => {
+            if (badge.closest('.sidebar-item').href && badge.closest('.sidebar-item').href.includes('wishlist')) {
+                badge.textContent = count;
+            }
+        });
+        
+        // Update dashboard count if on dashboard page
+        const wishlistCounters = document.querySelectorAll('.wishlist-count');
+        wishlistCounters.forEach(counter => {
+            counter.textContent = count;
+        });
+    }
+
+    // SHOW TOAST NOTIFICATION - NEW
+    function showToast(message, type) {
+        const toast = document.createElement('div');
+        toast.className = `alert alert-${type === 'success' ? 'success' : 'danger'} toast-notification alert-dismissible fade show`;
+        toast.style.cssText = `
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            z-index: 9999;
+            min-width: 300px;
+        `;
+        toast.innerHTML = `
+            ${message}
+            <button type="button" class="close" onclick="this.parentElement.remove()">
+                <span>&times;</span>
+            </button>
+        `;
+        
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.remove();
+            }
+        }, 3000);
+    }
+
+    // GET CSRF TOKEN - NEW
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
     }
 });
 

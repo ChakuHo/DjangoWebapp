@@ -1,0 +1,538 @@
+{% extends "master/base.html" %}
+{% load static %}
+
+{% block content %}
+<section class="section-content padding-y bg">
+    <div class="container">
+        <div class="row">
+            {% include 'users/includes/sidebar.html' %}
+            
+            <main class="col-md-9">
+                <article class="card">
+                    <header class="card-header bg-danger text-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="fa fa-heart"></i>
+                                <strong>My Wishlist</strong>
+                                <span class="badge badge-light text-danger ml-2">{{ wishlist_count }} items</span>
+                            </div>
+                            {% if wishlist_count > 0 %}
+                                <button class="btn btn-outline-light btn-sm" id="clearWishlist">
+                                    <i class="fa fa-trash"></i> Clear All
+                                </button>
+                            {% endif %}
+                        </div>
+                    </header>
+                    
+                    <div class="card-body">
+                        {% if wishlist_items %}
+                            <div class="row">
+                                {% for item in wishlist_items %}
+                                    <div class="col-md-6 col-lg-4 mb-4" data-wishlist-id="{{ item.wishlist_item.id }}">
+                                        <div class="card h-100 wishlist-item">
+                                            <div class="position-relative">
+                                                {% if item.product.image %}
+                                                    <img src="{{ item.product.image.url }}" 
+                                                         class="card-img-top" 
+                                                         alt="{{ item.product.name }}"
+                                                         style="height: 200px; object-fit: cover;">
+                                                {% else %}
+                                                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center" 
+                                                         style="height: 200px;">
+                                                        <i class="fa fa-image fa-3x text-muted"></i>
+                                                    </div>
+                                                {% endif %}
+                                                
+                                                <!-- Remove button -->
+                                                <button class="btn btn-danger btn-sm position-absolute remove-wishlist" 
+                                                        style="top: 10px; right: 10px; border-radius: 50%;"
+                                                        data-product-id="{{ item.product.id }}"
+                                                        title="Remove from wishlist">
+                                                    <i class="fa fa-times"></i>
+                                                </button>
+                                                
+                                                <!-- Sale badge -->
+                                                {% if item.product.is_on_sale %}
+                                                    <div class="position-absolute" style="top: 10px; left: 10px;">
+                                                        <span class="badge badge-danger">
+                                                            -{{ item.product.discount_percentage }}%
+                                                        </span>
+                                                    </div>
+                                                {% endif %}
+                                                
+                                                <!-- Stock status badge -->
+                                                {% if item.is_out_of_stock %}
+                                                    <div class="position-absolute" style="bottom: 10px; left: 10px;">
+                                                        <span class="badge badge-danger">Out of Stock</span>
+                                                    </div>
+                                                {% elif item.is_low_stock %}
+                                                    <div class="position-absolute" style="bottom: 10px; left: 10px;">
+                                                        <span class="badge badge-warning">Low Stock</span>
+                                                    </div>
+                                                {% elif item.in_cart %}
+                                                    <div class="position-absolute" style="bottom: 10px; left: 10px;">
+                                                        <span class="badge badge-success">In Cart</span>
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                            
+                                            <div class="card-body d-flex flex-column">
+                                                <h6 class="card-title">
+                                                    <a href="{% url 'products:product_detail' item.product.category.slug item.product.slug %}" 
+                                                       class="text-decoration-none">
+                                                        {{ item.product.name|truncatechars:50 }}
+                                                    </a>
+                                                </h6>
+                                                
+                                                <div class="price-section mb-2">
+                                                    {% if item.product.is_on_sale %}
+                                                        {% if item.product.original_price and item.product.price < item.product.original_price %}
+                                                            <div class="price-display">
+                                                                <span class="text-danger font-weight-bold">
+                                                                    Rs. {{ item.product.price|floatformat:0 }}
+                                                                </span>
+                                                                <small class="text-muted ml-1">
+                                                                    <del>Rs. {{ item.product.original_price|floatformat:0 }}</del>
+                                                                </small>
+                                                                <span class="badge badge-success ml-1">
+                                                                    {{ item.product.discount_percentage|floatformat:0 }}% OFF
+                                                                </span>
+                                                            </div>
+                                                        {% else %}
+                                                            <span class="text-primary font-weight-bold">
+                                                                Rs. {{ item.product.price|floatformat:0 }}
+                                                            </span>
+                                                        {% endif %}
+                                                    {% else %}
+                                                        <span class="text-primary font-weight-bold">
+                                                            Rs. {{ item.product.price|floatformat:0 }}
+                                                        </span>
+                                                    {% endif %}
+                                                </div>
+                                                
+                                                <div class="product-info mb-3">
+                                                    <small class="text-muted">
+                                                        <i class="fa fa-store"></i> {{ item.product.seller.get_full_name|default:item.product.seller.username }}
+                                                    </small>
+                                                    <br>
+                                                    <small class="text-muted">
+                                                        <i class="fa fa-heart text-danger"></i> Added {{ item.wishlist_item.added_at|timesince }} ago
+                                                    </small>
+                                                </div>
+                                                
+                                                <div class="mt-auto">
+                                                    <div class="btn-group w-100" role="group">
+                                                        <a href="{% url 'products:product_detail' item.product.category.slug item.product.slug %}" 
+                                                           class="btn btn-outline-primary btn-sm">
+                                                            <i class="fa fa-eye"></i> View
+                                                        </a>
+                                                        
+                                                        {% if item.is_own_product %}
+                                                            <!-- User owns this product -->
+                                                            <button class="btn btn-secondary btn-sm" disabled title="You cannot buy your own product">
+                                                                <i class="fa fa-user"></i> Your Product
+                                                            </button>
+                                                        {% elif item.is_out_of_stock %}
+                                                            <!-- Product is out of stock -->
+                                                            <button class="btn btn-danger btn-sm" disabled title="This product is currently out of stock">
+                                                                <i class="fa fa-times"></i> Out of Stock
+                                                            </button>
+                                                        {% elif item.in_cart %}
+                                                            <!-- Product already in cart -->
+                                                            <button class="btn btn-success btn-sm already-in-cart" 
+                                                                    data-product-id="{{ item.product.id }}"
+                                                                    data-cart-quantity="{{ item.cart_quantity }}"
+                                                                    title="This item is already in your cart">
+                                                                <i class="fa fa-check"></i> In Cart ({{ item.cart_quantity }})
+                                                            </button>
+                                                        {% else %}
+                                                            <!-- Normal add to cart button -->
+                                                            <button class="btn btn-primary btn-sm add-to-cart" 
+                                                                    data-product-id="{{ item.product.id }}"
+                                                                    {% if item.is_low_stock %}
+                                                                    title="Only {{ item.available_stock }} left in stock"
+                                                                    {% endif %}>
+                                                                <i class="fa fa-shopping-cart"></i> Add to Cart
+                                                            </button>
+                                                        {% endif %}
+                                                    </div>
+                                                    
+                                                    <!-- Stock status indicator -->
+                                                    {% if not item.is_own_product and not item.is_out_of_stock %}
+                                                        <div class="stock-status mt-1">
+                                                            {% if item.is_low_stock %}
+                                                                <small class="text-warning">
+                                                                    <i class="fa fa-exclamation-triangle"></i> Only {{ item.available_stock }} left!
+                                                                </small>
+                                                            {% elif item.available_stock > 0 %}
+                                                                <small class="text-success">
+                                                                    <i class="fa fa-check-circle"></i> In Stock ({{ item.available_stock }} available)
+                                                                </small>
+                                                            {% endif %}
+                                                        </div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="empty-wishlist text-center py-5">
+                                <i class="fa fa-heart-broken fa-4x text-muted mb-3"></i>
+                                <h4 class="text-muted mb-3">Your wishlist is empty</h4>
+                                <p class="text-muted mb-4">
+                                    Browse our products and add items you love to your wishlist!
+                                </p>
+                                <a href="{% url 'products:product' %}" class="btn btn-primary">
+                                    <i class="fa fa-shopping-bag"></i> Start Shopping
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                </article>
+            </main>
+        </div>
+    </div>
+</section>
+
+<style>
+.wishlist-item {
+    transition: all 0.3s ease;
+    border: 1px solid #e3e6f0;
+}
+
+.wishlist-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}
+
+.remove-wishlist {
+    opacity: 0.8;
+    transition: all 0.3s ease;
+}
+
+.remove-wishlist:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.price-display {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.empty-wishlist {
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.stock-status {
+    font-size: 0.85em;
+}
+
+.already-in-cart {
+    cursor: pointer;
+}
+
+.already-in-cart:hover {
+    opacity: 0.8;
+}
+
+@media (max-width: 768px) {
+    .btn-group {
+        flex-direction: column;
+    }
+    
+    .btn-group .btn {
+        border-radius: 0.25rem !important;
+        margin-bottom: 5px;
+    }
+    
+    .stock-status {
+        text-align: center;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Event delegation for all clickable elements
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-wishlist')) {
+            e.preventDefault();
+            const button = e.target.closest('.remove-wishlist');
+            const productId = button.dataset.productId;
+            const wishlistItem = button.closest('[data-wishlist-id]');
+            
+            if (confirm('Remove this item from your wishlist?')) {
+                removeFromWishlist(productId, wishlistItem);
+            }
+        }
+        
+        // Add to cart from wishlist
+        if (e.target.closest('.add-to-cart')) {
+            e.preventDefault();
+            const button = e.target.closest('.add-to-cart');
+            const productId = button.dataset.productId;
+            addToCart(productId, button);
+        }
+        
+        // Handle "already in cart" button click
+        if (e.target.closest('.already-in-cart')) {
+            e.preventDefault();
+            const button = e.target.closest('.already-in-cart');
+            const cartQuantity = button.dataset.cartQuantity;
+            showNotification(`This item is already in your cart (${cartQuantity} items). Visit your cart to modify quantity.`, 'info');
+        }
+    });
+    
+    // Clear all wishlist
+    const clearWishlistBtn = document.getElementById('clearWishlist');
+    if (clearWishlistBtn) {
+        clearWishlistBtn.addEventListener('click', function() {
+            if (confirm('Are you sure you want to clear your entire wishlist? This action cannot be undone.')) {
+                clearAllWishlist();
+            }
+        });
+    }
+    
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    function removeFromWishlist(productId, itemElement) {
+        fetch(`/users/wishlist/remove/${productId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Animate and remove the item
+                itemElement.style.transition = 'all 0.3s ease';
+                itemElement.style.transform = 'scale(0)';
+                itemElement.style.opacity = '0';
+                
+                setTimeout(() => {
+                    itemElement.remove();
+                    
+                    // Update wishlist count
+                    updateWishlistCount(data.wishlist_count);
+                    
+                    // Check if wishlist is empty
+                    const remainingItems = document.querySelectorAll('[data-wishlist-id]');
+                    if (remainingItems.length === 0) {
+                        location.reload(); // Refresh to show empty state
+                    }
+                }, 300);
+                
+                showNotification(data.message, 'success');
+            } else {
+                showNotification(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('An error occurred', 'error');
+        });
+    }
+    
+    function addToCart(productId, button) {
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Adding...';
+        button.disabled = true;
+        
+        const formData = new FormData();
+        formData.append('quantity', 1);
+        formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+        
+        fetch(`/cart/add/${productId}/`, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: formData
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => {
+                    throw new Error(`HTTP ${response.status}: ${text}`);
+                });
+            }
+            
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            } else {
+                throw new Error('Server returned non-JSON response');
+            }
+        })
+        .then(data => {
+            if (data.success) {
+                // Change button to "already in cart" state
+                button.innerHTML = '<i class="fa fa-check"></i> In Cart (1)';
+                button.classList.remove('btn-primary', 'add-to-cart');
+                button.classList.add('btn-success', 'already-in-cart');
+                button.dataset.cartQuantity = '1';
+                button.disabled = false;
+                button.title = 'This item is already in your cart';
+                
+                // Update any stock badge
+                const stockBadge = button.closest('.wishlist-item').querySelector('.position-absolute:last-child .badge');
+                if (stockBadge && !stockBadge.classList.contains('badge-danger')) {
+                    stockBadge.className = 'badge badge-success';
+                    stockBadge.textContent = 'In Cart';
+                }
+                
+                if (typeof updateCartCount === 'function') {
+                    updateCartCount(data.cart_count);
+                }
+                
+                showNotification(data.message || 'Product added to cart successfully!', 'success');
+            } else {
+                // Handle different error cases
+                button.innerHTML = originalText;
+                button.disabled = false;
+                
+                if (data.message && data.message.includes('out of stock')) {
+                    // Change button to out of stock state
+                    button.innerHTML = '<i class="fa fa-times"></i> Out of Stock';
+                    button.classList.remove('btn-primary', 'add-to-cart');
+                    button.classList.add('btn-danger');
+                    button.disabled = true;
+                    button.title = 'This product is currently out of stock';
+                } else if (data.message && data.message.includes('own product')) {
+                    // Change button to own product state
+                    button.innerHTML = '<i class="fa fa-user"></i> Your Product';
+                    button.classList.remove('btn-primary', 'add-to-cart');
+                    button.classList.add('btn-secondary');
+                    button.disabled = true;
+                    button.title = 'You cannot buy your own product';
+                }
+                
+                showNotification(data.message || 'Error adding to cart', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Add to cart error:', error);
+            button.innerHTML = originalText;
+            button.disabled = false;
+            showNotification('An error occurred while adding to cart. Please try again.', 'error');
+        });
+    }
+    
+    function clearAllWishlist() {
+        const clearBtn = document.getElementById('clearWishlist');
+        const originalText = clearBtn.innerHTML;
+        clearBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Clearing...';
+        clearBtn.disabled = true;
+        
+        fetch('/users/wishlist/clear-all/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => {
+                    throw new Error(`HTTP ${response.status}: ${text}`);
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                showNotification(data.message, 'success');
+                
+                // Animate all wishlist items out
+                const wishlistItems = document.querySelectorAll('[data-wishlist-id]');
+                wishlistItems.forEach((item, index) => {
+                    setTimeout(() => {
+                        item.style.transition = 'all 0.3s ease';
+                        item.style.transform = 'scale(0)';
+                        item.style.opacity = '0';
+                    }, index * 100);
+                });
+                
+                // After animation, reload page to show empty state
+                setTimeout(() => {
+                    location.reload();
+                }, wishlistItems.length * 100 + 300);
+                
+            } else {
+                clearBtn.innerHTML = originalText;
+                clearBtn.disabled = false;
+                showNotification(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Clear wishlist error:', error);
+            clearBtn.innerHTML = originalText;
+            clearBtn.disabled = false;
+            showNotification('An error occurred while clearing wishlist. Please try again.', 'error');
+        });
+    }
+    
+    function updateWishlistCount(count) {
+        const wishlistCounters = document.querySelectorAll('.wishlist-count');
+        wishlistCounters.forEach(counter => {
+            counter.textContent = count;
+        });
+        
+        // Update badge in header
+        const wishlistBadge = document.querySelector('.badge.text-danger');
+        if (wishlistBadge) {
+            wishlistBadge.textContent = `${count} items`;
+        }
+    }
+    
+    function showNotification(message, type) {
+        // Remove any existing notifications
+        const existingNotifications = document.querySelectorAll('.notification-alert');
+        existingNotifications.forEach(notification => notification.remove());
+        
+        // Create new notification
+        const notification = document.createElement('div');
+        notification.className = `alert alert-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'info'} alert-dismissible fade show position-fixed notification-alert`;
+        notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px; max-width: 400px;';
+        notification.innerHTML = `
+            ${message}
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 5000);
+    }
+});
+</script>
+{% endblock %}

@@ -11,63 +11,14 @@
       <main class="col-md-9">
         <!-- User Welcome Section with Enhanced Stats -->
         <article class="card mb-4">
-          <header class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-            <div>
-              <strong class="d-inline-block mr-3">
-                <i class="fa fa-user-circle"></i> Welcome back,
-              </strong>
-              <span>{% if user.get_full_name %}{{ user.get_full_name }}{% else %}{{ user.username }}{% endif %}!</span>
-            </div>
-            
-            <!-- Notification Bell -->
-            <div class="notification-container">
-              <div class="dropdown">
-                <button class="btn btn-link text-white notification-bell" type="button" id="notificationDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                  <i class="fa fa-bell fa-lg"></i>
-                  <span class="notification-badge badge badge-danger" id="notificationCount">{{ total_notifications|default:0 }}</span>
-                </button>
-                <div class="dropdown-menu dropdown-menu-right notification-dropdown" aria-labelledby="notificationDropdown">
-                  <div class="notification-header">
-                    <h6 class="mb-0">Notifications</h6>
-                    {% if total_notifications > 0 %}
-                      <small class="text-muted">{{ total_notifications }} new</small>
-                    {% endif %}
-                  </div>
-                  
-                  <div class="notification-list">
-                    {% if notifications %}
-                      {% for notification in notifications %}
-                        <a href="{{ notification.url }}" class="dropdown-item notification-item {% if not notification.is_read %}unread{% endif %}">
-                          <div class="d-flex align-items-start">
-                            <div class="notification-icon mr-3">
-                              <i class="fa {{ notification.icon }} text-{{ notification.color }}"></i>
-                            </div>
-                            <div class="notification-content">
-                              <p class="mb-1">{{ notification.message }}</p>
-                              <small class="text-muted">{{ notification.created_at|timesince }} ago</small>
-                            </div>
-                          </div>
-                        </a>
-                      {% endfor %}
-                    {% else %}
-                      <div class="dropdown-item-text text-center py-4">
-                        <i class="fa fa-bell-slash fa-2x text-muted mb-2"></i>
-                        <p class="text-muted mb-0">No new notifications</p>
-                      </div>
-                    {% endif %}
-                  </div>
-                  
-                  {% if total_notifications > 0 %}
-                    <div class="notification-footer">
-                      <a href="#" class="btn btn-sm btn-outline-primary btn-block" id="markAllRead">
-                        Mark all as read
-                      </a>
-                    </div>
-                  {% endif %}
-                </div>
-              </div>
-            </div>
-          </header>
+        <header class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+          <div>
+            <strong class="d-inline-block mr-3">
+              <i class="fa fa-user-circle"></i> Welcome back,
+            </strong>
+            <span>{% if user.get_full_name %}{{ user.get_full_name }}{% else %}{{ user.username }}{% endif %}!</span>
+          </div>
+        </header>
           
           <div class="card-body">
             <!-- Enhanced Stats Row -->
@@ -103,15 +54,15 @@
               </div>
 
               <div class="col-md-3">
-                <div class="card border-info" style="text-align: center;">
-                  <div class="card-body py-3">
-                    <i class="fa fa-heart fa-2x text-info mb-2"></i>
-                    <h5 class="card-title">Wishlist</h5>
-                    <h4 class="text-info">{{ wishlist_count|default:0 }}</h4>
-                    <a href="#" class="btn btn-outline-info btn-sm">View Wishlist</a>
+                  <div class="card border-info" style="text-align: center;">
+                      <div class="card-body py-3">
+                          <i class="fa fa-heart fa-2x text-info mb-2"></i>
+                          <h5 class="card-title">Wishlist</h5>
+                          <h4 class="text-info wishlist-count">{{ wishlist_count|default:0 }}</h4>
+                          <a href="{% url 'wishlist' %}" class="btn btn-outline-info btn-sm">View Wishlist</a>
+                      </div>
                   </div>
                 </div>
-              </div>
 
               <div class="col-md-3">
                 <div class="card border-warning" style="text-align: center;">
@@ -1004,6 +955,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     calculateProfileCompletion();
     setupNotifications();
+    setupRealTimeUpdates();
     
     function initializeDashboardInitials() {
         var firstName = "{{ user.first_name|escapejs }}";
@@ -1067,36 +1019,71 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    function setupNotifications() {
-        // Mark all as read functionality
-        var markAllReadBtn = document.getElementById('markAllRead');
-        if (markAllReadBtn) {
-            markAllReadBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                // Add AJAX call here to mark all notifications as read
-                var notificationCount = document.getElementById('notificationCount');
-                if (notificationCount) {
-                    notificationCount.textContent = '0';
-                    notificationCount.style.display = 'none';
+
+    
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
                 }
-                
-                // Remove unread class from all notification items
-                var unreadItems = document.querySelectorAll('.notification-item.unread');
-                unreadItems.forEach(function(item) {
-                    item.classList.remove('unread');
-                });
-                
-                // Hide the footer
-                this.parentElement.style.display = 'none';
-            });
+            }
+        }
+        return cookieValue;
+    }
+    
+    // Global function to update wishlist count (can be called from other pages)
+    window.updateWishlistCount = function(count) {
+        var wishlistCounters = document.querySelectorAll('.wishlist-count');
+        wishlistCounters.forEach(function(counter) {
+            counter.textContent = count;
+        });
+    };
+    
+    // Global function to update cart count (can be called from other pages)
+    window.updateCartCount = function(count) {
+        var cartCounters = document.querySelectorAll('.cart-count');
+        cartCounters.forEach(function(counter) {
+            counter.textContent = count;
+        });
+    };
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    var hasProfilePic = {% if profile.profile_picture %}true{% else %}false{% endif %};
+    
+    if (!hasProfilePic) {
+        initializeDashboardInitials();
+    }
+    
+    function initializeDashboardInitials() {
+        var firstName = "{{ user.first_name|escapejs }}";
+        var lastName = "{{ user.last_name|escapejs }}";
+        var username = "{{ user.username|escapejs }}";
+        
+        var initials = '';
+        
+        if (firstName && lastName) {
+            initials = firstName.charAt(0) + lastName.charAt(0);
+        } else if (firstName) {
+            initials = firstName.charAt(0) + (firstName.charAt(1) || '');
+        } else if (username) {
+            initials = username.charAt(0) + (username.charAt(1) || '');
+        } else {
+            initials = 'U';
         }
         
-        // Update notification count display
-        var notificationCount = document.getElementById('notificationCount');
-        if (notificationCount) {
-            var count = parseInt(notificationCount.textContent) || 0;
-            if (count === 0) {
-                notificationCount.style.display = 'none';
+        var initialsElement = document.getElementById('dashboard-profile-initials');
+        if (initialsElement) {
+            var initialsText = initialsElement.querySelector('.initials-text-display');
+            if (initialsText) {
+                initialsText.textContent = initials.toUpperCase();
+                var colorIndex = (initials.charCodeAt(0) % 8) + 1;
+                initialsElement.classList.add('color-' + colorIndex);
             }
         }
     }

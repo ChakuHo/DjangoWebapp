@@ -3,7 +3,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib import messages
-from .models import Profile
+from .models import Profile, Notification
 from orders.models import Order
 from django.utils import timezone
 from products.models import Product, Category, CategoryVariation, VariationType, VariationOption, ProductVariation
@@ -19,10 +19,11 @@ from .models import ChatRoom, ChatMessage
 from orders.views import send_order_confirmation_email
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
-from django.contrib.auth import logout
 from django.utils import timezone
 from .models import TypingIndicator
-from .notification_utils import get_recent_notifications, get_unread_notification_count
+from .notification_utils import get_recent_notifications, get_unread_notification_count, create_notification
+from .models import Wishlist
+from products.models import Product
 
 
 def send_registration_confirmation_email(user):
@@ -89,7 +90,6 @@ Need help? Contact us at {settings.DEFAULT_FROM_EMAIL}
         import traceback
         traceback.print_exc()
         return False
-    
 
 def login_view(request):
     if request.method == 'POST':
@@ -122,7 +122,6 @@ def login_view(request):
         else:
             return render(request, 'users/login.html', {'error': 'Invalid credentials'})
     return render(request, 'users/login.html')
-
 
 def register_view(request):
     if request.method == 'POST':
@@ -174,6 +173,17 @@ def register_view(request):
             profile.country = country
             profile.save()
             
+            # 🎉 CREATE WELCOME NOTIFICATION
+            create_notification(
+                user=user,
+                notification_type='system',
+                title='Welcome to ISLINGTON MARKETPLACE!',
+                message='Welcome! Start exploring products or apply to become a seller.',
+                icon='fa-hand-wave',
+                color='success',
+                url='/dashboard/'
+            )
+            
             email_sent = send_registration_confirmation_email(user)
             if email_sent:
                 messages.success(request, 'Account created successfully! Welcome email sent to your inbox.')
@@ -186,9 +196,6 @@ def register_view(request):
         except Exception as e:
             return render(request, 'users/register.html', {'error': 'Error creating account'})
     return render(request, 'users/register.html')
-
-
-# Update your existing dashboard function in users/views.py
 
 @login_required
 def dashboard(request):
@@ -207,6 +214,9 @@ def dashboard(request):
 
     # Real unread messages count
     unread_messages_count = profile.get_unread_messages_count()
+    
+    # Wishlist count
+    wishlist_count = Wishlist.get_wishlist_count(request.user)
 
     # Add pending QR count for sidebar
     pending_qr_count = 0
@@ -228,20 +238,11 @@ def dashboard(request):
             'rejected_products': seller_products.filter(approval_status='rejected').count(),
         }
 
-    # 🔔 NOTIFICATION SYSTEM - with safe imports
-    notifications = []
-    total_notifications = 0
-    
-    try:
-        from .notification_utils import get_recent_notifications, get_unread_notification_count
-        notifications = get_recent_notifications(request.user, limit=10)
-        total_notifications = get_unread_notification_count(request.user)
-    except ImportError:
-        # Fallback if notification system isn't ready yet
-        print("Notification system not ready yet")
-        pass
+    #  NOTIFICATION SYSTEM - Get real notifications 
+    notifications = get_recent_notifications(request.user, limit=10)
+    total_notifications = get_unread_notification_count(request.user)
 
-    # Generate recent activities (including chat activity)
+    # Generate recent activities
     recent_activities = []
     
     # Recent orders
@@ -252,6 +253,16 @@ def dashboard(request):
             'created_at': order.created_at,
             'icon': 'fa-shopping-cart',
             'badge_color': 'primary'
+        })
+    
+    # Recent wishlist additions
+    recent_wishlist = Wishlist.objects.filter(user=request.user).order_by('-added_at')[:2]
+    for item in recent_wishlist:
+        recent_activities.append({
+            'message': f'Added "{item.product.name}" to wishlist',
+            'created_at': item.added_at,
+            'icon': 'fa-heart',
+            'badge_color': 'danger'
         })
     
     # Recent chat messages 
@@ -310,15 +321,13 @@ def dashboard(request):
         'user': request.user,
         'seller_stats': seller_stats,
         'recent_activities': recent_activities,
-        'wishlist_count': 0,  # You can implement this later
+        'wishlist_count': wishlist_count,  # Updated with real count
         'unread_messages_count': unread_messages_count, 
         'pending_qr_count': pending_qr_count,
-        # 🔔 NOTIFICATION CONTEXT
         'notifications': notifications,
         'total_notifications': total_notifications,
     }
     return render(request, 'users/dashboard.html', context)
-
 
 @login_required
 def received_orders(request):
@@ -392,8 +401,6 @@ def received_orders(request):
     }
     return render(request, 'users/received_orders.html', context)
 
-
-# VIEW: For sellers to see orders they received from customers
 @login_required
 def seller_received_orders(request):
     """Display orders received by seller from customers - FOR SELLERS"""
@@ -425,8 +432,6 @@ def seller_received_orders(request):
         'today': timezone.now(),
     }
     return render(request, 'users/seller_received_orders.html', context)
-    return render(request, 'users/received_orders.html', context)
-
 
 @login_required
 def edit_profile(request):
@@ -457,7 +462,6 @@ def edit_profile(request):
         return redirect('dashboard')
     return render(request, 'users/edit_profile.html', {'profile': profile})
 
-
 @login_required
 def change_password(request):
     if request.method == 'POST':
@@ -479,7 +483,6 @@ def change_password(request):
         messages.success(request, 'Password changed successfully! Please login again.')
         return redirect('login')
     return render(request, 'users/change_password.html')
-
 
 def logout_view(request):
     # Store cart items before logout
@@ -533,7 +536,6 @@ def logout_view(request):
     messages.success(request, 'Logged out successfully!')
     return redirect('home')
 
-
 @login_required
 def my_selling_items(request):
     """Display seller's products - ONLY if approved seller"""
@@ -555,13 +557,6 @@ def my_selling_items(request):
         'rejected_products': products.filter(approval_status='rejected').count(),
     }
     return render(request, 'users/my_selling_items.html', context)
-
-
-@login_required
-def received_orders(request):
-    context = {}
-    return render(request, 'users/received_orders.html', context)
-
 
 @login_required
 def become_seller(request):
@@ -612,11 +607,21 @@ def become_seller(request):
         profile.seller_application_date = timezone.now()
         profile.save()
 
+        # Create notification for seller application
+        create_notification(
+            user=request.user,
+            notification_type='system',
+            title='Seller Application Submitted!',
+            message='Your seller application is under review. We will notify you once it\'s processed.',
+            icon='fa-store',
+            color='warning',
+            url='/dashboard/'
+        )
+
         messages.success(request, 'Seller application submitted with QR code! We will review and get back to you.')
         return redirect('dashboard')
     
     return render(request, 'users/become_seller.html')
-
 
 @login_required
 def add_product(request):
@@ -769,6 +774,17 @@ def add_product(request):
                 except VariationType.DoesNotExist:
                     continue
             
+            # Create notification for product submission
+            create_notification(
+                user=request.user,
+                notification_type='system',
+                title='Product Submitted for Review!',
+                message=f'Your product "{name}" has been submitted and is awaiting approval.',
+                icon='fa-box',
+                color='info',
+                url='/my-selling-items/'
+            )
+            
             messages.success(request, f'Product "{name}" submitted for review!')
             return redirect('my_selling_items')
             
@@ -781,7 +797,6 @@ def add_product(request):
     
     # GET request - show form
     return render(request, 'users/add_product.html', get_add_product_context())
-
 
 def get_add_product_context():
     """Get context data for add_product view"""
@@ -842,12 +857,17 @@ def verify_qr_payments(request):
         action = request.POST.get('action')
         
         try:
-            order = get_object_or_404(Order, 
+            order = Order.objects.filter(
                 id=order_id, 
                 items__seller=request.user,
                 payment_method='QR Payment',
                 payment_status='pending_verification'
-            )
+            ).distinct().first()
+            
+            # Check if order exists
+            if not order:
+                messages.error(request, 'Order not found or unauthorized access.')
+                return redirect('verify_qr_payments')
             
             if action == 'verify':
                 order.payment_status = 'completed'
@@ -860,6 +880,18 @@ def verify_qr_payments(request):
                 # Send confirmation email
                 from orders.views import send_order_confirmation_email
                 send_order_confirmation_email(order)
+                
+                # Create notification for payment verification
+                create_notification(
+                    user=order.user,
+                    notification_type='order',
+                    title='Payment Verified!',
+                    message=f'Your payment for Order #{order.order_number} has been verified and confirmed.',
+                    icon='fa-check-circle',
+                    color='success',
+                    url='/orders/my-orders/'
+                )
+                
                 messages.success(request, f'✅ Payment verified for Order #{order.order_number}. Customer notified!')
                 
             elif action == 'reject':
@@ -880,6 +912,17 @@ def verify_qr_payments(request):
                 # Send rejection email
                 email_sent = send_order_rejection_email(order)
                 
+                # Create notification for payment rejection
+                create_notification(
+                    user=order.user,
+                    notification_type='order',
+                    title='Payment Rejected',
+                    message=f'Your payment for Order #{order.order_number} could not be verified and has been rejected.',
+                    icon='fa-times-circle',
+                    color='danger',
+                    url='/orders/my-orders/'
+                )
+                
                 if stock_reverted and email_sent:
                     messages.warning(request, f'❌ Payment rejected for Order #{order.order_number}. Stock reverted and customer notified via email.')
                 elif stock_reverted:
@@ -889,22 +932,20 @@ def verify_qr_payments(request):
                 else:
                     messages.error(request, f'❌ Payment rejected for Order #{order.order_number}. WARNING: Stock reversion and email notification failed!')
                 
-        except Order.DoesNotExist:
-            messages.error(request, 'Order not found or unauthorized access.')
         except Exception as e:
             print(f"❌ Error in verification: {str(e)}")
             import traceback
             traceback.print_exc()
             messages.error(request, f'Error: {str(e)}')
 
-    # Get pending orders for this seller
+    # Get pending orders for this seller 
     pending_orders = Order.objects.filter(
         items__seller=request.user,
         payment_method='QR Payment',
         payment_status='pending_verification'
     ).distinct().order_by('-created_at')
     
-    # Get recently verified orders
+    # Get recently verified orders 
     verified_orders = Order.objects.filter(
         items__seller=request.user,
         payment_method='QR Payment',
@@ -922,7 +963,7 @@ def verify_qr_payments(request):
     }
     return render(request, 'users/verify_qr_payments.html', context)
 
-#chat system
+# CHAT SYSTEM
 
 @login_required
 def chat_list(request):
@@ -1125,8 +1166,6 @@ def send_message(request):
     
     return JsonResponse({'success': False, 'error': 'Invalid request'})
 
-# Typing indicators
-
 @login_required
 def set_typing(request, chat_id):
     """Set typing indicator"""
@@ -1146,7 +1185,6 @@ def set_typing(request, chat_id):
     
     return JsonResponse({'success': False, 'error': 'Invalid request'})
 
-
 @login_required
 def clear_typing(request, chat_id):
     """Clear typing indicator"""
@@ -1164,7 +1202,6 @@ def clear_typing(request, chat_id):
             return JsonResponse({'success': False, 'error': str(e)})
     
     return JsonResponse({'success': False, 'error': 'Invalid request'})
-
 
 @login_required
 def get_typing_users(request, chat_id):
@@ -1230,6 +1267,7 @@ def get_new_messages(request, chat_id):
         'messages': messages_data
     })
 
+# PRODUCT MANAGEMENT
 
 @login_required
 def update_product_stock(request, product_id):
@@ -1308,6 +1346,7 @@ def bulk_update_stock(request):
             return JsonResponse({'success': False})
     return JsonResponse({'success': False})
 
+# QR PAYMENT MANAGEMENT
 
 @login_required
 def update_qr(request):
@@ -1385,77 +1424,106 @@ def remove_qr(request):
     # If not POST, redirect back to update_qr page
     return redirect('update_qr')
 
+# NOTIFICATION SYSTEM - FIXED AND CLEANED
 
 @require_POST
 @login_required
 def clear_messages(request):
-    """Clear only Django flash messages from the current user's session"""
+    """🛡️ BULLETPROOF: Clear notifications ONLY - NEVER touch chat data"""
     try:
-        # Get the Django messages framework storage
+        print(f"🔄 Clear messages called by {request.user.username}")
+        
+        # 1. Clear Django flash messages safely
         storage = messages.get_messages(request)
+        list(storage)  # Consume all messages safely
+        print("✅ Django flash messages cleared")
         
-        # Only clear Django flash messages, not chat messages
-        for message in storage:
-            pass  # This consumes the Django flash messages
+        # 2. Clear ONLY notifications - with explicit chat protection
+        notifications_cleared = 0
+        try:
+            notifications_cleared = Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+            print(f"✅ Marked {notifications_cleared} notifications as read")
+        except Exception as e:
+            print(f"⚠️ Error clearing notifications: {e}")
         
-        # Make sure we don't interfere with chat functionality
-        # Only clear Django messages storage
-        if hasattr(storage, '_loaded_messages'):
-            storage._loaded_messages = []
-            
-        # Clear any session-based message storage
-        if 'django_messages' in request.session:
-            del request.session['django_messages']
+        # 3. 🛡️ VERIFY chat data is untouched
+        chat_rooms_count = ChatRoom.objects.filter(participants=request.user).count()
+        chat_messages_count = ChatMessage.objects.filter(chat_room__participants=request.user).count()
+        print(f"🛡️ Chat protection verified: {chat_rooms_count} rooms, {chat_messages_count} messages")
         
         return JsonResponse({
-            'status': 'success', 
-            'message': 'Notifications cleared',
-            'action': 'django_messages_only'  # Specify what was cleared
+            'status': 'success',
+            'message': f'Cleared {notifications_cleared} notifications',
+            'notifications_cleared': notifications_cleared,
+            'chat_preserved': {
+                'rooms': chat_rooms_count,
+                'messages': chat_messages_count
+            }
         })
-    
+        
     except Exception as e:
-        print(f"Error clearing messages: {e}")  # Debug log
-        return JsonResponse({'status': 'error', 'message': str(e)})
+        print(f"❌ Clear messages error: {e}")
+        return JsonResponse({
+            'status': 'error', 
+            'message': str(e)
+        })
 
-
-def clear_user_messages_on_logout(request):
-    """Clear messages when user logs out"""
-    if request.user.is_authenticated:
-        storage = messages.get_messages(request)
-        for message in storage:
-            pass  # Consume all messages
 
 @login_required
 def mark_notification_read(request, notification_id):
     """Mark single notification as read via AJAX"""
     if request.method == 'POST':
         try:
-            from .models import Notification
             notification = get_object_or_404(Notification, id=notification_id, user=request.user)
             notification.mark_as_read()
-            return JsonResponse({'success': True})
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Notification marked as read'
+            })
         except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
-    return JsonResponse({'success': False})
+            print(f"Error marking notification as read: {e}")
+            return JsonResponse({
+                'success': False, 
+                'error': str(e)
+            })
+    
+    return JsonResponse({
+        'success': False, 
+        'error': 'Invalid request method'
+    })
 
 @login_required
 def mark_all_notifications_read(request):
     """Mark all notifications as read via AJAX"""
     if request.method == 'POST':
         try:
-            from .notification_utils import mark_all_notifications_read as mark_all_read
-            mark_all_read(request.user)
-            return JsonResponse({'success': True})
+            updated_count = Notification.objects.filter(
+                user=request.user, 
+                is_read=False
+            ).update(is_read=True, read_at=timezone.now())
+            
+            return JsonResponse({
+                'success': True, 
+                'message': f'Marked {updated_count} notifications as read',
+                'updated_count': updated_count
+            })
         except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
-    return JsonResponse({'success': False})
+            print(f"Error marking all notifications as read: {e}")
+            return JsonResponse({
+                'success': False, 
+                'error': str(e)
+            })
+    
+    return JsonResponse({
+        'success': False, 
+        'error': 'Invalid request method'
+    })
 
 @login_required
 def get_notifications_ajax(request):
     """Get notifications via AJAX for real-time updates"""
     try:
-        from .notification_utils import get_recent_notifications, get_unread_notification_count
-        
         notifications = get_recent_notifications(request.user, limit=10)
         total_notifications = get_unread_notification_count(request.user)
         
@@ -1474,51 +1542,286 @@ def get_notifications_ajax(request):
         
         return JsonResponse({
             'notifications': notifications_data,
-            'total_count': total_notifications
+            'total_count': total_notifications,
+            'success': True
         })
     except Exception as e:
+        print(f"Error getting notifications: {e}")
         return JsonResponse({
             'notifications': [],
             'total_count': 0,
+            'success': False,
             'error': str(e)
         })
 
+@require_POST
 @login_required
-def get_notifications_ajax(request):
-    """Get notifications via AJAX for real-time updates"""
-    from .notification_utils import get_recent_notifications, get_unread_notification_count
-    
-    notifications = get_recent_notifications(request.user, limit=10)
-    total_notifications = get_unread_notification_count(request.user)
-    
-    notifications_data = []
-    for notification in notifications:
-        notifications_data.append({
-            'id': notification.id,
-            'title': notification.title,
-            'message': notification.message,
-            'icon': notification.icon,
-            'color': notification.color,
-            'url': notification.url,
-            'is_read': notification.is_read,
-            'created_at': notification.get_time_display(),
+def clear_notifications_only(request):
+    """Clear ONLY database notifications"""
+    try:
+        updated_count = Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+        return JsonResponse({
+            'status': 'success', 
+            'message': f'Cleared {updated_count} notifications',
+            'notifications_cleared': updated_count
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)})
+
+@require_POST
+@login_required  
+def clear_django_messages_only(request):
+    """Clear ONLY Django flash messages, not notifications"""
+    try:
+        # Get the Django messages framework storage
+        storage = messages.get_messages(request)
+        
+        # Only clear Django flash messages, not chat messages or notifications
+        list(storage)  # This consumes the Django flash messages safely
+        
+        return JsonResponse({
+            'status': 'success', 
+            'message': 'Flash messages cleared',
+            'action': 'django_messages_only'
         })
     
-    return JsonResponse({
-        'notifications': notifications_data,
-        'total_count': total_notifications
-    })
+    except Exception as e:
+        print(f"Error clearing Django messages: {e}")
+        return JsonResponse({'status': 'error', 'message': str(e)})
+    
+
+@login_required
+def add_to_wishlist(request, product_id):
+    """Add product to wishlist via AJAX"""
+    if request.method == 'POST':
+        try:
+            product = get_object_or_404(Product, id=product_id)
+            
+            # Check if already in wishlist
+            wishlist_item, created = Wishlist.objects.get_or_create(
+                user=request.user,
+                product=product
+            )
+            
+            if created:
+                # Create notification for adding to wishlist
+                create_notification(
+                    user=request.user,
+                    notification_type='system',
+                    title='Added to Wishlist!',
+                    message=f'"{product.name}" has been added to your wishlist.',
+                    icon='fa-heart',
+                    color='info',
+                    url='/wishlist/'
+                )
+                
+                return JsonResponse({
+                    'success': True,
+                    'added': True,
+                    'message': 'Added to wishlist!',
+                    'wishlist_count': Wishlist.get_wishlist_count(request.user)
+                })
+            else:
+                return JsonResponse({
+                    'success': True,
+                    'added': False,
+                    'message': 'Already in wishlist!'
+                })
+                
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': str(e)
+            })
+    
+    return JsonResponse({'success': False, 'message': 'Invalid request'})
+
+@login_required
+def remove_from_wishlist(request, product_id):
+    """Remove product from wishlist via AJAX"""
+    if request.method == 'POST':
+        try:
+            wishlist_item = get_object_or_404(
+                Wishlist, 
+                user=request.user, 
+                product_id=product_id
+            )
+            product_name = wishlist_item.product.name
+            wishlist_item.delete()
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'"{product_name}" removed from wishlist!',
+                'wishlist_count': Wishlist.get_wishlist_count(request.user)
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': str(e)
+            })
+    
+    return JsonResponse({'success': False, 'message': 'Invalid request'})
+
+@login_required
+def wishlist_view(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    
+    wishlist_items = Wishlist.objects.filter(user=request.user).select_related('product__category', 'product__seller')
+    wishlist_count = wishlist_items.count()
+    
+    # Get user's cart items to check what's already in cart
+    user_cart_items = {}
+    if request.user.is_authenticated:
+        try:
+            from cart.models import Cart, CartItem  # Adjust import based on your app structure
+            cart = Cart.objects.get(user=request.user)
+            cart_items = CartItem.objects.filter(cart=cart, is_active=True)
+            user_cart_items = {item.product.id: item.quantity for item in cart_items}
+        except Cart.DoesNotExist:
+            user_cart_items = {}
+    
+    # Prepare wishlist items with additional context
+    enriched_wishlist_items = []
+    for item in wishlist_items:
+        product = item.product
+        
+        # Check if already in cart
+        in_cart = product.id in user_cart_items
+        cart_quantity = user_cart_items.get(product.id, 0)
+        
+        # Check stock status
+        is_out_of_stock = product.stock <= 0
+        is_low_stock = 0 < product.stock <= 5
+        
+        # Check if user owns this product
+        is_own_product = product.seller == request.user
+        
+        enriched_item = {
+            'wishlist_item': item,
+            'product': product,
+            'in_cart': in_cart,
+            'cart_quantity': cart_quantity,
+            'is_out_of_stock': is_out_of_stock,
+            'is_low_stock': is_low_stock,
+            'is_own_product': is_own_product,
+            'available_stock': product.stock,
+        }
+        enriched_wishlist_items.append(enriched_item)
+    
+    context = {
+        'wishlist_items': enriched_wishlist_items,
+        'wishlist_count': wishlist_count,
+    }
+    
+    return render(request, 'users/wishlist.html', context)
+
+@login_required
+def toggle_wishlist(request, product_id):
+    """Toggle product in wishlist (add if not exists, remove if exists)"""
+    if request.method == 'POST':
+        try:
+            from products.models import Product
+            product = get_object_or_404(Product, id=product_id)
+            
+            wishlist_item = Wishlist.objects.filter(
+                user=request.user,
+                product=product
+            ).first()
+            
+            if wishlist_item:
+                # Remove from wishlist
+                product_name = wishlist_item.product.name
+                wishlist_item.delete()
+                in_wishlist = False
+                message = f'"{product_name}" removed from wishlist!'
+            else:
+                # Add to wishlist
+                Wishlist.objects.create(user=request.user, product=product)
+                in_wishlist = True
+                message = f'"{product.name}" added to wishlist!'
+                
+                # Create notification
+                create_notification(
+                    user=request.user,
+                    notification_type='system',
+                    title='Added to Wishlist!',
+                    message=f'"{product.name}" has been added to your wishlist.',
+                    icon='fa-heart',
+                    color='info',
+                    url='/wishlist/'
+                )
+            
+            return JsonResponse({
+                'success': True,
+                'in_wishlist': in_wishlist,
+                'message': message,
+                'wishlist_count': Wishlist.get_wishlist_count(request.user)
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': str(e)
+            })
+    
+    return JsonResponse({'success': False, 'message': 'Invalid request'})
+
+@login_required
+@require_POST
+def clear_all_wishlist(request):
+    """Clear all items from user's wishlist"""
+    try:
+        # Get user's wishlist items
+        wishlist_items = Wishlist.objects.filter(user=request.user)
+        items_count = wishlist_items.count()
+        
+        if items_count > 0:
+            # Delete all wishlist items
+            wishlist_items.delete()
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Successfully cleared {items_count} items from your wishlist!',
+                    'wishlist_count': 0
+                })
+            else:
+                messages.success(request, f'Successfully cleared {items_count} items from your wishlist!')
+                return redirect('users:wishlist')
+        else:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Your wishlist is already empty!'
+                })
+            else:
+                messages.info(request, 'Your wishlist is already empty!')
+                return redirect('users:wishlist')
+                
+    except Exception as e:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': False,
+                'message': 'An error occurred while clearing your wishlist.'
+            }, status=500)
+        else:
+            messages.error(request, 'An error occurred while clearing your wishlist.')
+            return redirect('users:wishlist')
 
 
 def user_logout(request):
-    # Clear all messages before logout
+    """Enhanced logout"""
+    # Clear all Django flash messages before logout
     storage = messages.get_messages(request)
-    for message in storage:
-        pass  # Consume all messages
+    list(storage)  # Clear messages safely
+    
+    # Don't clear notifications on logout - user might want to see them when they login again
     
     # Logout user
     logout(request)
     
     messages.success(request, 'You have been logged out successfully.')
     
-    return redirect('home')  
+    return redirect('home')

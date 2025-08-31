@@ -10,6 +10,19 @@
       <span class="sidebar-text">My Orders</span>
     </a>
     
+    <!-- WISHLIST LINK - NEW -->
+    <a class="list-group-item sidebar-item {% if request.resolver_match.url_name == 'wishlist' %}active{% endif %}" href="{% url 'wishlist' %}">
+      <div class="sidebar-item-content">
+        <span class="sidebar-main-content">
+          <i class="fa fa-heart sidebar-icon text-danger"></i> 
+          <span class="sidebar-text">My Wishlist</span>
+        </span>
+        {% if user.is_authenticated %}
+          <span class="sidebar-badge sidebar-badge-danger pulse">{{ user.profile.get_wishlist_count|default:0 }}</span>
+        {% endif %}
+      </div>
+    </a>
+    
     <a class="list-group-item sidebar-item {% if request.resolver_match.url_name in 'chat_list,chat_detail' %}active{% endif %}" href="{% url 'chat_list' %}">
       <div class="sidebar-item-content">
         <span class="sidebar-main-content">
@@ -218,6 +231,11 @@
   color: #212529;
 }
 
+.sidebar-badge-danger {
+  background: #dc3545;
+  color: white;
+}
+
 /* Pulse animation for badges */
 @keyframes pulse {
   0% { transform: scale(1); }
@@ -287,70 +305,19 @@
   transform: translateY(0);
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
-
-/* Page transition loading indicator (optional) */
-.page-loading {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, #007bff, #0056b3);
-  z-index: 9999;
-  animation: loading 1s ease-in-out infinite;
-}
-
-@keyframes loading {
-  0% { width: 0%; }
-  100% { width: 100%; }
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .sidebar-item {
-    padding: 12px 14px;
-  }
-  
-  .sidebar-icon {
-    margin-right: 10px;
-  }
-  
-  .sidebar-text {
-    font-size: 0.9rem;
-  }
-}
-
-/* Reduce motion for users who prefer it */
-@media (prefers-reduced-motion: reduce) {
-  .sidebar-item,
-  .sidebar-icon,
-  .sidebar-badge,
-  .logout-btn {
-    transition: none;
-    animation: none;
-  }
-  
-  .pulse {
-    animation: none;
-  }
-}
 </style>
 
-<!--  Add this script for even smoother page transitions -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  // Add loading indicator for page transitions
   const sidebarLinks = document.querySelectorAll('.sidebar-item[href]');
   
   sidebarLinks.forEach(link => {
     link.addEventListener('click', function(e) {
-      // Add a subtle loading effect
       if (!this.classList.contains('active')) {
         const loadingBar = document.createElement('div');
         loadingBar.className = 'page-loading';
         document.body.appendChild(loadingBar);
         
-        // Remove loading bar after a short delay (fallback)
         setTimeout(() => {
           if (loadingBar.parentNode) {
             loadingBar.parentNode.removeChild(loadingBar);
@@ -358,20 +325,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 2000);
       }
     });
-  });
-  
-  // Remove loading bar when page actually loads
-  window.addEventListener('load', function() {
-    const loadingBar = document.querySelector('.page-loading');
-    if (loadingBar) {
-      loadingBar.style.animation = 'none';
-      loadingBar.style.width = '100%';
-      setTimeout(() => {
-        if (loadingBar.parentNode) {
-          loadingBar.parentNode.removeChild(loadingBar);
-        }
-      }, 200);
-    }
   });
 });
 </script>

@@ -9,6 +9,8 @@ from orders.models import Order
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from users.models import Wishlist
+
 
 def product(request, category_slug=None):
     """Display products with advanced filtering"""
@@ -124,6 +126,7 @@ def product(request, category_slug=None):
         'current_category': categories,
         'variation_types': variation_types,
         'selected_variations': selected_variations,
+        'user_wishlist_ids': list(request.user.wishlist_items.values_list('product_id', flat=True)) if request.user.is_authenticated else [],
     }
     return render(request, 'products/products.html', context)
 
@@ -412,6 +415,7 @@ def product_detail(request, category_slug, product_slug):
         'variation_images_json': json.dumps(variation_images),
         'available_variations': available_variations,
         'has_variations': has_variations,
+        'user_wishlist_ids': list(request.user.wishlist_items.values_list('product_id', flat=True)) if request.user.is_authenticated else [],
     }
     return render(request, 'products/details.html', context)
 

@@ -91,8 +91,12 @@
                                             {% if order.qr_payment_transaction_id %}
                                                 <div class="mb-3">
                                                     <strong>Transaction ID:</strong><br>
-                                                    <code class="bg-warning text-dark p-2 d-block">{{ order.qr_payment_transaction_id }}</code>
-                                                    <small class="text-muted">Verify this ID in your payment app</small>
+                                                    <code class="bg-warning text-dark p-2 d-block transaction-id" 
+                                                          onclick="copyTransactionId('{{ order.qr_payment_transaction_id }}')"
+                                                          title="Click to copy">
+                                                        {{ order.qr_payment_transaction_id }}
+                                                    </code>
+                                                    <small class="text-muted">Click to copy • Verify this ID in your payment app</small>
                                                 </div>
                                             {% else %}
                                                 <div class="alert alert-danger">
@@ -132,11 +136,37 @@
                                                 <div class="border-bottom pb-2 mb-2">
                                                     <strong>{{ item.product.name }}</strong><br>
                                                     <small class="text-muted">
-                                                        Qty: {{ item.quantity }} × Rs. {{ item.price|floatformat:2 }} = Rs. {{ item.get_total_price|floatformat:2 }}
+                                                        <!-- FIXED: Using widthratio to calculate unit price -->
+                                                        {% widthratio item.price item.quantity 1 as unit_price %}
+                                                        Qty: {{ item.quantity }} × Rs. {{ unit_price|floatformat:2 }} = Rs. {{ item.price|floatformat:2 }}
                                                     </small>
+                                                    
+                                                    <!-- Show variations if any -->
+                                                    {% if item.variations.exists %}
+                                                        <div class="mt-1">
+                                                            <small class="text-info">
+                                                                {% for variation in item.variations.all %}
+                                                                    <span class="badge badge-light">{{ variation.variation_type.display_name }}: {{ variation.variation_option.display_value }}</span>
+                                                                {% endfor %}
+                                                            </small>
+                                                        </div>
+                                                    {% endif %}
                                                 </div>
                                                 {% endif %}
                                             {% endfor %}
+                                            
+                                            <!-- Display seller total -->
+                                            {% comment "Calculate seller total" %}
+                                            {% endcomment %}
+                                            {% for item in order.items.all %}
+                                                {% if item.seller == request.user %}
+                                                    <!-- This creates a list of seller items to calculate total -->
+                                                {% endif %}
+                                            {% endfor %}
+                                            
+                                            <div class="alert alert-light">
+                                                <strong class="text-success">Your Items Total: Rs. {{ order.grand_total|floatformat:2 }}</strong>
+                                            </div>
                                             
                                             <!-- Verification Actions -->
                                             <div class="mt-3">
@@ -155,7 +185,7 @@
                                                     <input type="hidden" name="order_id" value="{{ order.id }}">
                                                     <button type="submit" name="action" value="reject" 
                                                             class="btn btn-danger btn-block"
-                                                            onclick="return confirm('❌ REJECT this payment?\n\nOrder: #{{ order.order_number }}\nAmount: Rs. {{ order.grand_total }}\n\nThis will cancel the order. Make sure the payment was not received!')">
+                                                            onclick="return confirm('❌ REJECT this payment?\n\nOrder: #{{ order.order_number }}\nAmount: Rs. {{ order.grand_total }}\n\nThis will cancel the order and revert stock. Make sure the payment was not received!')">
                                                         <i class="fa fa-times-circle"></i> REJECT PAYMENT
                                                     </button>
                                                 </form>
@@ -201,6 +231,7 @@
                                         <tr>
                                             <th>Order #</th>
                                             <th>Customer</th>
+                                            <th>Items</th>
                                             <th>Amount</th>
                                             <th>Transaction ID</th>
                                             <th>Screenshot</th>
@@ -212,10 +243,22 @@
                                         <tr>
                                             <td><strong>#{{ order.order_number }}</strong></td>
                                             <td>{{ order.user.first_name }} {{ order.user.last_name }}</td>
+                                            <td>
+                                                <small class="text-muted">
+                                                    {% for item in order.items.all %}
+                                                        {% if item.seller == request.user %}
+                                                            {{ item.product.name }} ({{ item.quantity }})<br>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </small>
+                                            </td>
                                             <td><span class="text-success">Rs. {{ order.grand_total|floatformat:2 }}</span></td>
                                             <td>
                                                 {% if order.qr_payment_transaction_id %}
-                                                    <code>{{ order.qr_payment_transaction_id }}</code>
+                                                    <code class="small" onclick="copyTransactionId('{{ order.qr_payment_transaction_id }}')" 
+                                                          style="cursor: pointer;" title="Click to copy">
+                                                        {{ order.qr_payment_transaction_id }}
+                                                    </code>
                                                 {% else %}
                                                     <span class="text-muted">-</span>
                                                 {% endif %}
@@ -247,6 +290,9 @@
                         <a href="{% url 'dashboard' %}" class="btn btn-secondary">
                             <i class="fa fa-arrow-left"></i> Back to Dashboard
                         </a>
+                        <button onclick="location.reload()" class="btn btn-info">
+                            <i class="fa fa-refresh"></i> Refresh Page
+                        </button>
                     </div>
                 </div>
             </div>
@@ -269,27 +315,93 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <a id="downloadLink" href="" download class="btn btn-primary">
+                    <i class="fa fa-download"></i> Download Screenshot
+                </a>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-// Open image in modal
+// Open image in modal with download option
 function openImageModal(imageUrl, title) {
     document.getElementById('modalImage').src = imageUrl;
     document.getElementById('imageModalTitle').textContent = title;
+    document.getElementById('downloadLink').href = imageUrl;
     $('#imageModal').modal('show');
 }
 
-// Auto-refresh every 30 seconds for new payments
+// Copy transaction ID to clipboard
+function copyTransactionId(transactionId) {
+    // Create temporary input element
+    const tempInput = document.createElement('input');
+    tempInput.value = transactionId;
+    document.body.appendChild(tempInput);
+    tempInput.select();
+    
+    try {
+        document.execCommand('copy');
+        showToast('Transaction ID copied to clipboard!', 'success');
+    } catch (err) {
+        showToast('Failed to copy transaction ID', 'error');
+    }
+    
+    document.body.removeChild(tempInput);
+}
+
+// Show toast notification
+function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = 'toast-notification';
+    toast.textContent = message;
+    
+    const bgColor = type === 'success' ? '#28a745' : '#dc3545';
+    
+    toast.style.cssText = `
+        position: fixed; 
+        top: 20px; 
+        right: 20px; 
+        background: ${bgColor}; 
+        color: white; 
+        padding: 10px 20px; 
+        border-radius: 5px; 
+        z-index: 9999;
+        font-size: 14px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        animation: slideIn 0.3s ease-out;
+    `;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease-in';
+        setTimeout(() => {
+            if (document.body.contains(toast)) {
+                document.body.removeChild(toast);
+            }
+        }, 300);
+    }, 3000);
+}
+
+// Auto-refresh every 60 seconds for new payments
 setInterval(function() {
-    if ({{ pending_orders.count }} > 0) {
+    const pendingCount = {{ pending_orders.count }};
+    if (pendingCount > 0) {
         console.log('🔔 Checking for new QR payments...');
-        // You can add actual refresh here if needed
+        // Uncomment next line if you want auto-refresh
         // location.reload();
     }
-}, 30000);
+}, 60000);
+
+// Add keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    // Ctrl+R or F5 to refresh
+    if ((e.ctrlKey && e.key === 'r') || e.key === 'F5') {
+        e.preventDefault();
+        location.reload();
+    }
+});
 </script>
 
 <style>
@@ -310,6 +422,93 @@ setInterval(function() {
 .table img:hover {
     transform: scale(2);
     transition: transform 0.2s ease;
+}
+
+/* Enhanced styling for transaction IDs */
+.transaction-id {
+    background: #fff3cd !important;
+    border: 1px solid #ffeaa7 !important;
+    padding: 8px 12px !important;
+    border-radius: 4px !important;
+    font-family: 'Courier New', monospace !important;
+    font-weight: bold !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    display: block !important;
+    word-break: break-all !important;
+}
+
+.transaction-id:hover {
+    background: #fff8e1 !important;
+    border-color: #ffcd02 !important;
+    transform: scale(1.02);
+}
+
+.btn-block {
+    margin-bottom: 8px;
+}
+
+.alert-info {
+    border-left: 4px solid #17a2b8;
+}
+
+.alert-warning {
+    border-left: 4px solid #ffc107;
+}
+
+.alert-danger {
+    border-left: 4px solid #dc3545;
+}
+
+/* Loading state for buttons */
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Animation keyframes */
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+/* Badge styling for variations */
+.badge {
+    font-size: 0.75em;
+    margin-right: 5px;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+    .card-body .row > div {
+        margin-bottom: 20px;
+    }
+    
+    .btn-block {
+        margin-bottom: 10px;
+    }
+    
+    .transaction-id {
+        font-size: 12px;
+        padding: 6px 8px !important;
+    }
 }
 </style>
 {% endblock %}

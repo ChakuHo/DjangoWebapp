@@ -440,18 +440,49 @@ document.addEventListener('DOMContentLoaded', function() {
     let typingTimer;
     let isTyping = false;
 
-    // Prevent notification clearing from affecting chat
-    const originalClearMessages = window.clearMessages;
-    window.clearMessages = function() {
-        if (originalClearMessages) {
-            originalClearMessages();
+    // ENHANCED: Completely block any clearing operations that might affect chat
+    const originalFetch = window.fetch;
+    window.fetch = function(url, options) {
+        // Block any requests that might clear chat data
+        if (url.includes('clear-messages') || url.includes('clear-notifications')) {
+            console.log('🛡️ Chat protection: Blocking clear request to preserve chat data');
+            
+            // Allow the request but store chat state
+            const chatMessagesBackup = chatMessages.innerHTML;
+            
+            return originalFetch.apply(this, arguments).then(response => {
+                // Restore chat messages after clearing
+                setTimeout(() => {
+                    if (chatMessages && chatMessages.innerHTML !== chatMessagesBackup) {
+                        console.log('🔄 Restoring chat messages after clear operation');
+                        chatMessages.innerHTML = chatMessagesBackup;
+                    }
+                }, 100);
+                
+                return response;
+            });
         }
         
-        const chatMessages = document.getElementById('chat-messages');
-        if (chatMessages) {
-            console.log('Chat preserved during notification clear');
-        }
-    }; 
+        return originalFetch.apply(this, arguments);
+    };
+
+    // Additional protection: Override any clear functions
+    window.clearMessages = function() {
+        console.log('🛡️ Chat protection: Preventing clearMessages from affecting chat');
+        
+        // Only clear notifications, never chat
+        fetch('/clear-notifications-only/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        }).then(response => response.json())
+        .then(data => {
+            console.log('✅ Notifications cleared, chat preserved:', data);
+        }).catch(error => {
+            console.error('❌ Error clearing notifications:', error);
+        });
+    };
     
     // Get last message ID for polling
     const messages = chatMessages.querySelectorAll('.message-item');
@@ -653,6 +684,29 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Clear typing when user leaves
     window.addEventListener('beforeunload', clearTyping);
+    
+    // ENHANCED: Additional protection against page reloads affecting chat
+    window.addEventListener('beforeunload', function() {
+        localStorage.setItem('chatPreservation_' + chatId, JSON.stringify({
+            lastMessageId: lastMessageId,
+            timestamp: Date.now()
+        }));
+    });
+    
+    // Restore chat state if needed
+    const chatPreservation = localStorage.getItem('chatPreservation_' + chatId);
+    if (chatPreservation) {
+        try {
+            const data = JSON.parse(chatPreservation);
+            if (Date.now() - data.timestamp < 300000) { // 5 minutes
+                lastMessageId = data.lastMessageId;
+                console.log('🔄 Restored chat state from localStorage');
+            }
+            localStorage.removeItem('chatPreservation_' + chatId);
+        } catch (e) {
+            console.error('Error restoring chat state:', e);
+        }
+    }
 }); 
 </script>
 {% endblock %}
