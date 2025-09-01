@@ -84,25 +84,25 @@
                                                     </a>
                                                 </h6>
                                                 
+                                                <!-- ✅ FIXED PRICE SECTION - NOW SHOWS REAL DISCOUNTED PRICE -->
                                                 <div class="price-section mb-2">
-                                                    {% if item.product.is_on_sale %}
-                                                        {% if item.product.original_price and item.product.price < item.product.original_price %}
-                                                            <div class="price-display">
-                                                                <span class="text-danger font-weight-bold">
-                                                                    Rs. {{ item.product.price|floatformat:0 }}
-                                                                </span>
-                                                                <small class="text-muted ml-1">
-                                                                    <del>Rs. {{ item.product.original_price|floatformat:0 }}</del>
-                                                                </small>
-                                                                <span class="badge badge-success ml-1">
+                                                    {% if item.product.is_on_sale and item.product.original_price %}
+                                                        <div class="price-display">
+                                                            <span class="text-danger font-weight-bold">
+                                                                Rs. {{ item.product.get_final_price|floatformat:0 }}
+                                                            </span>
+                                                            <small class="text-muted ml-1">
+                                                                <del>Rs. {{ item.product.original_price|floatformat:0 }}</del>
+                                                            </small>
+                                                            <div class="mt-1">
+                                                                <span class="badge badge-success">
                                                                     {{ item.product.discount_percentage|floatformat:0 }}% OFF
                                                                 </span>
+                                                                <small class="text-success d-block">
+                                                                    Save Rs. {{ item.product.get_savings|floatformat:0 }}
+                                                                </small>
                                                             </div>
-                                                        {% else %}
-                                                            <span class="text-primary font-weight-bold">
-                                                                Rs. {{ item.product.price|floatformat:0 }}
-                                                            </span>
-                                                        {% endif %}
+                                                        </div>
                                                     {% else %}
                                                         <span class="text-primary font-weight-bold">
                                                             Rs. {{ item.product.price|floatformat:0 }}
@@ -138,12 +138,13 @@
                                                                 <i class="fa fa-times"></i> Out of Stock
                                                             </button>
                                                         {% elif item.in_cart %}
-                                                            <!-- Product already in cart -->
+                                                            <!-- Product already in cart - NOW DISABLED -->
                                                             <button class="btn btn-success btn-sm already-in-cart" 
                                                                     data-product-id="{{ item.product.id }}"
                                                                     data-cart-quantity="{{ item.cart_quantity }}"
-                                                                    title="This item is already in your cart">
-                                                                <i class="fa fa-check"></i> In Cart ({{ item.cart_quantity }})
+                                                                    disabled
+                                                                    title="This item is already in your cart ({{ item.cart_quantity }} items)">
+                                                                <i class="fa fa-check"></i> Added to Cart ({{ item.cart_quantity }})
                                                             </button>
                                                         {% else %}
                                                             <!-- Normal add to cart button -->
@@ -160,7 +161,11 @@
                                                     <!-- Stock status indicator -->
                                                     {% if not item.is_own_product and not item.is_out_of_stock %}
                                                         <div class="stock-status mt-1">
-                                                            {% if item.is_low_stock %}
+                                                            {% if item.in_cart %}
+                                                                <small class="text-success">
+                                                                    <i class="fa fa-check-circle"></i> Item is in your cart
+                                                                </small>
+                                                            {% elif item.is_low_stock %}
                                                                 <small class="text-warning">
                                                                     <i class="fa fa-exclamation-triangle"></i> Only {{ item.available_stock }} left!
                                                                 </small>
@@ -217,10 +222,33 @@
     transform: scale(1.1);
 }
 
+/* ✅ ENHANCED PRICE DISPLAY - MATCHES DETAIL PAGE */
 .price-display {
     display: flex;
-    align-items: center;
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.price-display .text-danger {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.price-display del {
+    font-size: 0.9rem;
+    opacity: 0.7;
+}
+
+.price-display .badge {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    border-radius: 12px;
+}
+
+.price-display .text-success {
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-top: 2px;
 }
 
 .empty-wishlist {
@@ -235,12 +263,38 @@
     font-size: 0.85em;
 }
 
-.already-in-cart {
-    cursor: pointer;
+.already-in-cart:disabled {
+    opacity: 0.8;
+    cursor: not-allowed;
 }
 
-.already-in-cart:hover {
+.already-in-cart:disabled:hover {
     opacity: 0.8;
+    transform: none;
+}
+
+/* ✅ SALE BADGE ANIMATION */
+.badge-danger {
+    animation: saleGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes saleGlow {
+    from {
+        box-shadow: 0 0 5px rgba(220, 53, 69, 0.5);
+    }
+    to {
+        box-shadow: 0 0 15px rgba(220, 53, 69, 0.8);
+    }
+}
+
+/* ✅ PRICE HIGHLIGHT ANIMATION */
+.price-display .text-danger {
+    animation: priceHighlight 3s ease-in-out infinite;
+}
+
+@keyframes priceHighlight {
+    0%, 100% { color: #dc3545; }
+    50% { color: #28a745; }
 }
 
 @media (max-width: 768px) {
@@ -254,6 +308,15 @@
     }
     
     .stock-status {
+        text-align: center;
+    }
+    
+    .price-display .text-danger {
+        font-size: 1rem;
+    }
+    
+    .price-display {
+        align-items: center;
         text-align: center;
     }
 }
@@ -388,19 +451,26 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(data => {
             if (data.success) {
-                // Change button to "already in cart" state
-                button.innerHTML = '<i class="fa fa-check"></i> In Cart (1)';
+                // Change button to "already in cart" state - NOW DISABLED
+                button.innerHTML = '<i class="fa fa-check"></i> Added to Cart (1)';
                 button.classList.remove('btn-primary', 'add-to-cart');
                 button.classList.add('btn-success', 'already-in-cart');
                 button.dataset.cartQuantity = '1';
-                button.disabled = false;
-                button.title = 'This item is already in your cart';
+                button.disabled = true; // Keep it disabled
+                button.title = 'This item is already in your cart (1 items)';
                 
                 // Update any stock badge
                 const stockBadge = button.closest('.wishlist-item').querySelector('.position-absolute:last-child .badge');
                 if (stockBadge && !stockBadge.classList.contains('badge-danger')) {
                     stockBadge.className = 'badge badge-success';
                     stockBadge.textContent = 'In Cart';
+                }
+                
+                // Update stock status text
+                const stockStatus = button.closest('.mt-auto').querySelector('.stock-status small');
+                if (stockStatus) {
+                    stockStatus.innerHTML = '<i class="fa fa-check-circle"></i> Item is in your cart';
+                    stockStatus.className = 'text-success';
                 }
                 
                 if (typeof updateCartCount === 'function') {
@@ -518,6 +588,7 @@ document.addEventListener('DOMContentLoaded', function() {
         notification.className = `alert alert-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'info'} alert-dismissible fade show position-fixed notification-alert`;
         notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px; max-width: 400px;';
         notification.innerHTML = `
+            <i class="fa fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-triangle' : 'info-circle'}"></i>
             ${message}
             <button type="button" class="close" data-dismiss="alert" aria-label="Close">
                 <span aria-hidden="true">&times;</span>

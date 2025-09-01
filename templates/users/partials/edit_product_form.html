@@ -1,0 +1,139 @@
+<form id="editProductForm" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Product Name</label>
+                <input type="text" class="form-control" name="name" value="{{ product.name }}" required>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Brand</label>
+                <input type="text" class="form-control" name="brand" value="{{ product.brand }}">
+            </div>
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <label>Description</label>
+        <textarea class="form-control" name="description" rows="3" required>{{ product.description }}</textarea>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Price (Rs.)</label>
+                <input type="number" class="form-control" name="price" value="{{ product.price }}" step="0.01" required>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Stock</label>
+                <input type="number" class="form-control" name="stock" value="{{ product.stock }}" min="0" required>
+            </div>
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <label>Specifications</label>
+        <textarea class="form-control" name="spec" rows="2">{{ product.spec }}</textarea>
+    </div>
+    
+    <!-- Sale Settings -->
+    <div class="form-group">
+        <div class="custom-control custom-checkbox">
+            <input type="checkbox" class="custom-control-input" id="editIsOnSale" name="is_on_sale" 
+                   {% if product.is_on_sale %}checked{% endif %}>
+            <label class="custom-control-label" for="editIsOnSale">Product is on sale</label>
+        </div>
+    </div>
+    
+    <div id="editSaleFields" style="{% if not product.is_on_sale %}display: none;{% endif %}">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label>Original Price (Rs.)</label>
+                    <input type="number" class="form-control" name="original_price" 
+                           value="{{ product.original_price|default:'' }}" step="0.01">
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label>Discount (%)</label>
+                    <input type="number" class="form-control" name="discount_percentage" 
+                           value="{{ product.discount_percentage|default:0 }}" min="0" max="100">
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label>Sale Start Date</label>
+                    <input type="date" class="form-control" name="sale_start_date" 
+                           value="{{ product.sale_start_date|date:'Y-m-d' }}">
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label>Sale End Date</label>
+                    <input type="date" class="form-control" name="sale_end_date" 
+                           value="{{ product.sale_end_date|date:'Y-m-d' }}">
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <label>Product Image</label>
+        <input type="file" class="form-control-file" name="image" accept="image/*">
+        {% if product.image %}
+            <small class="text-muted">Current image: {{ product.image.name }}</small>
+        {% endif %}
+    </div>
+    
+    <div class="form-group text-right">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-primary">
+            <i class="fa fa-save"></i> Update Product
+        </button>
+    </div>
+</form>
+
+<script>
+document.getElementById('editIsOnSale').addEventListener('change', function() {
+    const saleFields = document.getElementById('editSaleFields');
+    if (this.checked) {
+        saleFields.style.display = 'block';
+    } else {
+        saleFields.style.display = 'none';
+    }
+});
+
+document.getElementById('editProductForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch(`/accounts/edit-product/{{ product.id }}/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            $('#quickEditModal').modal('hide');
+            showToast(data.message, 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showToast(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        showToast('Error updating product', 'error');
+    });
+});
+</script>

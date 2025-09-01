@@ -850,6 +850,13 @@ def order_complete(request, order_id):
     }
     return render(request, 'orders/order_complete.html', context)
 
+# When an order is completed, update product analytics
+def complete_order(order):
+    """Update product analytics when order is completed"""
+    for item in order.items.all():
+        # Refresh analytics for each product
+        item.product.get_analytics_data()
+
 # Fallback functions for old URLs
 def esewa_success(request):
     messages.info(request, 'Please complete your order through the checkout process.')

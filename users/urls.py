@@ -2,16 +2,39 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    # Authentication URLs
     path('login/', views.login_view, name='login'),
     path('register/', views.register_view, name='register'),
+    path('logout/', views.logout_view, name='logout'),
+    
+    # Dashboard and Profile URLs
     path('dashboard/', views.dashboard, name='dashboard'),
     path('edit-profile/', views.edit_profile, name='edit_profile'),
     path('change-password/', views.change_password, name='change_password'),
-    path('logout/', views.logout_view, name='logout'),
-    path('my-selling-items/', views.my_selling_items, name='my_selling_items'),
-    path('received-orders/', views.received_orders, name='received_orders'),
+    
+    # Seller URLs
     path('become-seller/', views.become_seller, name='become_seller'),
+    path('my-selling-items/', views.my_selling_items, name='my_selling_items'),
     path('add-product/', views.add_product, name='add_product'),
+    
+    # Orders URLs
+    path('received-orders/', views.received_orders, name='received_orders'),
+    path('seller/orders/', views.seller_received_orders, name='seller_received_orders'),
+    
+    # QR Payment URLs
+    path('update-qr/', views.update_qr, name='update_qr'),
+    path('remove-qr/', views.remove_qr, name='remove_qr'),
+    path('verify-qr-payments/', views.verify_qr_payments, name='verify_qr_payments'),
+
+    # Product Management AJAX URLs 
+    path('update-product-stock/<int:product_id>/', views.update_product_stock, name='update_product_stock'),
+    path('toggle-product-status/<int:product_id>/', views.toggle_product_status, name='toggle_product_status'),
+    path('delete-product/<int:product_id>/', views.delete_product, name='delete_product'),
+    path('duplicate-product/<int:product_id>/', views.duplicate_product, name='duplicate_product'),
+    path('edit-product/<int:product_id>/', views.edit_product, name='edit_product'),
+    path('bulk-update-stock/', views.bulk_update_stock, name='bulk_update_stock'),
+    path('bulk-toggle-visibility/', views.bulk_toggle_visibility, name='bulk_toggle_visibility'),
+    path('bulk-delete-products/', views.bulk_delete_products, name='bulk_delete_products'),
 
     # Chat URLs
     path('chat/', views.chat_list, name='chat_list'),
@@ -26,28 +49,11 @@ urlpatterns = [
     path('chat/<int:chat_id>/typing/clear/', views.clear_typing, name='clear_typing'),
     path('chat/<int:chat_id>/typing/get/', views.get_typing_users, name='get_typing_users'),
 
-    # CUSTOMER received orders (items they've received)
-    path('received-orders/', views.received_orders, name='received_orders'),
-    
-    # SELLER received orders (orders from customers) 
-    path('seller/orders/', views.seller_received_orders, name='seller_received_orders'),
-
-    path('update-product-stock/<int:product_id>/', views.update_product_stock, name='update_product_stock'),
-    path('toggle-product-status/<int:product_id>/', views.toggle_product_status, name='toggle_product_status'),
-    path('delete-product/<int:product_id>/', views.delete_product, name='delete_product'),
-    path('bulk-update-stock/', views.bulk_update_stock, name='bulk_update_stock'),
-
-    path('update-qr/', views.update_qr, name='update_qr'),
-    path('remove-qr/', views.remove_qr, name='remove_qr'),
-    path('verify-qr-payments/', views.verify_qr_payments, name='verify_qr_payments'),
-
+    # Notification URLs
     path('clear-messages/', views.clear_messages, name='clear_messages'),
-
-    #  NOTIFICATION URLs 
     path('notifications/mark-read/<int:notification_id>/', views.mark_notification_read, name='mark_notification_read'),
     path('notifications/mark-all-read/', views.mark_all_notifications_read, name='mark_all_notifications_read'),
     path('notifications/ajax/', views.get_notifications_ajax, name='get_notifications_ajax'),
-
     path('clear-notifications-only/', views.clear_notifications_only, name='clear_notifications_only'),
     path('clear-django-messages-only/', views.clear_django_messages_only, name='clear_django_messages_only'),
     

@@ -351,7 +351,12 @@ def product_detail(request, category_slug, product_slug):
             in_cart = CartItem.objects.filter(cart__user=request.user, product=product).exists()
         else:
             in_cart = CartItem.objects.filter(cart__cart_id=_cart_id(request), product=product).exists()
-            
+
+
+        # TRACK VIEW - but don't count seller's own views
+        if request.user != product.seller:
+            product.increment_views()    
+
     except Product.DoesNotExist:
         raise Http404("Product Not Found")
 

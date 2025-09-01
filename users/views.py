@@ -24,6 +24,11 @@ from .models import TypingIndicator
 from .notification_utils import get_recent_notifications, get_unread_notification_count, create_notification
 from .models import Wishlist
 from products.models import Product
+from django.core.exceptions import PermissionDenied
+from django.db import transaction
+from django.core.files.storage import default_storage
+import os
+
 
 
 def send_registration_confirmation_email(user):
@@ -277,7 +282,23 @@ def dashboard(request):
             'icon': 'fa-comments',
             'badge_color': 'info'
         })
+    # seller analytics summary
+
+    if profile.seller_status == 'approved':
+        seller_products = Product.objects.filter(seller=request.user, approval_status='approved')
     
+    total_views = sum(p.view_count for p in seller_products)
+    total_orders = sum(p.order_count for p in seller_products)
+    total_revenue = sum(p.total_revenue for p in seller_products)
+    
+    seller_stats = {
+        'total_products': seller_products.count(),
+        'total_views': total_views,
+        'total_orders': total_orders,
+        'total_revenue': total_revenue,
+        'avg_conversion': (total_orders / total_views * 100) if total_views > 0 else 0,
+    }
+
     # Recent seller activities (if seller)
     if profile.seller_status == 'approved':
         # Recent products
@@ -538,7 +559,7 @@ def logout_view(request):
 
 @login_required
 def my_selling_items(request):
-    """Display seller's products - ONLY if approved seller"""
+    """Display seller's products with real analytics"""
     profile = request.user.profile
 
     # Gate: Only approved sellers can access
@@ -546,8 +567,16 @@ def my_selling_items(request):
         messages.error(request, 'You need to be an approved seller to access this page.')
         return redirect('dashboard')
 
-    # Get seller's products (all statuses for seller to see)
+    # Get seller's products with analytics
     products = Product.objects.filter(seller=request.user).order_by('-created_at')
+    
+    # Calculate analytics for each product
+    for product in products:
+        if product.approval_status == 'approved':
+            # Get fresh analytics data
+            analytics = product.get_analytics_data()
+            # analytics to product object for template access
+            product.analytics = analytics
 
     context = {
         'products': products,
@@ -1271,55 +1300,343 @@ def get_new_messages(request, chat_id):
 
 @login_required
 def update_product_stock(request, product_id):
-    """AJAX endpoint to update product stock"""
+    """AJAX endpoint to update product stock - ONLY for approved products"""
     if request.method == 'POST':
         try:
+            # Get product with seller and approval checks
             product = get_object_or_404(Product, id=product_id, seller=request.user)
+            
+            # PERMISSION CHECK: Only approved products can be edited
+            if product.approval_status != 'approved':
+                return JsonResponse({
+                    'success': False, 
+                    'message': 'Only approved products can have stock updated',
+                    'original_stock': product.stock
+                })
+            
             data = json.loads(request.body)
             new_stock = int(data.get('stock', 0))
             
-            product.stock = max(0, new_stock)
+            # Validate stock value
+            if new_stock < 0:
+                return JsonResponse({
+                    'success': False, 
+                    'message': 'Stock cannot be negative',
+                    'original_stock': product.stock
+                })
+            
+            old_stock = product.stock
+            product.stock = new_stock
             product.save()
             
-            return JsonResponse({'success': True})
-        except:
-            return JsonResponse({'success': False})
-    return JsonResponse({'success': False})
+            # Create notification for significant stock changes
+            if old_stock == 0 and new_stock > 0:
+                create_notification(
+                    user=request.user,
+                    notification_type='system',
+                    title='Product Back in Stock!',
+                    message=f'"{product.name}" is now back in stock with {new_stock} units.',
+                    icon='fa-box',
+                    color='success',
+                    url='/my-selling-items/'
+                )
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Stock updated to {new_stock}',
+                'new_stock': new_stock
+            })
+            
+        except ValueError:
+            return JsonResponse({
+                'success': False, 
+                'message': 'Please enter a valid number'
+            })
+        except Exception as e:
+            print(f"Error updating stock: {e}")
+            return JsonResponse({
+                'success': False, 
+                'message': 'Error updating stock'
+            })
+    
+    return JsonResponse({'success': False, 'message': 'Invalid request method'})
 
 @login_required
 def toggle_product_status(request, product_id):
-    """AJAX endpoint to toggle product live/hidden status"""
+    """AJAX endpoint to toggle product live/hidden status - ONLY for approved products"""
     if request.method == 'POST':
         try:
             product = get_object_or_404(Product, id=product_id, seller=request.user)
+            
+            # PERMISSION CHECK: Only approved products can have visibility toggled
+            if product.approval_status != 'approved':
+                return JsonResponse({
+                    'success': False, 
+                    'message': 'Only approved products can have visibility changed'
+                })
+            
             data = json.loads(request.body)
+            new_status = data.get('status', False)
             
-            # Only allow status change for approved products
-            if product.approval_status == 'approved':
-                product.status = data.get('status', False)
-                product.save()
-                return JsonResponse({'success': True})
+            product.status = new_status
+            product.save()
             
-            return JsonResponse({'success': False})
-        except:
-            return JsonResponse({'success': False})
-    return JsonResponse({'success': False})
+            # Create notification for visibility change
+            status_text = 'live' if new_status else 'hidden'
+            create_notification(
+                user=request.user,
+                notification_type='system',
+                title=f'Product {status_text.title()}!',
+                message=f'"{product.name}" is now {status_text} on the marketplace.',
+                icon='fa-eye' if new_status else 'fa-eye-slash',
+                color='success' if new_status else 'warning',
+                url='/my-selling-items/'
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Product is now {status_text}',
+                'status': new_status
+            })
+            
+        except Exception as e:
+            print(f"Error toggling product status: {e}")
+            return JsonResponse({
+                'success': False, 
+                'message': 'Error updating product visibility'
+            })
+    
+    return JsonResponse({'success': False, 'message': 'Invalid request method'})
 
 @login_required
 def delete_product(request, product_id):
-    """AJAX endpoint to delete product"""
+    """AJAX endpoint to delete product - Enhanced with proper cleanup"""
     if request.method == 'POST':
         try:
             product = get_object_or_404(Product, id=product_id, seller=request.user)
+            product_name = product.name
+            
+            # Store product info before deletion
+            was_approved = product.approval_status == 'approved'
+            
+            # Delete the product (this will also delete related variations, images, etc.)
             product.delete()
-            return JsonResponse({'success': True})
-        except:
-            return JsonResponse({'success': False})
-    return JsonResponse({'success': False})
+            
+            # Create notification
+            create_notification(
+                user=request.user,
+                notification_type='system',
+                title='Product Deleted!',
+                message=f'"{product_name}" has been removed from your products.',
+                icon='fa-trash',
+                color='info',
+                url='/my-selling-items/'
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'"{product_name}" deleted successfully'
+            })
+            
+        except Exception as e:
+            print(f"Error deleting product: {e}")
+            return JsonResponse({
+                'success': False, 
+                'message': 'Error deleting product'
+            })
+    
+    return JsonResponse({'success': False, 'message': 'Invalid request method'})
+
+@login_required
+def duplicate_product(request, product_id):
+    """AJAX endpoint to duplicate product - ONLY for approved products"""
+    if request.method == 'POST':
+        try:
+            original_product = get_object_or_404(Product, id=product_id, seller=request.user)
+            
+            # PERMISSION CHECK: Only approved products can be duplicated
+            if original_product.approval_status != 'approved':
+                return JsonResponse({
+                    'success': False, 
+                    'message': 'Only approved products can be duplicated'
+                })
+            
+            with transaction.atomic():
+                # Create duplicate product
+                duplicate_product = Product.objects.create(
+                    name=f"{original_product.name} (Copy)",
+                    description=original_product.description,
+                    price=original_product.price,
+                    stock=original_product.stock,
+                    category=original_product.category,
+                    brand=original_product.brand,
+                    spec=original_product.spec,
+                    seller=request.user,
+                    status=False,  # Start as hidden
+                    admin_approved=False,  # Needs approval again
+                    approval_status='pending',  # Needs approval
+                    submitted_for_approval=timezone.now(),
+                    # Copy other fields
+                    product_type=original_product.product_type,
+                    condition=original_product.condition,
+                    years_used=original_product.years_used,
+                    is_on_sale=original_product.is_on_sale,
+                    original_price=original_product.original_price,
+                    discount_percentage=original_product.discount_percentage,
+                    sale_start_date=original_product.sale_start_date,
+                    sale_end_date=original_product.sale_end_date,
+                )
+                
+                # Copy main product image if exists
+                if original_product.image:
+                    try:
+                        # Copy the image file
+                        original_image_path = original_product.image.path
+                        if os.path.exists(original_image_path):
+                            # Generate new filename
+                            import uuid
+                            file_extension = os.path.splitext(original_product.image.name)[1]
+                            new_filename = f"products/{uuid.uuid4()}{file_extension}"
+                            
+                            # Copy file content
+                            with open(original_image_path, 'rb') as original_file:
+                                duplicate_product.image.save(
+                                    new_filename,
+                                    original_file,
+                                    save=True
+                                )
+                    except Exception as e:
+                        print(f"Error copying product image: {e}")
+                
+                # Copy variations if any exist
+                original_variations = ProductVariation.objects.filter(product=original_product)
+                for variation in original_variations:
+                    ProductVariation.objects.create(
+                        product=duplicate_product,
+                        variation_type=variation.variation_type,
+                        variation_option=variation.variation_option,
+                        price_adjustment=variation.price_adjustment,
+                        stock_quantity=variation.stock_quantity,
+                        sku=f"{variation.sku}_copy" if variation.sku else "",
+                        is_active=variation.is_active,
+                        # Note: Images are not copied for variations to avoid complexity
+                    )
+            
+            # Create notification
+            create_notification(
+                user=request.user,
+                notification_type='system',
+                title='Product Duplicated!',
+                message=f'A copy of "{original_product.name}" has been created and submitted for approval.',
+                icon='fa-copy',
+                color='info',
+                url='/my-selling-items/'
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Product duplicated successfully! The copy is now pending approval.',
+                'duplicate_id': duplicate_product.id
+            })
+            
+        except Exception as e:
+            print(f"Error duplicating product: {e}")
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({
+                'success': False, 
+                'message': 'Error duplicating product'
+            })
+    
+    return JsonResponse({'success': False, 'message': 'Invalid request method'})
+
+@login_required
+def edit_product(request, product_id):
+    """Load product edit form in modal - ONLY for approved products"""
+    try:
+        product = get_object_or_404(Product, id=product_id, seller=request.user)
+        
+        # PERMISSION CHECK: Only approved products can be edited
+        if product.approval_status != 'approved':
+            return render(request, 'users/partials/edit_product_denied.html', {
+                'product': product,
+                'message': 'Only approved products can be edited'
+            })
+        
+        if request.method == 'POST':
+            # Handle form submission
+            try:
+                # Update basic fields
+                product.name = request.POST.get('name', product.name).strip()
+                product.description = request.POST.get('description', product.description).strip()
+                product.price = float(request.POST.get('price', product.price))
+                product.stock = int(request.POST.get('stock', product.stock))
+                product.brand = request.POST.get('brand', product.brand).strip()
+                product.spec = request.POST.get('spec', product.spec).strip()
+                
+                # Update sale fields
+                product.is_on_sale = request.POST.get('is_on_sale') == 'on'
+                if product.is_on_sale:
+                    product.original_price = float(request.POST.get('original_price', 0)) or None
+                    product.discount_percentage = int(request.POST.get('discount_percentage', 0))
+                    product.sale_start_date = request.POST.get('sale_start_date') or None
+                    product.sale_end_date = request.POST.get('sale_end_date') or None
+                else:
+                    product.original_price = None
+                    product.discount_percentage = 0
+                    product.sale_start_date = None
+                    product.sale_end_date = None
+                
+                # Handle new main image if uploaded
+                if request.FILES.get('image'):
+                    product.image = request.FILES['image']
+                
+                product.save()
+                
+                # Create notification
+                create_notification(
+                    user=request.user,
+                    notification_type='system',
+                    title='Product Updated!',
+                    message=f'"{product.name}" has been updated successfully.',
+                    icon='fa-edit',
+                    color='success',
+                    url='/my-selling-items/'
+                )
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Product updated successfully!'
+                })
+                
+            except (ValueError, TypeError) as e:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Please enter valid values for price and stock'
+                })
+            except Exception as e:
+                print(f"Error updating product: {e}")
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Error updating product'
+                })
+        
+        # GET request - return form HTML
+        context = {
+            'product': product,
+            'categories': Category.objects.filter(status=True),
+        }
+        return render(request, 'users/partials/edit_product_form.html', context)
+        
+    except Exception as e:
+        print(f"Error in edit_product: {e}")
+        return render(request, 'users/partials/edit_product_error.html', {
+            'error': 'Error loading product details'
+        })
 
 @login_required
 def bulk_update_stock(request):
-    """AJAX endpoint for bulk stock updates"""
+    """AJAX endpoint for bulk stock updates - ONLY for approved products"""
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
@@ -1327,24 +1644,207 @@ def bulk_update_stock(request):
             action = data.get('action')
             amount = int(data.get('amount', 0))
             
-            products = Product.objects.filter(id__in=product_ids, seller=request.user)
+            if amount < 0:
+                return JsonResponse({
+                    'success': False, 
+                    'message': 'Amount cannot be negative'
+                })
+            
+            # Get products with permission check
+            products = Product.objects.filter(
+                id__in=product_ids, 
+                seller=request.user,
+                approval_status='approved'  # ONLY approved products
+            )
+            
+            if not products.exists():
+                return JsonResponse({
+                    'success': False, 
+                    'message': 'No approved products found to update'
+                })
+            
             updated_count = 0
+            with transaction.atomic():
+                for product in products:
+                    old_stock = product.stock
+                    
+                    if action == 'set':
+                        product.stock = amount
+                    elif action == 'add':
+                        product.stock += amount
+                    elif action == 'subtract':
+                        product.stock = max(0, product.stock - amount)
+                    
+                    product.save()
+                    updated_count += 1
             
-            for product in products:
-                if action == 'set':
-                    product.stock = amount
-                elif action == 'add':
-                    product.stock += amount
-                elif action == 'subtract':
-                    product.stock = max(0, product.stock - amount)
-                
-                product.save()
-                updated_count += 1
+            # Create notification
+            create_notification(
+                user=request.user,
+                notification_type='system',
+                title='Bulk Stock Update Complete!',
+                message=f'Stock updated for {updated_count} approved products.',
+                icon='fa-boxes',
+                color='success',
+                url='/my-selling-items/'
+            )
             
-            return JsonResponse({'success': True, 'updated_count': updated_count})
-        except:
-            return JsonResponse({'success': False})
-    return JsonResponse({'success': False})
+            return JsonResponse({
+                'success': True, 
+                'updated_count': updated_count,
+                'message': f'Stock updated for {updated_count} products'
+            })
+            
+        except ValueError:
+            return JsonResponse({
+                'success': False, 
+                'message': 'Please enter a valid amount'
+            })
+        except Exception as e:
+            print(f"Error in bulk stock update: {e}")
+            return JsonResponse({
+                'success': False, 
+                'message': 'Error updating stock'
+            })
+    
+    return JsonResponse({'success': False, 'message': 'Invalid request method'})
+
+@login_required
+def bulk_toggle_visibility(request):
+    """AJAX endpoint for bulk visibility toggle - ONLY for approved products"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            product_ids = data.get('products', [])
+            action = data.get('action', 'toggle')
+            
+            # Get products with permission check
+            products = Product.objects.filter(
+                id__in=product_ids, 
+                seller=request.user,
+                approval_status='approved'  # ONLY approved products
+            )
+            
+            if not products.exists():
+                return JsonResponse({
+                    'success': False, 
+                    'message': 'No approved products found to update'
+                })
+            
+            updated_count = 0
+            show_count = 0
+            hide_count = 0
+            
+            with transaction.atomic():
+                for product in products:
+                    if action == 'show':
+                        product.status = True
+                        show_count += 1
+                    elif action == 'hide':
+                        product.status = False
+                        hide_count += 1
+                    elif action == 'toggle':
+                        product.status = not product.status
+                        if product.status:
+                            show_count += 1
+                        else:
+                            hide_count += 1
+                    
+                    product.save()
+                    updated_count += 1
+            
+            # Create notification
+            if action == 'show':
+                message = f'{show_count} products made live'
+            elif action == 'hide':
+                message = f'{hide_count} products hidden'
+            else:
+                message = f'{show_count} products made live, {hide_count} products hidden'
+            
+            create_notification(
+                user=request.user,
+                notification_type='system',
+                title='Bulk Visibility Update!',
+                message=f'Visibility updated: {message}.',
+                icon='fa-eye',
+                color='info',
+                url='/my-selling-items/'
+            )
+            
+            return JsonResponse({
+                'success': True, 
+                'updated_count': updated_count,
+                'show_count': show_count,
+                'hide_count': hide_count,
+                'message': f'Visibility updated for {updated_count} products'
+            })
+            
+        except Exception as e:
+            print(f"Error in bulk visibility update: {e}")
+            return JsonResponse({
+                'success': False, 
+                'message': 'Error updating visibility'
+            })
+    
+    return JsonResponse({'success': False, 'message': 'Invalid request method'})
+
+@login_required
+def bulk_delete_products(request):
+    """AJAX endpoint for bulk product deletion"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            product_ids = data.get('products', [])
+            
+            # Get products belonging to current user
+            products = Product.objects.filter(id__in=product_ids, seller=request.user)
+            
+            if not products.exists():
+                return JsonResponse({
+                    'success': False, 
+                    'message': 'No products found to delete'
+                })
+            
+            deleted_count = products.count()
+            product_names = [p.name for p in products[:3]]  # Get first 3 names
+            
+            # Delete the products
+            with transaction.atomic():
+                products.delete()
+            
+            # Create notification
+            if deleted_count == 1:
+                message = f'"{product_names[0]}" has been deleted'
+            elif deleted_count <= 3:
+                message = f'{", ".join(product_names)} have been deleted'
+            else:
+                message = f'{deleted_count} products have been deleted'
+            
+            create_notification(
+                user=request.user,
+                notification_type='system',
+                title='Products Deleted!',
+                message=message,
+                icon='fa-trash',
+                color='info',
+                url='/my-selling-items/'
+            )
+            
+            return JsonResponse({
+                'success': True, 
+                'deleted_count': deleted_count,
+                'message': f'{deleted_count} products deleted successfully'
+            })
+            
+        except Exception as e:
+            print(f"Error in bulk delete: {e}")
+            return JsonResponse({
+                'success': False, 
+                'message': 'Error deleting products'
+            })
+    
+    return JsonResponse({'success': False, 'message': 'Invalid request method'})
+
 
 # QR PAYMENT MANAGEMENT
 

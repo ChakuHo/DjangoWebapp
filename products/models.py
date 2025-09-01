@@ -82,6 +82,12 @@ class Product(models.Model):
     
     years_used = models.IntegerField(null=True, blank=True, help_text="How many years used (for thrift products)")
 
+    # Analytics fields
+
+    view_count = models.PositiveIntegerField(default=0, help_text="Number of times this product was viewed")
+    order_count = models.PositiveIntegerField(default=0, help_text="Number of times this product was ordered")
+    total_revenue = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Total revenue from this product")
+
     def get_url(self):
         if self.category and self.category.slug and self.slug:
             return reverse('products:product_detail', args=[self.category.slug, self.slug])
@@ -182,6 +188,38 @@ class Product(models.Model):
             category=self.category,
             variation_type__is_active=True
         ).select_related('variation_type').order_by('sort_order')
+    
+    def increment_views(self):
+        """Increment view count when product is viewed"""
+        self.view_count += 1
+        self.save(update_fields=['view_count'])
+    
+    def get_analytics_data(self):
+        """Get comprehensive analytics for this product"""
+        from orders.models import OrderItem
+        
+        # Get all order items for this product
+        order_items = OrderItem.objects.filter(
+            product=self,
+            ordered=True  # Only count completed orders
+        )
+        
+        # Calculate actual metrics
+        total_orders = order_items.count()
+        total_revenue = sum(item.quantity * item.price for item in order_items)
+        
+        # Update the stored values
+        if self.order_count != total_orders or float(self.total_revenue) != total_revenue:
+            self.order_count = total_orders
+            self.total_revenue = total_revenue
+            self.save(update_fields=['order_count', 'total_revenue'])
+        
+        return {
+            'views': self.view_count,
+            'orders': total_orders,
+            'revenue': total_revenue,
+            'conversion_rate': (total_orders / self.view_count * 100) if self.view_count > 0 else 0
+        }
 
 class Review(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
