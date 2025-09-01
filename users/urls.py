@@ -63,4 +63,13 @@ urlpatterns = [
     path('wishlist/remove/<int:product_id>/', views.remove_from_wishlist, name='remove_from_wishlist'),
     path('wishlist/toggle/<int:product_id>/', views.toggle_wishlist, name='toggle_wishlist'),
     path('wishlist/clear-all/', views.clear_all_wishlist, name='clear_all_wishlist'),
+
+    # for customers
+    path('received-orders/', views.received_orders, name='received_orders'),
+
+    # for seller to update order status
+    path('update-order-status/<int:order_id>/', views.update_order_status, name='update_order_status'),
+    path('mark-shipped/<int:order_id>/', views.mark_as_shipped, name='mark_as_shipped'),
+    path('order-details/<int:order_id>/', views.order_details_modal, name='order_details_modal'),
+
 ]

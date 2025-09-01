@@ -47,6 +47,9 @@ class Order(models.Model):
     delivered_date = models.DateTimeField(null=True, blank=True)
     completed_date = models.DateTimeField(null=True, blank=True)
     tracking_number = models.CharField(max_length=100, blank=True)
+    shipping_notes = models.TextField(blank=True, null=True, help_text="Seller's shipping notes")
+    confirmed_at = models.DateTimeField(null=True, blank=True, help_text="When order was confirmed by seller")
+    processing_at = models.DateTimeField(null=True, blank=True, help_text="When order started processing")
 
     # ENHANCED PAYMENT PROCESSING FIELDS
     payment_status = models.CharField(max_length=30, choices=[
@@ -70,6 +73,23 @@ class Order(models.Model):
     qr_payment_verified_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='verified_payments')
     qr_payment_verified_at = models.DateTimeField(null=True, blank=True)
 
+
+    def get_effective_status(self):
+        """Return the current effective status of the order"""
+        return self.order_status if hasattr(self, 'order_status') and self.order_status else 'pending'
+    
+    def get_status_display_name(self):
+        """Get human readable status name"""
+        status_names = {
+            'pending': 'Pending',
+            'confirmed': 'Confirmed', 
+            'processing': 'Processing',
+            'shipped': 'Shipped',
+            'delivered': 'Delivered',
+            'completed': 'Completed',
+            'cancelled': 'Cancelled'
+        }
+        return status_names.get(self.order_status, self.order_status.title() if self.order_status else 'Pending')
 
 
     def __str__(self):
@@ -117,6 +137,18 @@ class Order(models.Model):
             return "📱"
         else:
             return "💳"
+        
+    def save(self, *args, **kwargs):
+        # Generate order number if not set
+        if not self.order_number:
+            # Create order number based on timestamp and ID
+            if not self.pk:
+                super().save(*args, **kwargs)  # Save first to get ID
+            self.order_number = f"ORD{self.created_at.strftime('%Y%m%d')}{self.id:04d}"
+            super().save(update_fields=['order_number'])
+        else:
+            super().save(*args, **kwargs)
+
         
         
 class OrderItem(models.Model):

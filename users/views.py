@@ -352,75 +352,48 @@ def dashboard(request):
 
 @login_required
 def received_orders(request):
-    """QR Payment verification page for sellers"""
-    profile = request.user.profile
-    
-    # Only approved sellers can access
-    if profile.seller_status != 'approved':
-        messages.error(request, 'You need to be an approved seller to access this page.')
-        return redirect('dashboard')
-
-    # Handle verification actions
-    if request.method == 'POST':
-        order_id = request.POST.get('order_id')
-        action = request.POST.get('action')
+    """Display items that the customer has received (delivered orders) - FOR CUSTOMERS"""
+    try:
+        # Get all order items for orders that are delivered/completed for this user
+        received_items = OrderItem.objects.filter(
+            order__user=request.user,
+            ordered=True,
+            order__order_status__in=['delivered', 'completed']
+        ).select_related(
+            'product', 'order', 'seller', 'order__user', 'product__category'
+        ).prefetch_related(
+            'variations__variation_type',
+            'variations__variation_option'
+        ).order_by('-order__delivered_date', '-order__created_at')
         
+        # Get unique orders count
+        unique_orders = received_items.values('order').distinct()
+        unique_orders_count = unique_orders.count()
+        
+        # Get reviewed product IDs to show "Reviewed" status
+        reviewed_product_ids = []
         try:
-            order = get_object_or_404(Order, 
-                id=order_id, 
-                items__seller=request.user,
-                payment_method='QR Payment',
-                payment_status='pending_verification'
-            )
-            
-            if action == 'verify':
-                order.payment_status = 'completed'
-                order.status = 'Confirmed'
-                order.order_status = 'confirmed'
-                order.qr_payment_verified_by = request.user
-                order.qr_payment_verified_at = timezone.now()
-                order.save()
-                
-                # Send confirmation email
-                send_order_confirmation_email(order)
-                messages.success(request, f'✅ Payment verified for Order #{order.order_number}. Customer notified!')
-                
-            elif action == 'reject':
-                order.payment_status = 'rejected'
-                order.status = 'Payment Rejected'
-                order.order_status = 'cancelled'
-                order.save()
-                messages.warning(request, f'❌ Payment rejected for Order #{order.order_number}')
-                
-        except Order.DoesNotExist:
-            messages.error(request, 'Order not found or unauthorized access.')
-        except Exception as e:
-            messages.error(request, f'Error: {str(e)}')
-
-    # Get pending orders for this seller
-    pending_orders = Order.objects.filter(
-        items__seller=request.user,
-        payment_method='QR Payment',
-        payment_status='pending_verification'
-    ).distinct().order_by('-created_at')
-    
-    # Get recently verified orders
-    verified_orders = Order.objects.filter(
-        items__seller=request.user,
-        payment_method='QR Payment',
-        payment_status='completed',
-        qr_payment_verified_by=request.user
-    ).distinct().order_by('-qr_payment_verified_at')[:10]
-    
-    # Calculate total pending amount
-    total_pending_amount = sum(order.grand_total for order in pending_orders)
-    
-    context = {
-        'pending_orders': pending_orders,
-        'verified_orders': verified_orders,
-        'total_pending_amount': total_pending_amount,
-    }
-    return render(request, 'users/received_orders.html', context)
+            from products.models import Review
+            reviews = Review.objects.filter(user=request.user).values_list('product_id', flat=True)
+            reviewed_product_ids = list(reviews)
+        except (ImportError, AttributeError):
+            reviewed_product_ids = []
+        
+        # Count items pending review
+        pending_reviews_count = received_items.exclude(product_id__in=reviewed_product_ids).count()
+        
+        context = {
+            'received_items': received_items,
+            'unique_orders_count': unique_orders_count,
+            'pending_reviews_count': pending_reviews_count,
+            'reviewed_product_ids': reviewed_product_ids,
+        }
+        return render(request, 'users/received_orders.html', context)  # Use existing template!
+        
+    except Exception as e:
+        print(f"Error in received_orders view: {e}")
+        messages.error(request, 'Error loading received orders.')
+        return redirect('dashboard')
 
 @login_required
 def seller_received_orders(request):
@@ -2309,6 +2282,276 @@ def clear_all_wishlist(request):
         else:
             messages.error(request, 'An error occurred while clearing your wishlist.')
             return redirect('users:wishlist')
+        
+
+# for customer received orders from seller
+@login_required
+def customer_received_orders(request):
+    """Display items that the customer has received (delivered orders) - FOR CUSTOMERS"""
+    try:
+        # Get all order items for orders that are delivered/completed for this user
+        from orders.models import OrderItem
+        
+        received_items = OrderItem.objects.filter(
+            order__user=request.user,
+            ordered=True,
+            order__order_status__in=['delivered', 'completed']
+        ).select_related(
+            'product', 'order', 'seller', 'order__user', 'product__category'
+        ).prefetch_related(
+            'variations__variation_type',
+            'variations__variation_option'
+        ).order_by('-order__delivered_date', '-order__created_at')
+        
+        # Get unique orders count
+        unique_orders = received_items.values('order').distinct()
+        unique_orders_count = unique_orders.count()
+        
+        # Get reviewed product IDs to show "Reviewed" status
+        reviewed_product_ids = []
+        try:
+            # Check if you have a Review model
+            from products.models import Review
+            reviews = Review.objects.filter(user=request.user).values_list('product_id', flat=True)
+            reviewed_product_ids = list(reviews)
+        except (ImportError, AttributeError):
+            # If no review model, we'll skip this for now
+            reviewed_product_ids = []
+        
+        # Count items pending review
+        pending_reviews_count = received_items.exclude(product_id__in=reviewed_product_ids).count()
+        
+        context = {
+            'received_items': received_items,
+            'unique_orders_count': unique_orders_count,
+            'pending_reviews_count': pending_reviews_count,
+            'reviewed_product_ids': reviewed_product_ids,
+        }
+        return render(request, 'users/customer_received_orders.html', context)
+        
+    except Exception as e:
+        print(f"Error in customer_received_orders view: {e}")
+        messages.error(request, 'Error loading received orders.')
+        return redirect('dashboard')
+    
+
+# for seller to update order status
+@login_required
+def update_order_status(request, order_id):
+    """AJAX endpoint for sellers to update order status - FIXED"""
+    print(f"🔄 Order status update - Order ID: {order_id}, User: {request.user.username}")
+    
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            new_status = data.get('status')
+            print(f"📝 Requested status: {new_status}")
+            
+            # FIX: Use .distinct() to avoid duplicate results
+            try:
+                order = Order.objects.filter(
+                    id=order_id,
+                    items__seller=request.user
+                ).distinct().first()
+                
+                if not order:
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Order not found or access denied'
+                    })
+                    
+                print(f"✅ Order found: #{order.id}, Current status: {order.order_status}")
+                
+            except Exception as e:
+                print(f"❌ Error finding order: {e}")
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Error finding order'
+                })
+            
+            # Verify seller permission
+            profile = request.user.profile
+            if profile.seller_status != 'approved':
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Only approved sellers can update order status'
+                })
+            
+            # FIX: Correct status transitions
+            valid_transitions = {
+                'pending': ['confirmed'],           # Can only go to confirmed
+                'confirmed': ['processing'],        # Can only go to processing  
+                'processing': ['shipped'],          # Can only go to shipped
+                'shipped': ['delivered'],           # Can only go to delivered
+                'delivered': ['completed'],         # Can only go to completed
+                'completed': [],                    # Final status
+                'cancelled': []                     # Final status
+            }
+            
+            current_status = order.order_status
+            allowed_transitions = valid_transitions.get(current_status, [])
+            
+            print(f"🔄 Status check: {current_status} → {new_status}")
+            print(f"✅ Allowed transitions: {allowed_transitions}")
+            
+            if new_status not in allowed_transitions:
+                return JsonResponse({
+                    'success': False,
+                    'message': f'Cannot change from {current_status} to {new_status}. Next allowed status: {allowed_transitions}'
+                })
+            
+            # Update order status
+            old_status = order.order_status
+            order.order_status = new_status
+            order.status = new_status.title()
+            
+            # Set timestamps
+            if new_status == 'confirmed':
+                order.confirmed_at = timezone.now()
+            elif new_status == 'processing':
+                order.processing_at = timezone.now()
+            elif new_status == 'delivered':
+                order.delivered_date = timezone.now()
+            elif new_status == 'completed':
+                order.completed_date = timezone.now()
+            
+            order.save()
+            print(f"✅ Order updated: {old_status} → {new_status}")
+            
+            # Create notification for customer
+            try:
+                status_messages = {
+                    'confirmed': 'Your order has been confirmed by the seller.',
+                    'processing': 'Your order is now being prepared for shipping.',
+                    'shipped': 'Your order has been shipped!',
+                    'delivered': 'Your order has been delivered.',
+                    'completed': 'Your order is complete. Thank you!'
+                }
+                
+                create_notification(
+                    user=order.user,
+                    notification_type='order',
+                    title=f'Order {new_status.title()}!',
+                    message=status_messages.get(new_status, f'Order status updated to {new_status}'),
+                    icon='fa-box',
+                    color='success',
+                    url='/orders/my-orders/'
+                )
+            except Exception as e:
+                print(f"⚠️ Notification failed: {e}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Order status updated to {new_status.title()}',
+                'new_status': new_status
+            })
+            
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({
+                'success': False,
+                'message': f'Error updating status: {str(e)}'
+            })
+    
+    return JsonResponse({'success': False, 'message': 'Invalid request method'})
+
+@login_required
+def mark_as_shipped(request, order_id):
+    """AJAX endpoint for sellers to mark order as shipped with tracking"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            tracking_number = data.get('tracking_number', '').strip()
+            shipping_date = data.get('shipping_date')
+            notes = data.get('notes', '').strip()
+            
+            # Get order where current user is the seller
+            order = get_object_or_404(Order, 
+                id=order_id, 
+                items__seller=request.user,
+                order_status='processing'  # Only processing orders can be shipped
+            )
+            
+            # Verify seller permission
+            profile = request.user.profile
+            if profile.seller_status != 'approved':
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Only approved sellers can update shipping'
+                })
+            
+            if not tracking_number:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Tracking number is required'
+                })
+            
+            # Update order with shipping info (using your existing fields)
+            order.order_status = 'shipped'
+            order.status = 'Shipped'
+            order.tracking_number = tracking_number
+            order.shipped_date = timezone.now() if not shipping_date else shipping_date
+            order.shipping_notes = notes  # This is the new field we added
+            order.save()
+            
+            # Create notification for customer
+            create_notification(
+                user=order.user,
+                notification_type='order',
+                title='Order Shipped! 🚚',
+                message=f'Order #{order.order_number} has been shipped! Tracking: {tracking_number}',
+                icon='fa-truck',
+                color='info',
+                url='/orders/my-orders/'
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Order marked as shipped with tracking: {tracking_number}',
+                'tracking_number': tracking_number
+            })
+            
+        except Exception as e:
+            print(f"Error marking as shipped: {e}")
+            return JsonResponse({
+                'success': False,
+                'message': 'Error updating shipping status'
+            })
+    
+    return JsonResponse({'success': False, 'message': 'Invalid request method'})
+
+@login_required
+def order_details_modal(request, order_id):
+    """Load order details in modal for sellers"""
+    try:
+        # Get order where current user is the seller
+        order = get_object_or_404(Order, 
+            id=order_id, 
+            items__seller=request.user
+        )
+        
+        # Get order items for this seller only
+        order_items = OrderItem.objects.filter(
+            order=order,
+            seller=request.user,
+            ordered=True
+        ).select_related('product').prefetch_related('variations')
+        
+        context = {
+            'order': order,
+            'order_items': order_items,
+        }
+        return render(request, 'users/order_details_modal.html', context)
+        
+    except Exception as e:
+        print(f"Error loading order details: {e}")
+        # Create a simple error response instead of trying to render non-existent template
+        return JsonResponse({
+            'error': True,
+            'message': 'Error loading order details'
+        })
 
 
 def user_logout(request):
@@ -2316,8 +2559,6 @@ def user_logout(request):
     # Clear all Django flash messages before logout
     storage = messages.get_messages(request)
     list(storage)  # Clear messages safely
-    
-    # Don't clear notifications on logout - user might want to see them when they login again
     
     # Logout user
     logout(request)

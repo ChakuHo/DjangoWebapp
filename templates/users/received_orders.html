@@ -200,28 +200,28 @@
   </div>
 </section>
 
-<!-- SINGLE, CLEAN JAVASCRIPT BLOCK -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Get CSRF token
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
     
-    // Buy Again Function
+    // Buy Again Function - WORKS WITH YOUR EXISTING CART
     window.buyAgain = function(productId) {
         if (confirm('Add this product to your cart?')) {
+            // Use your existing cart add endpoint
             fetch(`/cart/add/${productId}/`, {
                 method: 'POST',
                 headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
                     'X-CSRFToken': csrfToken,
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: JSON.stringify({quantity: 1})
+                body: `csrfmiddlewaretoken=${csrfToken}&quantity=1`
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    showToast('Product added to cart!', 'success');
-                    // Update cart count if you have one
+                    showToast(data.message || 'Product added to cart!', 'success');
                     if (data.cart_count) {
                         updateCartCount(data.cart_count);
                     }
@@ -236,32 +236,29 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
     
-    // Contact Seller Function
+    // Contact Seller Function - FIXED URL
     window.contactSeller = function(username) {
-        // Redirect to chat with seller
-        window.location.href = `/accounts/chat/user/${username}/`;
+        window.location.href = `/users/chat/user/${username}/`;
     };
     
-    // Write Review Function
+    // Write Review Function - USE YOUR EXISTING REVIEW SYSTEM
     window.writeReview = function(productId, orderId) {
-        // For now, redirect to review page
-        // Later you can make this a modal
-        window.location.href = `/products/submit-review/${productId}/?order_id=${orderId}`;
+        // Update this URL to match your actual review system
+        window.location.href = `/products/review/${productId}/?order_id=${orderId}`;
     };
     
     // Toast notification function
     function showToast(message, type) {
+        document.querySelectorAll('.toast-notification').forEach(t => t.remove());
+        
         const toast = document.createElement('div');
         toast.className = `alert alert-${type === 'success' ? 'success' : 'danger'} toast-notification`;
         toast.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 9999;
-            min-width: 300px;
-            animation: slideIn 0.3s ease-in-out;
+            position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;
+            animation: slideIn 0.3s ease-in-out; box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         `;
         toast.innerHTML = `
+            <i class="fa fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
             ${message}
             <button type="button" class="close ml-2" onclick="this.parentElement.remove()">
                 <span>&times;</span>
@@ -269,23 +266,15 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
         
         document.body.appendChild(toast);
-        
-        // Auto remove after 4 seconds
-        setTimeout(() => {
-            if (toast.parentElement) {
-                toast.remove();
-            }
-        }, 4000);
+        setTimeout(() => { if (toast.parentElement) toast.remove(); }, 4000);
     }
     
-    // Update cart count (if you have cart counter in header)
+    // Update cart count
     function updateCartCount(count) {
-        const cartCountElements = document.querySelectorAll('.cart-count, #cart-count');
+        const cartCountElements = document.querySelectorAll('.cart-count, #cart-count, .cart-counter');
         cartCountElements.forEach(el => {
             el.textContent = count;
-            if (count > 0) {
-                el.style.display = 'inline';
-            }
+            if (count > 0) el.style.display = 'inline';
         });
     }
 });

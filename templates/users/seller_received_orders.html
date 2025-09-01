@@ -1,4 +1,4 @@
-{% extends "master/base.html" %} {% load static %} {% block content %}
+{% extends "master/base.html" %} {% load static %} {% csrf_token %} {% block content %}
 
 <section class="section-conten padding-y bg">
   <div class="container">
@@ -255,17 +255,20 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Get CSRF token
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    // Get CSRF token with fallback
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value ||
+                      document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+                      '{{ csrf_token }}';
     
-    // Tab filtering
+    console.log('🔄 CSRF Token:', csrfToken); // Debug log
+    
+    // Tab filtering (your existing code)
     const tabs = document.querySelectorAll('#orderTabs .nav-link');
     const orderItems = document.querySelectorAll('.order-item');
     
     tabs.forEach(tab => {
         tab.addEventListener('click', function() {
             const targetStatus = this.getAttribute('href').substring(1);
-            
             orderItems.forEach(item => {
                 if (targetStatus === 'all') {
                     item.style.display = 'block';
@@ -276,36 +279,136 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     });
-    
-    // Global functions
+
+    // View Order Details 
     window.viewOrderDetails = function(orderId) {
-        showToast('Order details feature coming soon! Order ID: ' + orderId, 'info');
+        console.log('📄 Loading order details for:', orderId);
+        $('#orderDetailsModal').modal('show');
+        document.getElementById('orderDetailsContent').innerHTML = '<div class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading...</div>';
+        
+        fetch(`/users/order-details/${orderId}/`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return response.text();
+            })
+            .then(html => {
+                document.getElementById('orderDetailsContent').innerHTML = html;
+                console.log('✅ Order details loaded successfully');
+            })
+            .catch(error => {
+                console.error('❌ Error loading order details:', error);
+                document.getElementById('orderDetailsContent').innerHTML = 
+                    '<div class="text-center text-danger">Error loading order details. Please try again.</div>';
+            });
     };
-    
+
+    // Update Order Status 
     window.updateOrderStatus = function(orderId, newStatus) {
-        if (confirm(`Are you sure you want to mark this order as ${newStatus}?`)) {
-            showToast('Status update feature coming soon!', 'info');
-            // TODO: Implement AJAX status update
-        }
+    console.log(`🔄 Updating order ${orderId} to status: ${newStatus}`);
+    
+    const confirmMessages = {
+        'confirmed': 'confirm this order',
+        'processing': 'start processing this order', 
+        'shipped': 'mark this order as shipped',
+        'delivered': 'mark this order as delivered',
+        'completed': 'mark this order as completed'
     };
     
+    if (confirm(`Are you sure you want to ${confirmMessages[newStatus] || `change status to ${newStatus}`}?`)) {
+        fetch(`/users/update-order-status/${orderId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({status: newStatus})
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('📨 Response:', data);
+            if (data.success) {
+                showToast(data.message, 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast(data.message || 'Error updating order status', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('❌ Error:', error);
+            showToast('Network error updating order status', 'error');
+        });
+    }
+};
+
+    // Mark as Shipped 
     window.markAsShipped = function(orderId) {
+        console.log('🚚 Opening shipping modal for order:', orderId);
         window.currentOrderId = orderId;
+        document.getElementById('shippingDate').value = new Date().toISOString().split('T')[0];
         $('#shippingModal').modal('show');
     };
-    
+
+    // Confirm Shipping
     window.confirmShipping = function() {
-        showToast('Shipping feature coming soon!', 'info');
-        $('#shippingModal').modal('hide');
+        const orderId = window.currentOrderId;
+        const trackingNumber = document.getElementById('trackingNumber').value.trim();
+        const shippingDate = document.getElementById('shippingDate').value;
+        const notes = document.getElementById('shippingNotes').value.trim();
+        
+        console.log('📦 Confirming shipping for order:', orderId);
+        
+        if (!trackingNumber) {
+            showToast('Please enter a tracking number', 'error');
+            return;
+        }
+        
+        fetch(`/users/mark-shipped/${orderId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                tracking_number: trackingNumber,
+                shipping_date: shippingDate,
+                notes: notes
+            })
+        })
+        .then(response => {
+            console.log('📡 Shipping response status:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('📨 Shipping response data:', data);
+            if (data.success) {
+                $('#shippingModal').modal('hide');
+                showToast(data.message, 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast(data.message || 'Error marking as shipped', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('❌ Shipping error:', error);
+            showToast('Network error updating shipping', 'error');
+        });
     };
-    
+
+    // Contact Customer 
     window.contactCustomer = function(username) {
-        // Redirect to chat with customer
-        window.location.href = `/accounts/chat/user/${username}/`;
+        console.log('💬 Starting chat with:', username);
+        window.location.href = `/users/chat/user/${username}/`;
     };
-    
-    // Toast notification function
+
+    //  Toast function
     function showToast(message, type) {
+        console.log(`🍞 Toast: ${type} - ${message}`);
+        
+        // Remove existing toasts
+        document.querySelectorAll('.toast-notification').forEach(t => t.remove());
+        
         const toast = document.createElement('div');
         toast.className = `alert alert-${type === 'success' ? 'success' : type === 'info' ? 'info' : 'danger'} toast-notification`;
         toast.style.cssText = `
@@ -315,8 +418,10 @@ document.addEventListener('DOMContentLoaded', function() {
             z-index: 9999;
             min-width: 300px;
             animation: slideIn 0.3s ease-in-out;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         `;
         toast.innerHTML = `
+            <i class="fa fa-${type === 'success' ? 'check-circle' : type === 'info' ? 'info-circle' : 'exclamation-circle'}"></i>
             ${message}
             <button type="button" class="close ml-2" onclick="this.parentElement.remove()">
                 <span>&times;</span>
@@ -324,31 +429,25 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
         
         document.body.appendChild(toast);
-        
         setTimeout(() => {
-            if (toast.parentElement) {
-                toast.remove();
-            }
-        }, 4000);
+            if (toast.parentElement) toast.remove();
+        }, 5000);
     }
+    
+    //  showToast globally available
+    window.showToast = showToast;
+    
+    console.log('✅ Order management system initialized');
 });
 </script>
 
 <style>
 @keyframes slideIn {
-    from { 
-        transform: translateX(100%); 
-        opacity: 0; 
-    }
-    to { 
-        transform: translateX(0); 
-        opacity: 1; 
-    }
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
 }
-
 .toast-notification {
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
-</style>
-
+</style
 {% endblock %}
