@@ -71,5 +71,10 @@ urlpatterns = [
     path('update-order-status/<int:order_id>/', views.update_order_status, name='update_order_status'),
     path('mark-shipped/<int:order_id>/', views.mark_as_shipped, name='mark_as_shipped'),
     path('order-details/<int:order_id>/', views.order_details_modal, name='order_details_modal'),
+    path('mark-delivered/<int:order_id>/', views.mark_delivered, name='mark_delivered'),
 
+    # for admin approval
+    path('admin/approve-seller/<int:user_id>/', views.approve_seller, name='approve_seller'),
+    path('admin/reject-seller/<int:user_id>/', views.reject_seller, name='reject_seller'),
+    path('admin/bulk-approve-sellers/', views.bulk_approve_sellers, name='bulk_approve_sellers'),
 ]

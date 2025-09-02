@@ -28,7 +28,7 @@ from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.core.files.storage import default_storage
 import os
-
+from orders.views import send_order_shipped_email, send_order_delivered_email
 
 
 def send_registration_confirmation_email(user):
@@ -96,6 +96,249 @@ Need help? Contact us at {settings.DEFAULT_FROM_EMAIL}
         traceback.print_exc()
         return False
 
+def send_seller_application_email(user):
+    """Send confirmation email when user applies to become seller"""
+    print(f"🔄 SELLER APPLICATION EMAIL FUNCTION CALLED for {user.email}")
+    
+    try:
+        subject = '📋 Seller Application Received - ISLINGTON MARKETPLACE'
+        
+        message = f"""
+Dear {user.first_name or user.username},
+
+Thank you for applying to become a seller on ISLINGTON MARKETPLACE! 
+
+🎯 APPLICATION RECEIVED
+═══════════════════════════════════════
+Your seller application has been successfully submitted and is now under review.
+
+👤 APPLICANT DETAILS:
+═══════════════════════════════════════
+Name: {user.first_name} {user.last_name}
+Email: {user.email}
+Business Name: {user.profile.business_name}
+Application Date: {user.profile.seller_application_date.strftime('%B %d, %Y at %I:%M %p')}
+
+⏳ WHAT HAPPENS NEXT?
+═══════════════════════════════════════
+✓ Our team will review your application
+✓ We'll verify your business information
+✓ You'll receive an email once the review is complete
+✓ Typical review time: 1-3 business days
+
+📝 APPLICATION STATUS
+═══════════════════════════════════════
+Current Status: Under Review
+You can check your application status anytime from your dashboard.
+
+💼 AFTER APPROVAL
+═══════════════════════════════════════
+Once approved, you'll be able to:
+• Add products to sell
+• Manage your inventory
+• Receive and process orders
+• Access seller analytics
+
+Thank you for choosing ISLINGTON MARKETPLACE to grow your business!
+
+Best regards,
+The ISLINGTON MARKETPLACE Team
+
+---
+Questions? Contact us at {settings.DEFAULT_FROM_EMAIL}
+        """
+        
+        print("🔄 SENDING SELLER APPLICATION EMAIL NOW...")
+        
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
+        
+        print(f"✅ Seller application email sent to {user.email}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Seller application email sending failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def send_seller_approval_email(user):
+    """Send email when seller application is approved"""
+    print(f"🔄 SELLER APPROVAL EMAIL FUNCTION CALLED for {user.email}")
+    
+    try:
+        subject = '🎉 Seller Application Approved - ISLINGTON MARKETPLACE'
+        
+        message = f"""
+Dear {user.first_name or user.username},
+
+Congratulations! Your seller application has been APPROVED! 🎉
+
+✅ APPLICATION APPROVED
+═══════════════════════════════════════
+Welcome to the ISLINGTON MARKETPLACE seller community!
+
+👤 SELLER DETAILS:
+═══════════════════════════════════════
+Name: {user.first_name} {user.last_name}
+Email: {user.email}
+Business Name: {user.profile.business_name}
+Approval Date: {timezone.now().strftime('%B %d, %Y at %I:%M %p')}
+
+🚀 GET STARTED NOW
+═══════════════════════════════════════
+You can now start selling on our marketplace:
+
+✓ Add Your Products
+  - Go to Dashboard → Add Product
+  - Upload high-quality images
+  - Set competitive prices
+
+✓ Manage Your Store
+  - View your selling analytics
+  - Track order performance
+  - Update inventory levels
+
+✓ Process Orders
+  - Receive order notifications
+  - Manage shipping and delivery
+  - Communicate with customers
+
+✓ Grow Your Business
+  - Access seller insights
+  - Optimize your listings
+  - Build customer relationships
+
+🎯 NEXT STEPS
+═══════════════════════════════════════
+1. Login to your dashboard
+2. Add your first product
+3. Set up your payment QR code (if not done)
+4. Start receiving orders!
+
+💰 PAYMENT PROCESSING
+═══════════════════════════════════════
+Your QR payment method is ready:
+Method: {user.profile.qr_payment_method}
+Account: {user.profile.qr_payment_info}
+
+🛍️ START SELLING TODAY
+═══════════════════════════════════════
+Your seller account is now active and ready to receive orders!
+
+Best regards,
+The ISLINGTON MARKETPLACE Team
+
+---
+Need help? Contact us at {settings.DEFAULT_FROM_EMAIL}
+Seller Support: Available 24/7 from your dashboard
+        """
+        
+        print("🔄 SENDING SELLER APPROVAL EMAIL NOW...")
+        
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
+        
+        print(f"✅ Seller approval email sent to {user.email}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Seller approval email sending failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def send_seller_rejection_email(user, rejection_reason=""):
+    """Send email when seller application is rejected"""
+    print(f"🔄 SELLER REJECTION EMAIL FUNCTION CALLED for {user.email}")
+    
+    try:
+        subject = '📋 Seller Application Update - ISLINGTON MARKETPLACE'
+        
+        reason_text = ""
+        if rejection_reason:
+            reason_text = f"""
+📝 FEEDBACK:
+═══════════════════════════════════════
+{rejection_reason}
+"""
+
+        message = f"""
+Dear {user.first_name or user.username},
+
+Thank you for your interest in becoming a seller on ISLINGTON MARKETPLACE.
+
+📋 APPLICATION STATUS UPDATE
+═══════════════════════════════════════
+After careful review, we are unable to approve your seller application at this time.
+
+👤 APPLICATION DETAILS:
+═══════════════════════════════════════
+Name: {user.first_name} {user.last_name}
+Email: {user.email}
+Business Name: {user.profile.business_name}
+Review Date: {timezone.now().strftime('%B %d, %Y at %I:%M %p')}
+{reason_text}
+
+🔄 REAPPLICATION PROCESS
+═══════════════════════════════════════
+You're welcome to reapply in the future:
+
+✓ Review our seller guidelines
+✓ Ensure all requirements are met
+✓ Provide complete business information
+✓ Upload clear QR payment code
+
+📞 NEED ASSISTANCE?
+═══════════════════════════════════════
+If you have questions about this decision or need guidance for reapplying:
+• Contact our support team at {settings.DEFAULT_FROM_EMAIL}
+• Visit our seller FAQ section
+• Review our seller requirements
+
+🛍️ CONTINUE SHOPPING
+═══════════════════════════════════════
+While you work on your seller application, you can continue enjoying our marketplace as a customer.
+
+Thank you for your understanding.
+
+Best regards,
+The ISLINGTON MARKETPLACE Team
+
+---
+Questions? Contact us at {settings.DEFAULT_FROM_EMAIL}
+        """
+        
+        print("🔄 SENDING SELLER REJECTION EMAIL NOW...")
+        
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
+        
+        print(f"✅ Seller rejection email sent to {user.email}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Seller rejection email sending failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
 def login_view(request):
     if request.method == 'POST':
         username = request.POST.get('username')
@@ -134,15 +377,15 @@ def register_view(request):
         first_name = request.POST.get('first_name')
         last_name = request.POST.get('last_name')
         email = request.POST.get('email')
-        username = request.POST.get('username')  # Now separate from email
+        username = request.POST.get('username')  
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password')
-        phone = request.POST.get('phone')  # New field
+        phone = request.POST.get('phone') 
         city = request.POST.get('city')
         country = request.POST.get('country')
-        zip_code = request.POST.get('zip')  # New field
+        zip_code = request.POST.get('zip')
 
-        # Enhanced validation
+        #  validation
         if not username:
             return render(request, 'users/register.html', {'error': 'Username is required'})
             
@@ -173,12 +416,12 @@ def register_view(request):
             
             # Updating the profile with additional info
             profile = user.profile
-            profile.phone_number = phone  # New field
+            profile.phone_number = phone  
             profile.city = city
             profile.country = country
             profile.save()
             
-            # 🎉 CREATE WELCOME NOTIFICATION
+            #  WELCOME NOTIFICATION
             create_notification(
                 user=user,
                 notification_type='system',
@@ -397,7 +640,7 @@ def received_orders(request):
 
 @login_required
 def seller_received_orders(request):
-    """Display orders received by seller from customers - FOR SELLERS"""
+    """Display orders received by seller from customers - FIXED"""
     profile = request.user.profile
 
     # Gate: Only approved sellers can access
@@ -411,17 +654,36 @@ def seller_received_orders(request):
         ordered=True
     ).select_related('order', 'product', 'order__user').order_by('-order__created_at')
 
-    # Calculate status counts
-    pending_orders_count = seller_received_orders.filter(order__order_status='pending').count()
-    processing_orders_count = seller_received_orders.filter(order__order_status='processing').count()
-    shipped_orders_count = seller_received_orders.filter(order__order_status='shipped').count()
-    completed_orders_count = seller_received_orders.filter(order__order_status='completed').count()
+    # Calculate status counts - use actual database fields
+    all_orders = [item.order for item in seller_received_orders]
+    unique_orders = list(set(all_orders))  # Remove duplicates
+    
+    # Count by checking the actual status of unique orders
+    pending_orders_count = 0
+    processing_orders_count = 0
+    shipped_orders_count = 0
+    delivered_orders_count = 0
+    completed_orders_count = 0
+    
+    for order in unique_orders:
+        status = order.get_effective_status()
+        if status == 'pending':
+            pending_orders_count += 1
+        elif status == 'processing':
+            processing_orders_count += 1
+        elif status == 'shipped':
+            shipped_orders_count += 1
+        elif status == 'delivered':
+            delivered_orders_count += 1
+        elif status == 'completed':
+            completed_orders_count += 1
 
     context = {
         'received_orders': seller_received_orders,
         'pending_orders_count': pending_orders_count,
         'processing_orders_count': processing_orders_count,
         'shipped_orders_count': shipped_orders_count,
+        'delivered_orders_count': delivered_orders_count,
         'completed_orders_count': completed_orders_count,
         'today': timezone.now(),
     }
@@ -620,7 +882,13 @@ def become_seller(request):
             url='/dashboard/'
         )
 
-        messages.success(request, 'Seller application submitted with QR code! We will review and get back to you.')
+        # 🔥 SEND SELLER APPLICATION EMAIL
+        email_sent = send_seller_application_email(request.user)
+        if email_sent:
+            messages.success(request, 'Seller application submitted with QR code! Confirmation email sent to your inbox. We will review and get back to you.')
+        else:
+            messages.success(request, 'Seller application submitted with QR code! We will review and get back to you. (Email notification failed)')
+            
         return redirect('dashboard')
     
     return render(request, 'users/become_seller.html')
@@ -2338,7 +2606,7 @@ def customer_received_orders(request):
 # for seller to update order status
 @login_required
 def update_order_status(request, order_id):
-    """AJAX endpoint for sellers to update order status - FIXED"""
+    """AJAX endpoint for sellers to update order status - WITH EMAIL NOTIFICATIONS"""
     print(f"🔄 Order status update - Order ID: {order_id}, User: {request.user.username}")
     
     if request.method == 'POST':
@@ -2347,7 +2615,7 @@ def update_order_status(request, order_id):
             new_status = data.get('status')
             print(f"📝 Requested status: {new_status}")
             
-            # FIX: Use .distinct() to avoid duplicate results
+            # Get order where current user is the seller
             try:
                 order = Order.objects.filter(
                     id=order_id,
@@ -2377,15 +2645,15 @@ def update_order_status(request, order_id):
                     'message': 'Only approved sellers can update order status'
                 })
             
-            # FIX: Correct status transitions
+            # Status transitions
             valid_transitions = {
-                'pending': ['confirmed'],           # Can only go to confirmed
-                'confirmed': ['processing'],        # Can only go to processing  
-                'processing': ['shipped'],          # Can only go to shipped
-                'shipped': ['delivered'],           # Can only go to delivered
-                'delivered': ['completed'],         # Can only go to completed
-                'completed': [],                    # Final status
-                'cancelled': []                     # Final status
+                'pending': ['confirmed'],
+                'confirmed': ['processing'],
+                'processing': ['shipped'],
+                'shipped': ['delivered'],
+                'delivered': ['completed'],
+                'completed': [],
+                'cancelled': []
             }
             
             current_status = order.order_status
@@ -2410,6 +2678,8 @@ def update_order_status(request, order_id):
                 order.confirmed_at = timezone.now()
             elif new_status == 'processing':
                 order.processing_at = timezone.now()
+            elif new_status == 'shipped':
+                order.shipped_at = timezone.now()
             elif new_status == 'delivered':
                 order.delivered_date = timezone.now()
             elif new_status == 'completed':
@@ -2417,6 +2687,18 @@ def update_order_status(request, order_id):
             
             order.save()
             print(f"✅ Order updated: {old_status} → {new_status}")
+            
+            # 🔥 SEND EMAIL NOTIFICATIONS BASED ON STATUS
+            email_sent = False
+            try:
+                if new_status == 'shipped':
+                    email_sent = send_order_shipped_email(order)
+                    print(f"📧 Shipped email sent: {email_sent}")
+                elif new_status == 'delivered':
+                    email_sent = send_order_delivered_email(order)
+                    print(f"📧 Delivered email sent: {email_sent}")
+            except Exception as e:
+                print(f"❌ Email sending failed: {e}")
             
             # Create notification for customer
             try:
@@ -2440,9 +2722,16 @@ def update_order_status(request, order_id):
             except Exception as e:
                 print(f"⚠️ Notification failed: {e}")
             
+            # Create success message
+            message = f'Order status updated to {new_status.title()}'
+            if email_sent:
+                message += ' and customer notified via email'
+            elif new_status in ['shipped', 'delivered']:
+                message += ' (email notification failed)'
+            
             return JsonResponse({
                 'success': True,
-                'message': f'Order status updated to {new_status.title()}',
+                'message': message,
                 'new_status': new_status
             })
             
@@ -2459,7 +2748,7 @@ def update_order_status(request, order_id):
 
 @login_required
 def mark_as_shipped(request, order_id):
-    """AJAX endpoint for sellers to mark order as shipped with tracking"""
+    """AJAX endpoint for sellers to mark order as shipped with tracking - WITH EMAIL"""
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
@@ -2471,7 +2760,7 @@ def mark_as_shipped(request, order_id):
             order = get_object_or_404(Order, 
                 id=order_id, 
                 items__seller=request.user,
-                order_status='processing'  # Only processing orders can be shipped
+                order_status='processing'
             )
             
             # Verify seller permission
@@ -2488,13 +2777,22 @@ def mark_as_shipped(request, order_id):
                     'message': 'Tracking number is required'
                 })
             
-            # Update order with shipping info (using your existing fields)
+            # Update order with shipping info
             order.order_status = 'shipped'
             order.status = 'Shipped'
             order.tracking_number = tracking_number
             order.shipped_date = timezone.now() if not shipping_date else shipping_date
-            order.shipping_notes = notes  # This is the new field we added
+            order.shipping_notes = notes
+            order.shipped_at = timezone.now()
             order.save()
+            
+            # 🔥 SEND SHIPPING EMAIL
+            email_sent = False
+            try:
+                email_sent = send_order_shipped_email(order)
+                print(f"📧 Shipping email sent: {email_sent}")
+            except Exception as e:
+                print(f"❌ Shipping email failed: {e}")
             
             # Create notification for customer
             create_notification(
@@ -2507,9 +2805,16 @@ def mark_as_shipped(request, order_id):
                 url='/orders/my-orders/'
             )
             
+            # Create success message
+            message = f'Order marked as shipped with tracking: {tracking_number}'
+            if email_sent:
+                message += '. Customer notified via email.'
+            else:
+                message += '. Email notification failed.'
+            
             return JsonResponse({
                 'success': True,
-                'message': f'Order marked as shipped with tracking: {tracking_number}',
+                'message': message,
                 'tracking_number': tracking_number
             })
             
@@ -2543,14 +2848,144 @@ def order_details_modal(request, order_id):
             'order': order,
             'order_items': order_items,
         }
-        return render(request, 'users/order_details_modal.html', context)
+        return render(request, 'users/partials/order_details_modal.html', context)
         
     except Exception as e:
         print(f"Error loading order details: {e}")
+
         # Create a simple error response instead of trying to render non-existent template
+        return render(request, 'users/partials/order_details_error.html', {
+            'error': f'Error loading order details: {str(e)}'
+        })
+    
+@login_required
+@csrf_exempt  
+@require_POST
+def mark_delivered(request, order_id):
+    """Mark order as delivered with delivery details and send email - FIXED"""
+    try:
+        print(f"📦 Marking order {order_id} as delivered by {request.user.username}")
+        
+        # Get order using a more flexible approach
+        order = Order.objects.filter(
+            id=order_id,
+            items__seller=request.user
+        ).distinct().first()
+        
+        if not order:
+            print(f"❌ Order {order_id} not found for seller {request.user.username}")
+            return JsonResponse({
+                'success': False,
+                'message': 'Order not found or access denied'
+            })
+        
+        print(f"✅ Order found: #{order.id}")
+        print(f"📊 Current order status: {order.status}")
+        print(f"📊 Current order_status: {getattr(order, 'order_status', 'Not set')}")
+        print(f"📊 Current get_effective_status: {order.get_effective_status()}")
+        
+        # Check if order can be delivered
+        current_status = order.get_effective_status()
+        if current_status != 'shipped':
+            print(f"❌ Order status is '{current_status}', not 'shipped'")
+            return JsonResponse({
+                'success': False,
+                'message': f'Order must be shipped before it can be delivered. Current status: {current_status}'
+            })
+        
+        # Verify seller permission
+        profile = request.user.profile
+        if profile.seller_status != 'approved':
+            return JsonResponse({
+                'success': False,
+                'message': 'Only approved sellers can mark orders as delivered'
+            })
+        
+        data = json.loads(request.body)
+        delivery_date = data.get('delivery_date', '')
+        notes = data.get('notes', '').strip()
+        
+        print(f"📦 Delivery data: date={delivery_date}, notes={notes}")
+        
+        # Update order with delivery details
+        print("📦 Updating order status...")
+        
+        # Update BOTH status fields to ensure consistency
+        order.status = 'Delivered'
+        order.order_status = 'delivered'  # If this field exists
+        order.delivered_date = timezone.now()
+        order.delivery_notes = notes
+        order.updated_at = timezone.now()
+        
+        # Parse and set delivery date if provided
+        if delivery_date:
+            try:
+                from datetime import datetime
+                parsed_date = datetime.strptime(delivery_date, '%Y-%m-%d')
+                order.delivery_date = parsed_date.date()
+                print(f"📅 Delivery date set to: {order.delivery_date}")
+            except ValueError as e:
+                print(f"⚠️ Error parsing date: {e}")
+                order.delivery_date = timezone.now().date()
+        else:
+            order.delivery_date = timezone.now().date()
+        
+        # Save the order
+        order.save()
+        print(f"✅ Order saved with new status: {order.status}")
+        
+        # Verify the save worked
+        order.refresh_from_db()
+        print(f"🔄 After refresh - Status: {order.status}, Order_status: {getattr(order, 'order_status', 'Not set')}")
+        
+        # Send delivery confirmation email
+        email_sent = False
+        try:
+            email_sent = send_order_delivered_email(order)
+            print(f"📧 Delivery email sent: {email_sent}")
+        except Exception as e:
+            print(f"❌ Email sending failed: {e}")
+        
+        # Create notification for customer
+        try:
+            create_notification(
+                user=order.user,
+                notification_type='order',
+                title='Order Delivered! 📦',
+                message=f'Order #{order.order_number} has been delivered successfully!',
+                icon='fa-box-check',
+                color='success',
+                url='/orders/my-orders/'
+            )
+            print(f"✅ Notification created for {order.user.username}")
+        except Exception as e:
+            print(f"❌ Notification creation failed: {e}")
+        
+        message = f'Order marked as delivered successfully'
+        if email_sent:
+            message += '. Customer notified via email.'
+        else:
+            message += '. Email notification failed.'
+        
         return JsonResponse({
-            'error': True,
-            'message': 'Error loading order details'
+            'success': True,
+            'message': message,
+            'new_status': 'delivered'
+        })
+        
+    except json.JSONDecodeError as e:
+        print(f"❌ JSON decode error: {e}")
+        return JsonResponse({
+            'success': False,
+            'message': 'Invalid request data'
+        })
+    except Exception as e:
+        print(f"❌ Unexpected error: {e}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'message': f'Error marking as delivered: {str(e)}'
         })
 
 
@@ -2566,3 +3001,160 @@ def user_logout(request):
     messages.success(request, 'You have been logged out successfully.')
     
     return redirect('home')
+
+# ADMIN FUNCTIONS FOR SELLER MANAGEMENT
+
+@login_required
+def approve_seller(request, user_id):
+    """Admin function to approve seller application"""
+    # Add permission check
+    if not request.user.is_staff:
+        messages.error(request, 'Access denied.')
+        return redirect('dashboard')
+    
+    try:
+        user = get_object_or_404(User, id=user_id)
+        profile = user.profile
+        
+        if profile.seller_status != 'pending':
+            messages.error(request, f'User {user.username} is not pending seller approval.')
+            return redirect('admin:users_profile_changelist')
+        
+        # Approve the seller
+        profile.seller_status = 'approved'
+        profile.seller_approved_date = timezone.now()
+        profile.save()
+        
+        # Send approval email
+        email_sent = send_seller_approval_email(user)
+        
+        # Create notification for the user
+        create_notification(
+            user=user,
+            notification_type='system',
+            title='🎉 Seller Application Approved!',
+            message='Congratulations! Your seller application has been approved. You can now start selling!',
+            icon='fa-check-circle',
+            color='success',
+            url='/dashboard/'
+        )
+        
+        if email_sent:
+            messages.success(request, f'✅ Seller {user.username} approved successfully! Approval email sent.')
+        else:
+            messages.success(request, f'✅ Seller {user.username} approved successfully! (Email notification failed)')
+            
+    except Exception as e:
+        messages.error(request, f'Error approving seller: {str(e)}')
+    
+    return redirect('admin:users_profile_changelist')
+
+@login_required
+def reject_seller(request, user_id):
+    """Admin function to reject seller application"""
+    # Add permission check
+    if not request.user.is_staff:
+        messages.error(request, 'Access denied.')
+        return redirect('dashboard')
+    
+    try:
+        user = get_object_or_404(User, id=user_id)
+        profile = user.profile
+        
+        if profile.seller_status != 'pending':
+            messages.error(request, f'User {user.username} is not pending seller approval.')
+            return redirect('admin:users_profile_changelist')
+        
+        # Get rejection reason from POST data
+        rejection_reason = ""
+        if request.method == 'POST':
+            rejection_reason = request.POST.get('rejection_reason', '').strip()
+        
+        # Reject the seller
+        profile.seller_status = 'rejected'
+        profile.seller_rejected_date = timezone.now()
+        if rejection_reason:
+            profile.rejection_reason = rejection_reason
+        profile.save()
+        
+        # Send rejection email
+        email_sent = send_seller_rejection_email(user, rejection_reason)
+        
+        # Create notification for the user
+        create_notification(
+            user=user,
+            notification_type='system',
+            title='Seller Application Update',
+            message='Your seller application has been reviewed. Please check your email for details.',
+            icon='fa-info-circle',
+            color='info',
+            url='/dashboard/'
+        )
+        
+        if email_sent:
+            messages.success(request, f'❌ Seller {user.username} rejected. Rejection email sent.')
+        else:
+            messages.success(request, f'❌ Seller {user.username} rejected. (Email notification failed)')
+            
+    except Exception as e:
+        messages.error(request, f'Error rejecting seller: {str(e)}')
+    
+    return redirect('admin:users_profile_changelist')
+
+@login_required
+def bulk_approve_sellers(request):
+    """Admin function to bulk approve seller applications"""
+    if not request.user.is_staff:
+        messages.error(request, 'Access denied.')
+        return redirect('dashboard')
+    
+    if request.method == 'POST':
+        user_ids = request.POST.getlist('user_ids')
+        approved_count = 0
+        email_success_count = 0
+        
+        for user_id in user_ids:
+            try:
+                user = User.objects.get(id=user_id)
+                profile = user.profile
+                
+                if profile.seller_status == 'pending':
+                    profile.seller_status = 'approved'
+                    profile.seller_approved_date = timezone.now()
+                    profile.save()
+                    approved_count += 1
+                    
+                    # Send approval email
+                    if send_seller_approval_email(user):
+                        email_success_count += 1
+                    
+                    # Create notification
+                    create_notification(
+                        user=user,
+                        notification_type='system',
+                        title='🎉 Seller Application Approved!',
+                        message='Congratulations! Your seller application has been approved. You can now start selling!',
+                        icon='fa-check-circle',
+                        color='success',
+                        url='/dashboard/'
+                    )
+                    
+            except User.DoesNotExist:
+                continue
+        
+        messages.success(request, f'✅ Approved {approved_count} sellers. {email_success_count} email notifications sent.')
+    
+    return redirect('admin:users_profile_changelist')
+
+def contact_view(request):
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        email = request.POST.get('email')
+        subject = request.POST.get('subject')
+        message = request.POST.get('message')
+        phone = request.POST.get('phone')
+        
+        messages.success(request, 'Thank you for your message! We\'ll get back to you soon.')
+        return redirect('contact')
+    
+    return render(request, 'marketplace/contact.html')

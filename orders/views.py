@@ -302,9 +302,232 @@ def revert_stock_after_rejection(order):
         import traceback
         traceback.print_exc()
         return False
+    
+def send_order_shipped_email(order):
+    """Send email when order is shipped"""
+    print("🚚 SHIPPING EMAIL FUNCTION CALLED!")
+    print(f"🚚 Order ID: {order.id}")
+    print(f"🚚 User Email: {order.user.email}")
+    
+    try:
+        order_items = order.items.all().prefetch_related('variations')
+        
+        subject = f'Your Order #{order.order_number} Has Been Shipped! 📦'
+        
+        # Get shipping details if available
+        tracking_number = getattr(order, 'tracking_number', 'Not provided')
+        shipping_date = getattr(order, 'shipping_date', order.updated_at)
+        shipping_notes = getattr(order, 'shipping_notes', '')
+        
+        message = f"""
+Dear {order.user.first_name or order.user.username},
+
+🎉 Great news! Your order has been shipped!
+
+📋 ORDER DETAILS:
+═══════════════════════════════════════
+Order ID: #{order.id}
+Order Number: {order.order_number}
+Order Date: {order.created_at.strftime('%B %d, %Y at %I:%M %p')}
+Payment Method: {order.payment_method}
+Order Status: 🚚 Shipped
+
+🚚 SHIPPING INFORMATION:
+═══════════════════════════════════════
+Shipping Date: {shipping_date.strftime('%B %d, %Y at %I:%M %p') if shipping_date else 'Today'}
+Tracking Number: {tracking_number}
+Estimated Delivery: 3-5 business days
+"""
+
+        if shipping_notes:
+            message += f"Shipping Notes: {shipping_notes}\n"
+
+        message += """
+📦 ITEMS SHIPPED:
+═══════════════════════════════════════"""
+
+        for item in order_items:
+            variations_text = ""
+            if item.variations.exists():
+                variations_list = [f"{v.variation_type.display_name}: {v.variation_option.display_value}" 
+                                 for v in item.variations.all()]
+                variations_text = f" ({', '.join(variations_list)})"
+            
+            message += f"\n• {item.product.name}{variations_text}"
+            message += f"\n  Quantity: {item.quantity} × Rs. {item.price/item.quantity:.2f} = Rs. {item.price:.2f}\n"
+
+        message += f"""
+💰 ORDER TOTAL: Rs. {order.grand_total:.2f}
+
+📍 DELIVERY ADDRESS:
+═══════════════════════════════════════
+{order.address}
+{order.city}, {order.country}
+{getattr(order, 'zip', '') or ''}
+
+📱 TRACK YOUR ORDER:
+═══════════════════════════════════════"""
+
+        if tracking_number and tracking_number != 'Not provided':
+            message += f"""
+Your tracking number: {tracking_number}
+You can track your package using this number with the shipping company.
+"""
+        else:
+            message += """
+Tracking number will be provided by the seller soon.
+You can check your order status anytime from your account.
+"""
+
+        message += f"""
+🔔 WHAT'S NEXT?
+═══════════════════════════════════════
+✓ Your package is on its way!
+✓ Expected delivery in 3-5 business days
+✓ You'll receive a delivery confirmation email
+✓ Contact seller if you have any questions
+
+📞 NEED HELP?
+═══════════════════════════════════════
+If you have questions about your shipment:
+• Order ID: #{order.id}
+• Tracking: {tracking_number}
+• Contact our support team
+
+Thank you for shopping with us!
+
+Best regards,
+Islington Marketplace Team
+        """
+        
+        print("🚚 SENDING SHIPPING EMAIL NOW...")
+        
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[order.user.email],
+            fail_silently=False,
+        )
+        
+        print(f"✅ Order shipped email sent to {order.user.email}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Shipping email sending failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def send_order_delivered_email(order):
+    """Send email when order is delivered"""
+    print("📦 DELIVERY EMAIL FUNCTION CALLED!")
+    print(f"📦 Order ID: {order.id}")
+    print(f"📦 User Email: {order.user.email}")
+    
+    try:
+        order_items = order.items.all().prefetch_related('variations')
+        
+        subject = f'Order #{order.order_number} Delivered Successfully! ✅'
+        
+        # Get delivery details if available
+        delivery_date = getattr(order, 'delivery_date', order.updated_at)
+        delivery_notes = getattr(order, 'delivery_notes', '')
+        tracking_number = getattr(order, 'tracking_number', 'N/A')
+        
+        message = f"""
+Dear {order.user.first_name or order.user.username},
+
+🎉 Congratulations! Your order has been successfully delivered!
+
+📋 ORDER DETAILS:
+═══════════════════════════════════════
+Order ID: #{order.id}
+Order Number: {order.order_number}
+Order Date: {order.created_at.strftime('%B %d, %Y at %I:%M %p')}
+Payment Method: {order.payment_method}
+Order Status: ✅ Delivered
+
+📦 DELIVERY INFORMATION:
+═══════════════════════════════════════
+Delivery Date: {delivery_date.strftime('%B %d, %Y at %I:%M %p') if delivery_date else 'Today'}
+Tracking Number: {tracking_number}
+"""
+
+        if delivery_notes:
+            message += f"Delivery Notes: {delivery_notes}\n"
+
+        message += """
+📋 DELIVERED ITEMS:
+═══════════════════════════════════════"""
+
+        for item in order_items:
+            variations_text = ""
+            if item.variations.exists():
+                variations_list = [f"{v.variation_type.display_name}: {v.variation_option.display_value}" 
+                                 for v in item.variations.all()]
+                variations_text = f" ({', '.join(variations_list)})"
+            
+            message += f"\n• {item.product.name}{variations_text}"
+            message += f"\n  Quantity: {item.quantity} × Rs. {item.price/item.quantity:.2f} = Rs. {item.price:.2f}\n"
+
+        message += f"""
+💰 ORDER TOTAL: Rs. {order.grand_total:.2f}
+
+📍 DELIVERED TO:
+═══════════════════════════════════════
+{order.address}
+{order.city}, {order.country}
+{getattr(order, 'zip', '') or ''}
+
+😊 HOW WAS YOUR EXPERIENCE?
+═══════════════════════════════════════
+We hope you love your purchase! If you're satisfied with your order:
+• Consider leaving a review for the products
+• Rate your shopping experience
+• Share with friends and family
+
+❓ ISSUES WITH YOUR ORDER?
+═══════════════════════════════════════
+If there are any issues with your delivered items:
+• Contact the seller through our messaging system
+• Report problems within 7 days of delivery
+• Our support team is here to help
+
+📞 NEED SUPPORT?
+═══════════════════════════════════════
+Order ID: #{order.id}
+Delivery Date: {delivery_date.strftime('%B %d, %Y') if delivery_date else 'Today'}
+Support Email: {settings.DEFAULT_FROM_EMAIL}
+
+Thank you for choosing Islington Marketplace!
+We appreciate your business and hope to serve you again soon.
+
+Best regards,
+Islington Marketplace Team
+        """
+        
+        print("📦 SENDING DELIVERY EMAIL NOW...")
+        
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[order.user.email],
+            fail_silently=False,
+        )
+        
+        print(f"✅ Order delivered email sent to {order.user.email}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Delivery email sending failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
 
 def checkout(request):
-    """Enhanced checkout with guest handling - FIXED VERSION"""
+    """checkout with guest handling """
     if not request.user.is_authenticated:
         # Preserve cart before redirecting to login
         try:
@@ -856,6 +1079,7 @@ def complete_order(order):
     for item in order.items.all():
         # Refresh analytics for each product
         item.product.get_analytics_data()
+
 
 # Fallback functions for old URLs
 def esewa_success(request):

@@ -3,6 +3,7 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from . import views
+from users import views as user_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -13,12 +14,13 @@ urlpatterns = [
     path('blog/', include('blog.urls')),
     path('cart/', include('cart.urls')),
     path('orders/', include('orders.urls')),
+
     
     # Users URLs at root level for clean URLs
     path('users/', include('users.urls')),
     
     # Contact pages
-    path('contact/', views.contact, name='contact'),
+    path('contact/', user_views.contact_view, name='contact'),
     path('about/', views.about, name='about'),
     
 ]

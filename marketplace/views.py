@@ -5,6 +5,7 @@ from blog.models import Blog
 from pages.models import Page
 from cart.models import Cart
 
+
 def home(request):
     products = Product.objects.filter(
         status=True,
@@ -28,9 +29,9 @@ def home(request):
         # 'pages':pages,
         # 'banners':banners,
 
-def contact(request):
-    return render(request, 'contact.html')
+    
+
 
 def about(request):
-    return render(request, 'about.html')  
+    return render(request, 'marketplace/about.html')  
 

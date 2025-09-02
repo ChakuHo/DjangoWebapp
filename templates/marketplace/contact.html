@@ -1,0 +1,573 @@
+{% extends 'master/base.html' %}
+{% load static %}
+
+{% block title %}Contact Us - {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="contact-page">
+    <!-- Page Header -->
+    <div class="contact-header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-6">
+                    <h1 class="page-title">Get in Touch</h1>
+                    <p class="page-subtitle">We'd love to hear from you. Drop us a line and we'll get back to you as soon as possible.</p>
+                </div>
+                <div class="col-lg-6">
+                    <div class="contact-illustration">
+                        <i class="fas fa-comments"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contact Content -->
+    <div class="contact-content">
+        <div class="container">
+            <div class="row">
+                <!-- Contact Form -->
+                <div class="col-lg-7">
+                    <div class="contact-form-section">
+                        <h3>Send us a Message</h3>
+                        <p>Fill out the form below and we'll respond within 24 hours.</p>
+                        
+                        <form class="contact-form" id="contactForm" method="post">
+                            {% csrf_token %}
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="name">Full Name</label>
+                                        <input type="text" id="name" name="name" class="form-control" required>
+                                        <i class="fas fa-user form-icon"></i>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="email">Email Address</label>
+                                        <input type="email" id="email" name="email" class="form-control" required>
+                                        <i class="fas fa-envelope form-icon"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="phone">Phone Number</label>
+                                        <input type="tel" id="phone" name="phone" class="form-control">
+                                        <i class="fas fa-phone form-icon"></i>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="subject">Subject</label>
+                                        <select id="subject" name="subject" class="form-control" required>
+                                            <option value="">Select a subject</option>
+                                            <option value="general">General Inquiry</option>
+                                            <option value="support">Customer Support</option>
+                                            <option value="seller">Seller Support</option>
+                                            <option value="technical">Technical Issue</option>
+                                            <option value="partnership">Partnership</option>
+                                            <option value="other">Other</option>
+                                        </select>
+                                        <i class="fas fa-tag form-icon"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="message">Message</label>
+                                <textarea id="message" name="message" class="form-control" rows="6" placeholder="Tell us how we can help you..." required></textarea>
+                                <i class="fas fa-comment-dots form-icon"></i>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary submit-btn">
+                                <span class="btn-text">Send Message</span>
+                                <i class="fas fa-paper-plane btn-icon"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Contact Info -->
+                <div class="col-lg-5">
+                    <div class="contact-info-section">
+                        <h3>Contact Information</h3>
+                        <p>Get in touch through any of these channels. We're here to help!</p>
+                        
+                        <div class="contact-items">
+                            <div class="contact-item">
+                                <div class="contact-icon">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                </div>
+                                <div class="contact-details">
+                                    <h5>Address</h5>
+                                    <p>
+                                        {% if site_settings and site_settings.address %}
+                                            {{ site_settings.address }}
+                                        {% else %}
+                                            Islington College<br>
+                                            Kamalpokhari, Kathmandu<br>
+                                            Nepal
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="contact-item">
+                                <div class="contact-icon">
+                                    <i class="fas fa-phone-alt"></i>
+                                </div>
+                                <div class="contact-details">
+                                    <h5>Phone</h5>
+                                    <p>
+                                        {% if site_settings and site_settings.phone %}
+                                            <a href="tel:{{ site_settings.phone }}">{{ site_settings.phone }}</a>
+                                        {% else %}
+                                            <a href="tel:+977-1-4444555">+977-1-4444555</a>
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="contact-item">
+                                <div class="contact-icon">
+                                    <i class="fas fa-envelope"></i>
+                                </div>
+                                <div class="contact-details">
+                                    <h5>Email</h5>
+                                    <p>
+                                        {% if site_settings and site_settings.email %}
+                                            <a href="mailto:{{ site_settings.email }}">{{ site_settings.email }}</a>
+                                        {% else %}
+                                            <a href="mailto:support@marketplace.com">support@marketplace.com</a>
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="contact-item">
+                                <div class="contact-icon">
+                                    <i class="fas fa-clock"></i>
+                                </div>
+                                <div class="contact-details">
+                                    <h5>Business Hours</h5>
+                                    <p>
+                                        Monday - Friday: 9:00 AM - 6:00 PM<br>
+                                        Saturday: 10:00 AM - 4:00 PM<br>
+                                        Sunday: Closed
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Links -->
+                        <div class="quick-links">
+                            <h5>Quick Support</h5>
+                            <div class="support-buttons">
+                                {% if user.is_authenticated %}
+                                <a href="{% url 'dashboard' %}" class="support-btn">
+                                    <i class="fas fa-user-circle"></i>
+                                    My Account
+                                </a>
+                                {% endif %}
+                                <a href="#" class="support-btn" onclick="openFAQ()">
+                                    <i class="fas fa-question-circle"></i>
+                                    FAQ
+                                </a>
+                                <a href="#" class="support-btn" onclick="openLiveChat()">
+                                    <i class="fas fa-comments"></i>
+                                    Live Chat
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Map Section (Optional) -->
+    <div class="map-section">
+        <div class="container">
+            <h3 class="text-center mb-4">Find Us Here</h3>
+            <div class="map-container">
+                <iframe 
+                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1557.0100111336753!2d85.32492166212126!3d27.708884953915007!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39eb1908434cb3c5%3A0x1fdf1a6d41d2512d!2sIslington%20College!5e0!3m2!1sen!2snp!4v1756790464471!5m2!1sen!2snp" 
+                    width="100%" 
+                    height="400" 
+                    style="border:0; border-radius: 10px;" 
+                    allowfullscreen="" 
+                    loading="lazy">
+                </iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Contact Page Styles */
+.contact-page {
+    padding-top: 20px;
+}
+
+.contact-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 60px 0;
+}
+
+.page-title {
+    font-size: 48px;
+    font-weight: 700;
+    margin-bottom: 15px;
+}
+
+.page-subtitle {
+    font-size: 18px;
+    opacity: 0.9;
+    margin-bottom: 0;
+}
+
+.contact-illustration {
+    text-align: center;
+}
+
+.contact-illustration i {
+    font-size: 120px;
+    opacity: 0.3;
+}
+
+.contact-content {
+    padding: 80px 0;
+    background: #f8f9fa;
+}
+
+.contact-form-section {
+    background: white;
+    padding: 40px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+.contact-form-section h3 {
+    color: #2c3e50;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.contact-form-section p {
+    color: #7f8c8d;
+    margin-bottom: 30px;
+}
+
+.form-group {
+    position: relative;
+    margin-bottom: 25px;
+}
+
+.form-group label {
+    color: #2c3e50;
+    font-weight: 500;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.form-control {
+    padding: 12px 15px 12px 45px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    outline: none;
+}
+
+.form-icon {
+    position: absolute;
+    left: 15px;
+    top: 45px;
+    color: #95a5a6;
+    font-size: 16px;
+}
+
+.submit-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    padding: 15px 40px;
+    border-radius: 8px;
+    color: white;
+    font-weight: 600;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.submit-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.contact-info-section {
+    padding: 40px 30px;
+}
+
+.contact-info-section h3 {
+    color: #2c3e50;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.contact-info-section > p {
+    color: #7f8c8d;
+    margin-bottom: 40px;
+}
+
+.contact-items {
+    margin-bottom: 40px;
+}
+
+.contact-item {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    transition: all 0.3s ease;
+}
+
+.contact-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}
+
+.contact-icon {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 20px;
+    flex-shrink: 0;
+}
+
+.contact-icon i {
+    color: white;
+    font-size: 20px;
+}
+
+.contact-details h5 {
+    color: #2c3e50;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.contact-details p {
+    color: #7f8c8d;
+    margin: 0;
+    line-height: 1.6;
+}
+
+.contact-details a {
+    color: #667eea;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.contact-details a:hover {
+    color: #764ba2;
+    text-decoration: none;
+}
+
+.quick-links h5 {
+    color: #2c3e50;
+    margin-bottom: 20px;
+    font-weight: 600;
+}
+
+.support-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.support-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px;
+    background: white;
+    color: #2c3e50;
+    text-decoration: none;
+    border-radius: 8px;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.support-btn:hover {
+    background: #667eea;
+    color: white;
+    text-decoration: none;
+    border-color: #667eea;
+    transform: translateX(5px);
+}
+
+.map-section {
+    padding: 60px 0;
+    background: white;
+}
+
+.map-section h3 {
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+.map-container {
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+/* Loading state */
+.submit-btn.loading .btn-text {
+    opacity: 0;
+}
+
+.submit-btn.loading .btn-icon {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Success state */
+.submit-btn.success {
+    background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .page-title {
+        font-size: 36px;
+    }
+    
+    .contact-illustration {
+        margin-top: 30px;
+    }
+    
+    .contact-illustration i {
+        font-size: 80px;
+    }
+    
+    .contact-form-section {
+        padding: 30px 20px;
+        margin-bottom: 30px;
+    }
+    
+    .contact-info-section {
+        padding: 30px 20px;
+    }
+    
+    .contact-item {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .contact-icon {
+        margin-right: 0;
+        margin-bottom: 15px;
+    }
+    
+    .support-buttons {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const contactForm = document.getElementById('contactForm');
+    const submitBtn = contactForm.querySelector('.submit-btn');
+    
+    contactForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Validation
+        const name = document.getElementById('name').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const subject = document.getElementById('subject').value;
+        const message = document.getElementById('message').value.trim();
+        
+        if (!name || !email || !subject || !message) {
+            alert('Please fill in all required fields.');
+            return;
+        }
+        
+        // Email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            alert('Please enter a valid email address.');
+            return;
+        }
+        
+        // Loading state
+        submitBtn.classList.add('loading');
+        submitBtn.disabled = true;
+        
+        // Simulate form submission (replace with actual submission)
+        setTimeout(() => {
+            submitBtn.classList.remove('loading');
+            submitBtn.classList.add('success');
+            submitBtn.innerHTML = '<span class="btn-text">Message Sent!</span><i class="fas fa-check btn-icon"></i>';
+            
+            // Reset form
+            setTimeout(() => {
+                contactForm.reset();
+                submitBtn.classList.remove('success');
+                submitBtn.innerHTML = '<span class="btn-text">Send Message</span><i class="fas fa-paper-plane btn-icon"></i>';
+                submitBtn.disabled = false;
+            }, 3000);
+            
+        }, 2000);
+    });
+    
+    // Form field animations
+    const formControls = document.querySelectorAll('.form-control');
+    formControls.forEach(control => {
+        control.addEventListener('focus', function() {
+            this.parentElement.classList.add('focused');
+        });
+        
+        control.addEventListener('blur', function() {
+            if (!this.value) {
+                this.parentElement.classList.remove('focused');
+            }
+        });
+    });
+});
+
+function openFAQ() {
+    alert('FAQ section coming soon!');
+}
+
+function openLiveChat() {
+    alert('Live chat feature coming soon!');
+}
+</script>
+{% endblock %}

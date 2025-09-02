@@ -73,6 +73,10 @@ class Order(models.Model):
     qr_payment_verified_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='verified_payments')
     qr_payment_verified_at = models.DateTimeField(null=True, blank=True)
 
+    # Delivery fields
+    delivered_date = models.DateTimeField(blank=True, null=True)
+    delivery_date = models.DateField(blank=True, null=True)  # User-specified delivery date
+    delivery_notes = models.TextField(blank=True)
 
     def get_effective_status(self):
         """Return the current effective status of the order"""

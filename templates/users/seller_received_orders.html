@@ -1,4 +1,6 @@
-{% extends "master/base.html" %} {% load static %} {% csrf_token %} {% block content %}
+{% extends "master/base.html" %} 
+{% load static %} 
+{% block content %}
 
 <section class="section-conten padding-y bg">
   <div class="container">
@@ -18,21 +20,29 @@
           </div>
           <div class="card-body">
             <div class="row text-center">
-              <div class="col-md-3">
+              <div class="col-md-2">
                 <h4 class="text-info">{{ pending_orders_count }}</h4>
                 <small class="text-muted">Pending</small>
               </div>
-              <div class="col-md-3">
+              <div class="col-md-2">
                 <h4 class="text-warning">{{ processing_orders_count }}</h4>
                 <small class="text-muted">Processing</small>
               </div>
-              <div class="col-md-3">
+              <div class="col-md-2">
                 <h4 class="text-primary">{{ shipped_orders_count }}</h4>
                 <small class="text-muted">Shipped</small>
               </div>
-              <div class="col-md-3">
+              <div class="col-md-2">
+                <h4 class="text-success">{{ delivered_orders_count }}</h4>
+                <small class="text-muted">Delivered</small>
+              </div>
+              <div class="col-md-2">
                 <h4 class="text-success">{{ completed_orders_count }}</h4>
                 <small class="text-muted">Completed</small>
+              </div>
+              <div class="col-md-2">
+                <h4 class="text-secondary">{{ received_orders.count }}</h4>
+                <small class="text-muted">All Orders</small>
               </div>
             </div>
           </div>
@@ -43,23 +53,33 @@
           <div class="card-header">
             <ul class="nav nav-tabs card-header-tabs" id="orderTabs" role="tablist">
               <li class="nav-item">
-                <a class="nav-link active" id="all-tab" data-toggle="tab" href="#all" role="tab">
+                <a class="nav-link active" id="all-tab" data-toggle="tab" href="#all" role="tab" data-status="all">
                   All Orders <span class="badge badge-secondary">{{ received_orders.count }}</span>
                 </a>
               </li>
               <li class="nav-item">
-                <a class="nav-link" id="pending-tab" data-toggle="tab" href="#pending" role="tab">
+                <a class="nav-link" id="pending-tab" data-toggle="tab" href="#pending" role="tab" data-status="pending">
                   Pending <span class="badge badge-info">{{ pending_orders_count }}</span>
                 </a>
               </li>
               <li class="nav-item">
-                <a class="nav-link" id="processing-tab" data-toggle="tab" href="#processing" role="tab">
+                <a class="nav-link" id="processing-tab" data-toggle="tab" href="#processing" role="tab" data-status="processing">
                   Processing <span class="badge badge-warning">{{ processing_orders_count }}</span>
                 </a>
               </li>
               <li class="nav-item">
-                <a class="nav-link" id="shipped-tab" data-toggle="tab" href="#shipped" role="tab">
+                <a class="nav-link" id="shipped-tab" data-toggle="tab" href="#shipped" role="tab" data-status="shipped">
                   Shipped <span class="badge badge-primary">{{ shipped_orders_count }}</span>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" id="delivered-tab" data-toggle="tab" href="#delivered" role="tab" data-status="delivered">
+                  Delivered <span class="badge badge-success">{{ delivered_orders_count }}</span>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" id="completed-tab" data-toggle="tab" href="#completed" role="tab" data-status="completed">
+                  Completed <span class="badge badge-success">{{ completed_orders_count }}</span>
                 </a>
               </li>
             </ul>
@@ -67,141 +87,210 @@
         </div>
 
         <!-- Orders List -->
-        {% if received_orders %}
-          {% for order_item in received_orders %}
-          <div class="card mb-3 order-item" data-status="{{ order_item.order.get_effective_status }}">
-            <div class="card-body">
-              <div class="row align-items-center">
-                <!-- Product Image -->
-                <div class="col-md-2">
-                  {% if order_item.product.image %}
-                    <img src="{{ order_item.product.image.url }}" 
-                         class="img-thumbnail" 
-                         style="width: 80px; height: 80px; object-fit: cover;">
-                  {% else %}
-                    <img src="https://via.placeholder.com/80x80?text=No+Image" 
-                         class="img-thumbnail">
-                  {% endif %}
-                </div>
-                
-                <!-- Product & Order Info -->
-                <div class="col-md-4">
-                  <h6 class="mb-1">{{ order_item.product.name }}</h6>
-                  <p class="text-muted small mb-1">
-                    Order #{{ order_item.order.id }} by {{ order_item.order.user.get_full_name|default:order_item.order.user.username }}
-                  </p>
-                  <p class="mb-1">
-                    <strong>Quantity:</strong> {{ order_item.quantity }} × Rs. {{ order_item.price }}
-                  </p>
-                  <p class="text-primary mb-0">
-                    <strong>Total: Rs. {% widthratio order_item.quantity 1 order_item.price %}</strong>
-                  </p>
-                </div>
-                
-                <!-- Customer Info -->
-                <div class="col-md-3">
-                  <small class="text-muted">Customer</small><br>
-                  <strong>{{ order_item.order.user.get_full_name|default:order_item.order.user.username }}</strong><br>
-                  <small class="text-muted">{{ order_item.order.user.email }}</small><br>
-                  <small class="text-muted">{{ order_item.order.city }}, {{ order_item.order.country }}</small><br>
-                  <small class="text-info">{{ order_item.order.created_at|date:"M d, Y" }}</small>
-                </div>
-                
-                <!-- Status & Actions -->
-                <div class="col-md-3">
-                  <div class="text-center">
-                    <!-- Order Status -->
-                    {% with status=order_item.order.get_effective_status %}
-                      {% if status == 'pending' %}
-                        <span class="badge badge-info mb-2">⏳ Pending</span>
-                      {% elif status == 'confirmed' %}
-                        <span class="badge badge-primary mb-2">✅ Confirmed</span>
-                      {% elif status == 'processing' %}
-                        <span class="badge badge-warning mb-2">🔄 Processing</span>
-                      {% elif status == 'shipped' %}
-                        <span class="badge badge-primary mb-2">🚚 Shipped</span>
-                      {% elif status == 'delivered' %}
-                        <span class="badge badge-success mb-2">📦 Delivered</span>
-                      {% elif status == 'completed' %}
-                        <span class="badge badge-success mb-2">✅ Completed</span>
-                      {% elif status == 'cancelled' %}
-                        <span class="badge badge-danger mb-2">❌ Cancelled</span>
-                      {% else %}
-                        <span class="badge badge-secondary mb-2">{{ status|title }}</span>
-                      {% endif %}
-                    {% endwith %}
-                    
-                    <!-- Action Buttons -->
-                    <div class="btn-group-vertical btn-group-sm w-100">
-                      <button class="btn btn-outline-primary btn-sm mb-1" 
-                              onclick="viewOrderDetails({{ order_item.order.id }})">
-                        <i class="fa fa-eye"></i> View Details
-                      </button>
+        <div id="orders-container">
+          {% if received_orders %}
+            {% for order_item in received_orders %}
+            <div class="card mb-3 order-item" data-status="{{ order_item.order.get_effective_status }}" data-order-id="{{ order_item.order.id }}">
+              <div class="card-body">
+                <div class="row align-items-center">
+                  <!-- Product Image -->
+                  <div class="col-md-2">
+                    {% if order_item.product.image %}
+                      <img src="{{ order_item.product.image.url }}" 
+                           class="img-thumbnail" 
+                           style="width: 80px; height: 80px; object-fit: cover;">
+                    {% else %}
+                      <img src="https://via.placeholder.com/80x80?text=No+Image" 
+                           class="img-thumbnail">
+                    {% endif %}
+                  </div>
+                  
+                  <!-- Product & Order Info -->
+                  <div class="col-md-4">
+                    <h6 class="mb-1">{{ order_item.product.name }}</h6>
+                    <p class="text-muted small mb-1">
+                      Order #{{ order_item.order.id }} by {{ order_item.order.user.get_full_name|default:order_item.order.user.username }}
+                    </p>
+                    <p class="mb-1">
+                      <strong>Quantity:</strong> {{ order_item.quantity }} × Rs. {{ order_item.price }}
+                    </p>
+                    <p class="text-primary mb-0">
+                      <strong>Total: Rs. {% widthratio order_item.quantity 1 order_item.price %}</strong>
+                    </p>
+                  </div>
+                  
+                  <!-- Customer Info -->
+                  <div class="col-md-3">
+                    <small class="text-muted">Customer</small><br>
+                    <strong>{{ order_item.order.user.get_full_name|default:order_item.order.user.username }}</strong><br>
+                    <small class="text-muted">{{ order_item.order.user.email }}</small><br>
+                    <small class="text-muted">{{ order_item.order.city }}, {{ order_item.order.country }}</small><br>
+                    <small class="text-info">{{ order_item.order.created_at|date:"M d, Y" }}</small>
+                  </div>
+                  
+                  <!-- Status & Actions -->
+                  <div class="col-md-3">
+                    <div class="text-center">
+                      <!-- Order Status -->
+                      {% with status=order_item.order.get_effective_status %}
+                        <span class="status-badge badge mb-2 
+                          {% if status == 'pending' %}badge-info
+                          {% elif status == 'confirmed' %}badge-primary
+                          {% elif status == 'processing' %}badge-warning
+                          {% elif status == 'shipped' %}badge-primary
+                          {% elif status == 'delivered' %}badge-success
+                          {% elif status == 'completed' %}badge-success
+                          {% elif status == 'cancelled' %}badge-danger
+                          {% else %}badge-secondary
+                          {% endif %}">
+                          {% if status == 'pending' %}⏳ Pending
+                          {% elif status == 'confirmed' %}✅ Confirmed
+                          {% elif status == 'processing' %}🔄 Processing
+                          {% elif status == 'shipped' %}🚚 Shipped
+                          {% elif status == 'delivered' %}📦 Delivered
+                          {% elif status == 'completed' %}✅ Completed
+                          {% elif status == 'cancelled' %}❌ Cancelled
+                          {% else %}{{ status|title }}
+                          {% endif %}
+                        </span>
+                      {% endwith %}
                       
-                      {% if order_item.order.get_effective_status == 'pending' %}
-                        <button class="btn btn-success btn-sm mb-1" 
-                                onclick="updateOrderStatus({{ order_item.order.id }}, 'confirmed')">
-                          <i class="fa fa-check"></i> Confirm
+                      <!-- Action Buttons -->
+                      <div class="btn-group-vertical btn-group-sm w-100 action-buttons">
+                        <button class="btn btn-outline-primary btn-sm mb-1" 
+                                onclick="viewOrderDetails({{ order_item.order.id }})">
+                          <i class="fa fa-eye"></i> View Details
                         </button>
-                      {% elif order_item.order.get_effective_status == 'confirmed' %}
-                        <button class="btn btn-warning btn-sm mb-1" 
-                                onclick="updateOrderStatus({{ order_item.order.id }}, 'processing')">
-                          <i class="fa fa-cog"></i> Process
+                        
+                        {% if order_item.order.get_effective_status == 'pending' %}
+                          <button class="btn btn-success btn-sm mb-1" 
+                                  onclick="updateOrderStatus({{ order_item.order.id }}, 'confirmed')">
+                            <i class="fa fa-check"></i> Confirm
+                          </button>
+                        {% elif order_item.order.get_effective_status == 'confirmed' %}
+                          <button class="btn btn-warning btn-sm mb-1" 
+                                  onclick="updateOrderStatus({{ order_item.order.id }}, 'processing')">
+                            <i class="fa fa-cog"></i> Process
+                          </button>
+                        {% elif order_item.order.get_effective_status == 'processing' %}
+                          <button class="btn btn-primary btn-sm mb-1" 
+                                  onclick="markAsShipped({{ order_item.order.id }})">
+                            <i class="fa fa-truck"></i> Ship
+                          </button>
+                        {% elif order_item.order.get_effective_status == 'shipped' %}
+                          <button class="btn btn-success btn-sm mb-1" 
+                                  onclick="markAsDelivered({{ order_item.order.id }})">
+                            <i class="fa fa-box-check"></i> Mark Delivered
+                          </button>
+                        {% elif order_item.order.get_effective_status == 'delivered' %}
+                          <button class="btn btn-info btn-sm mb-1" 
+                                  onclick="updateOrderStatus({{ order_item.order.id }}, 'completed')">
+                            <i class="fa fa-check-circle"></i> Complete Order
+                          </button>
+                        {% endif %}
+                        
+                        <button class="btn btn-outline-secondary btn-sm" 
+                                onclick="contactCustomer('{{ order_item.order.user.username }}')">
+                          <i class="fa fa-comment"></i> Message
                         </button>
-                      {% elif order_item.order.get_effective_status == 'processing' %}
-                        <button class="btn btn-primary btn-sm mb-1" 
-                                onclick="markAsShipped({{ order_item.order.id }})">
-                          <i class="fa fa-truck"></i> Ship
-                        </button>
-                      {% endif %}
-                      
-                      <button class="btn btn-outline-secondary btn-sm" 
-                              onclick="contactCustomer('{{ order_item.order.user.username }}')">
-                        <i class="fa fa-comment"></i> Message
-                      </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-              
-              <!-- Variations if any -->
-              {% if order_item.has_variations %}
-                <div class="row mt-2">
-                  <div class="col-12">
-                    <div class="alert alert-light">
-                      <strong>Variations:</strong> 
-                      {% for variation in order_item.variations.all %}
-                        {{ variation.variation_type.display_name }}: {{ variation.variation_option.get_display_value }}{% if not forloop.last %}, {% endif %}
-                      {% endfor %}
+                
+                <!-- Variations if any -->
+                {% if order_item.has_variations %}
+                  <div class="row mt-2">
+                    <div class="col-12">
+                      <div class="alert alert-light">
+                        <strong>Variations:</strong> 
+                        {% for variation in order_item.variations.all %}
+                          {{ variation.variation_type.display_name }}: {{ variation.variation_option.get_display_value }}{% if not forloop.last %}, {% endif %}
+                        {% endfor %}
+                      </div>
                     </div>
                   </div>
-                </div>
-              {% endif %}
+                {% endif %}
+              </div>
             </div>
-          </div>
-          {% endfor %}
-        {% else %}
-          <div class="card">
-            <div class="card-body text-center py-5">
-              <i class="fa fa-shopping-bag fa-4x text-muted mb-3"></i>
-              <h5>No Orders Received Yet</h5>
-              <p class="text-muted">You haven't received any orders for your products yet.</p>
-              <div class="mt-3">
-                <a href="{% url 'add_product' %}" class="btn btn-primary mr-2">
-                  <i class="fa fa-plus"></i> Add More Products
-                </a>
-                <a href="{% url 'my_selling_items' %}" class="btn btn-outline-primary">
-                  <i class="fa fa-list"></i> Manage Existing Products
-                </a>
+            {% endfor %}
+          {% endif %}
+          
+          <!-- No Orders Messages (Initially Hidden) -->
+          <div id="no-orders-all" class="no-orders-message" style="display: none;">
+            <div class="card">
+              <div class="card-body text-center py-5">
+                <i class="fa fa-shopping-bag fa-4x text-muted mb-3"></i>
+                <h5>No Orders Received Yet</h5>
+                <p class="text-muted">You haven't received any orders for your products yet.</p>
+                <div class="mt-3">
+                  <a href="{% url 'add_product' %}" class="btn btn-primary mr-2">
+                    <i class="fa fa-plus"></i> Add More Products
+                  </a>
+                  <a href="{% url 'my_selling_items' %}" class="btn btn-outline-primary">
+                    <i class="fa fa-list"></i> Manage Existing Products
+                  </a>
+                </div>
               </div>
             </div>
           </div>
-        {% endif %}
+          
+          <div id="no-orders-pending" class="no-orders-message" style="display: none;">
+            <div class="card">
+              <div class="card-body text-center py-4">
+                <i class="fa fa-clock fa-3x text-info mb-3"></i>
+                <h5>No Pending Orders</h5>
+                <p class="text-muted">All your orders have been processed! 🎉</p>
+              </div>
+            </div>
+          </div>
+          
+          <div id="no-orders-processing" class="no-orders-message" style="display: none;">
+            <div class="card">
+              <div class="card-body text-center py-4">
+                <i class="fa fa-cog fa-3x text-warning mb-3"></i>
+                <h5>No Orders Being Processed</h5>
+                <p class="text-muted">No orders are currently being processed.</p>
+              </div>
+            </div>
+          </div>
+          
+          <div id="no-orders-shipped" class="no-orders-message" style="display: none;">
+            <div class="card">
+              <div class="card-body text-center py-4">
+                <i class="fa fa-truck fa-3x text-primary mb-3"></i>
+                <h5>No Shipped Orders</h5>
+                <p class="text-muted">No orders are currently shipped and awaiting delivery.</p>
+              </div>
+            </div>
+          </div>
+          
+          <div id="no-orders-delivered" class="no-orders-message" style="display: none;">
+            <div class="card">
+              <div class="card-body text-center py-4">
+                <i class="fa fa-box fa-3x text-success mb-3"></i>
+                <h5>No Delivered Orders</h5>
+                <p class="text-muted">No orders have been delivered yet.</p>
+              </div>
+            </div>
+          </div>
+          
+          <div id="no-orders-completed" class="no-orders-message" style="display: none;">
+            <div class="card">
+              <div class="card-body text-center py-4">
+                <i class="fa fa-check-circle fa-3x text-success mb-3"></i>
+                <h5>No Completed Orders</h5>
+                <p class="text-muted">No orders have been completed yet.</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </main>
     </div>
   </div>
 </section>
 
+<!-- Modals (same as before) -->
 <!-- Order Details Modal -->
 <div class="modal fade" id="orderDetailsModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
@@ -253,156 +342,189 @@
   </div>
 </div>
 
+<!-- Delivery Confirmation Modal -->
+<div class="modal fade" id="deliveryModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Mark as Delivered</h5>
+        <button type="button" class="close" data-dismiss="modal">
+          <span>&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="deliveryForm">
+          <div class="form-group">
+            <label>Delivery Date</label>
+            <input type="date" class="form-control" id="deliveryDate" value="{{ today|date:'Y-m-d' }}">
+          </div>
+          <div class="form-group">
+            <label>Delivery Notes (Optional)</label>
+            <textarea class="form-control" id="deliveryNotes" rows="3" placeholder="Any delivery notes or comments..."></textarea>
+          </div>
+          <div class="alert alert-info">
+            <i class="fa fa-info-circle"></i>
+            <strong>Note:</strong> The customer will be notified via email about the delivery.
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-success" onclick="confirmDelivery()" id="confirmDeliveryBtn">
+          <i class="fa fa-check"></i> Mark as Delivered
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* Improved animations and transitions */
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.toast-notification {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.order-item {
+    transition: all 0.3s ease;
+    animation: fadeIn 0.5s ease;
+}
+
+.order-item.status-updated {
+    background: linear-gradient(90deg, #d4edda 0%, #ffffff 100%);
+    border-left: 4px solid #28a745;
+}
+
+.status-badge {
+    transition: all 0.3s ease;
+}
+
+.action-buttons .btn {
+    transition: all 0.2s ease;
+}
+
+.action-buttons .btn:hover {
+    transform: translateY(-1px);
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+.nav-tabs .nav-link {
+    transition: all 0.2s ease;
+}
+
+.nav-tabs .nav-link:hover {
+    background-color: #f8f9fa;
+}
+
+.no-orders-message {
+    animation: fadeIn 0.5s ease;
+}
+
+/* Loading states */
+.btn.loading {
+    position: relative;
+    color: transparent !important;
+}
+
+.btn.loading::after {
+    content: "";
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    top: 50%;
+    left: 50%;
+    margin-left: -8px;
+    margin-top: -8px;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+</style>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Get CSRF token with fallback
+    // Global variables
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value ||
                       document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
                       '{{ csrf_token }}';
     
-    console.log('🔄 CSRF Token:', csrfToken); // Debug log
+    let currentActiveTab = 'all'; // Track current tab
     
-    // Tab filtering (your existing code)
+    console.log('🔄 CSRF Token:', csrfToken);
+    
+    // Tab filtering with improved logic
     const tabs = document.querySelectorAll('#orderTabs .nav-link');
     const orderItems = document.querySelectorAll('.order-item');
+    const noOrdersMessages = document.querySelectorAll('.no-orders-message');
     
-    tabs.forEach(tab => {
-        tab.addEventListener('click', function() {
-            const targetStatus = this.getAttribute('href').substring(1);
-            orderItems.forEach(item => {
-                if (targetStatus === 'all') {
-                    item.style.display = 'block';
-                } else {
-                    const itemStatus = item.getAttribute('data-status');
-                    item.style.display = itemStatus === targetStatus ? 'block' : 'none';
-                }
-            });
-        });
-    });
-
-    // View Order Details 
-    window.viewOrderDetails = function(orderId) {
-        console.log('📄 Loading order details for:', orderId);
-        $('#orderDetailsModal').modal('show');
-        document.getElementById('orderDetailsContent').innerHTML = '<div class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading...</div>';
+    // Function to filter orders by status
+    function filterOrdersByStatus(targetStatus) {
+        currentActiveTab = targetStatus;
+        console.log(`🔄 Filtering orders by status: ${targetStatus}`);
         
-        fetch(`/users/order-details/${orderId}/`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-                return response.text();
-            })
-            .then(html => {
-                document.getElementById('orderDetailsContent').innerHTML = html;
-                console.log('✅ Order details loaded successfully');
-            })
-            .catch(error => {
-                console.error('❌ Error loading order details:', error);
-                document.getElementById('orderDetailsContent').innerHTML = 
-                    '<div class="text-center text-danger">Error loading order details. Please try again.</div>';
-            });
-    };
-
-    // Update Order Status 
-    window.updateOrderStatus = function(orderId, newStatus) {
-    console.log(`🔄 Updating order ${orderId} to status: ${newStatus}`);
-    
-    const confirmMessages = {
-        'confirmed': 'confirm this order',
-        'processing': 'start processing this order', 
-        'shipped': 'mark this order as shipped',
-        'delivered': 'mark this order as delivered',
-        'completed': 'mark this order as completed'
-    };
-    
-    if (confirm(`Are you sure you want to ${confirmMessages[newStatus] || `change status to ${newStatus}`}?`)) {
-        fetch(`/users/update-order-status/${orderId}/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-            },
-            body: JSON.stringify({status: newStatus})
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log('📨 Response:', data);
-            if (data.success) {
-                showToast(data.message, 'success');
-                setTimeout(() => location.reload(), 1500);
+        let visibleCount = 0;
+        
+        orderItems.forEach(item => {
+            const itemStatus = item.getAttribute('data-status');
+            if (targetStatus === 'all' || itemStatus === targetStatus) {
+                item.style.display = 'block';
+                visibleCount++;
             } else {
-                showToast(data.message || 'Error updating order status', 'error');
+                item.style.display = 'none';
             }
-        })
-        .catch(error => {
-            console.error('❌ Error:', error);
-            showToast('Network error updating order status', 'error');
         });
-    }
-};
-
-    // Mark as Shipped 
-    window.markAsShipped = function(orderId) {
-        console.log('🚚 Opening shipping modal for order:', orderId);
-        window.currentOrderId = orderId;
-        document.getElementById('shippingDate').value = new Date().toISOString().split('T')[0];
-        $('#shippingModal').modal('show');
-    };
-
-    // Confirm Shipping
-    window.confirmShipping = function() {
-        const orderId = window.currentOrderId;
-        const trackingNumber = document.getElementById('trackingNumber').value.trim();
-        const shippingDate = document.getElementById('shippingDate').value;
-        const notes = document.getElementById('shippingNotes').value.trim();
         
-        console.log('📦 Confirming shipping for order:', orderId);
+        // Hide all no-orders messages first
+        noOrdersMessages.forEach(msg => msg.style.display = 'none');
         
-        if (!trackingNumber) {
-            showToast('Please enter a tracking number', 'error');
-            return;
+        // Show appropriate no-orders message if no items visible
+        if (visibleCount === 0) {
+            const noOrdersElement = document.getElementById(`no-orders-${targetStatus}`);
+            if (noOrdersElement) {
+                noOrdersElement.style.display = 'block';
+            }
         }
         
-        fetch(`/users/mark-shipped/${orderId}/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-            },
-            body: JSON.stringify({
-                tracking_number: trackingNumber,
-                shipping_date: shippingDate,
-                notes: notes
-            })
-        })
-        .then(response => {
-            console.log('📡 Shipping response status:', response.status);
-            return response.json();
-        })
-        .then(data => {
-            console.log('📨 Shipping response data:', data);
-            if (data.success) {
-                $('#shippingModal').modal('hide');
-                showToast(data.message, 'success');
-                setTimeout(() => location.reload(), 1500);
-            } else {
-                showToast(data.message || 'Error marking as shipped', 'error');
-            }
-        })
-        .catch(error => {
-            console.error('❌ Shipping error:', error);
-            showToast('Network error updating shipping', 'error');
+        console.log(`✅ ${visibleCount} orders visible for status: ${targetStatus}`);
+    }
+    
+    // Add click listeners to tabs
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Update active tab
+            tabs.forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            
+            const targetStatus = this.getAttribute('data-status');
+            filterOrdersByStatus(targetStatus);
         });
-    };
+    });
+    
+    // Initialize with all orders
+    filterOrdersByStatus('all');
 
-    // Contact Customer 
-    window.contactCustomer = function(username) {
-        console.log('💬 Starting chat with:', username);
-        window.location.href = `/users/chat/user/${username}/`;
-    };
-
-    //  Toast function
+    // Toast function
     function showToast(message, type) {
         console.log(`🍞 Toast: ${type} - ${message}`);
         
@@ -433,21 +555,318 @@ document.addEventListener('DOMContentLoaded', function() {
             if (toast.parentElement) toast.remove();
         }, 5000);
     }
-    
-    //  showToast globally available
+
+    // Function to update order status in UI immediately
+    function updateOrderStatusInUI(orderId, newStatus) {
+        const orderElement = document.querySelector(`[data-order-id="${orderId}"]`);
+        if (!orderElement) return;
+        
+        // Add visual feedback
+        orderElement.classList.add('status-updated');
+        setTimeout(() => orderElement.classList.remove('status-updated'), 3000);
+        
+        // Update data-status attribute
+        orderElement.setAttribute('data-status', newStatus);
+        
+        // Update status badge
+        const statusBadge = orderElement.querySelector('.status-badge');
+        const actionButtons = orderElement.querySelector('.action-buttons');
+        
+        if (statusBadge && actionButtons) {
+            // Update badge
+            const statusConfig = {
+                'confirmed': { class: 'badge-primary', text: '✅ Confirmed' },
+                'processing': { class: 'badge-warning', text: '🔄 Processing' },
+                'shipped': { class: 'badge-primary', text: '🚚 Shipped' },
+                'delivered': { class: 'badge-success', text: '📦 Delivered' },
+                'completed': { class: 'badge-success', text: '✅ Completed' }
+            };
+            
+            const config = statusConfig[newStatus];
+            if (config) {
+                statusBadge.className = `status-badge badge mb-2 ${config.class}`;
+                statusBadge.textContent = config.text;
+            }
+            
+            // Update action buttons
+            let buttonsHTML = `
+                <button class="btn btn-outline-primary btn-sm mb-1" 
+                        onclick="viewOrderDetails(${orderId})">
+                    <i class="fa fa-eye"></i> View Details
+                </button>
+            `;
+            
+            if (newStatus === 'confirmed') {
+                buttonsHTML += `
+                    <button class="btn btn-warning btn-sm mb-1" 
+                            onclick="updateOrderStatus(${orderId}, 'processing')">
+                        <i class="fa fa-cog"></i> Process
+                    </button>
+                `;
+            } else if (newStatus === 'processing') {
+                buttonsHTML += `
+                    <button class="btn btn-primary btn-sm mb-1" 
+                            onclick="markAsShipped(${orderId})">
+                        <i class="fa fa-truck"></i> Ship
+                    </button>
+                `;
+            } else if (newStatus === 'shipped') {
+                buttonsHTML += `
+                    <button class="btn btn-success btn-sm mb-1" 
+                            onclick="markAsDelivered(${orderId})">
+                        <i class="fa fa-box-check"></i> Mark Delivered
+                    </button>
+                `;
+            } else if (newStatus === 'delivered') {
+                buttonsHTML += `
+                    <button class="btn btn-info btn-sm mb-1" 
+                            onclick="updateOrderStatus(${orderId}, 'completed')">
+                        <i class="fa fa-check-circle"></i> Complete Order
+                    </button>
+                `;
+            }
+            
+            buttonsHTML += `
+                <button class="btn btn-outline-secondary btn-sm" 
+                        onclick="contactCustomer('customer_username')">
+                    <i class="fa fa-comment"></i> Message
+                </button>
+            `;
+            
+            actionButtons.innerHTML = buttonsHTML;
+        }
+        
+        // Re-filter to maintain current tab view
+        setTimeout(() => {
+            filterOrdersByStatus(currentActiveTab);
+        }, 500);
+    }
+
+    // Make functions globally available
     window.showToast = showToast;
+    window.updateOrderStatusInUI = updateOrderStatusInUI;
+    window.filterOrdersByStatus = filterOrdersByStatus;
+
+    // View Order Details 
+    window.viewOrderDetails = function(orderId) {
+        console.log('📄 Loading order details for:', orderId);
+        $('#orderDetailsModal').modal('show');
+        document.getElementById('orderDetailsContent').innerHTML = '<div class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading...</div>';
+        
+        fetch(`/users/order-details/${orderId}/`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return response.text();
+            })
+            .then(html => {
+                document.getElementById('orderDetailsContent').innerHTML = html;
+                console.log('✅ Order details loaded successfully');
+            })
+            .catch(error => {
+                console.error('❌ Error loading order details:', error);
+                document.getElementById('orderDetailsContent').innerHTML = 
+                    '<div class="text-center text-danger">Error loading order details. Please try again.</div>';
+            });
+    };
+
+    // Update Order Status 
+    window.updateOrderStatus = function(orderId, newStatus) {
+        console.log(`🔄 Updating order ${orderId} to status: ${newStatus}`);
+        
+        const confirmMessages = {
+            'confirmed': 'confirm this order',
+            'processing': 'start processing this order', 
+            'shipped': 'mark this order as shipped',
+            'delivered': 'mark this order as delivered',
+            'completed': 'mark this order as completed'
+        };
+        
+        if (confirm(`Are you sure you want to ${confirmMessages[newStatus] || `change status to ${newStatus}`}?`)) {
+            // Find and disable the button
+            const orderElement = document.querySelector(`[data-order-id="${orderId}"]`);
+            const actionButton = orderElement?.querySelector(`[onclick*="updateOrderStatus(${orderId}, '${newStatus}')"]`);
+            
+            if (actionButton) {
+                actionButton.disabled = true;
+                actionButton.classList.add('loading');
+            }
+            
+            fetch(`/users/update-order-status/${orderId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({status: newStatus})
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('📨 Response:', data);
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    updateOrderStatusInUI(orderId, newStatus);
+                } else {
+                    showToast(data.message || 'Error updating order status', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('❌ Error:', error);
+                showToast('Network error updating order status', 'error');
+            })
+            .finally(() => {
+                // Re-enable button
+                if (actionButton) {
+                    actionButton.disabled = false;
+                    actionButton.classList.remove('loading');
+                }
+            });
+        }
+    };
+
+    // Mark as Shipped 
+    window.markAsShipped = function(orderId) {
+        console.log('🚚 Opening shipping modal for order:', orderId);
+        window.currentOrderId = orderId;
+        document.getElementById('shippingDate').value = new Date().toISOString().split('T')[0];
+        $('#shippingModal').modal('show');
+    };
+
+    // Confirm Shipping
+    window.confirmShipping = function() {
+        const orderId = window.currentOrderId;
+        const trackingNumber = document.getElementById('trackingNumber').value.trim();
+        const shippingDate = document.getElementById('shippingDate').value;
+        const notes = document.getElementById('shippingNotes').value.trim();
+        
+        console.log('📦 Confirming shipping for order:', orderId);
+        
+        if (!trackingNumber) {
+            showToast('Please enter a tracking number', 'error');
+            return;
+        }
+        
+        // Disable button
+        const submitBtn = document.querySelector('#shippingModal .btn-primary');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Shipping...';
+        }
+        
+        fetch(`/users/mark-shipped/${orderId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                tracking_number: trackingNumber,
+                shipping_date: shippingDate,
+                notes: notes
+            })
+        })
+        .then(response => {
+            console.log('📡 Shipping response status:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('📨 Shipping response data:', data);
+            if (data.success) {
+                $('#shippingModal').modal('hide');
+                showToast(data.message, 'success');
+                updateOrderStatusInUI(orderId, 'shipped');
+            } else {
+                showToast(data.message || 'Error marking as shipped', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('❌ Shipping error:', error);
+            showToast('Network error updating shipping', 'error');
+        })
+        .finally(() => {
+            // Re-enable button
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Mark as Shipped';
+            }
+        });
+    };
+
+    // Mark as Delivered 
+    window.markAsDelivered = function(orderId) {
+        console.log('📦 Opening delivery modal for order:', orderId);
+        window.currentOrderId = orderId;
+        document.getElementById('deliveryDate').value = new Date().toISOString().split('T')[0];
+        $('#deliveryModal').modal('show');
+    };
+
+    // Confirm Delivery
+    window.confirmDelivery = function() {
+        const orderId = window.currentOrderId;
+        const deliveryDate = document.getElementById('deliveryDate').value;
+        const notes = document.getElementById('deliveryNotes').value.trim();
+        
+        console.log('📦 Confirming delivery for order:', orderId);
+        
+        if (!deliveryDate) {
+            showToast('Please select a delivery date', 'error');
+            return;
+        }
+        
+        // Disable button
+        const submitBtn = document.getElementById('confirmDeliveryBtn');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Marking as Delivered...';
+        }
+        
+        fetch(`/users/mark-delivered/${orderId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                delivery_date: deliveryDate,
+                notes: notes
+            })
+        })
+        .then(response => {
+            console.log('📡 Delivery response status:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('📨 Delivery response data:', data);
+            if (data.success) {
+                $('#deliveryModal').modal('hide');
+                showToast(data.message, 'success');
+                updateOrderStatusInUI(orderId, 'delivered');
+            } else {
+                showToast(data.message || 'Error marking as delivered', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('❌ Delivery error:', error);
+            showToast('Network error updating delivery', 'error');
+        })
+        .finally(() => {
+            // Re-enable button
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fa fa-check"></i> Mark as Delivered';
+            }
+        });
+    };
+
+    // Contact Customer 
+    window.contactCustomer = function(username) {
+        console.log('💬 Starting chat with:', username);
+        window.location.href = `/users/chat/user/${username}/`;
+    };
     
-    console.log('✅ Order management system initialized');
+    console.log('✅ Enhanced order management system initialized');
 });
 </script>
 
-<style>
-@keyframes slideIn {
-    from { transform: translateX(100%); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-}
-.toast-notification {
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-</style
 {% endblock %}
