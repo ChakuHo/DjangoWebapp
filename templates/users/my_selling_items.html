@@ -116,26 +116,19 @@
                data-name="{{ product.name|lower }}">
             <div class="card-body">
               <div class="row align-items-center">
+                
                 <!-- Bulk Select Checkbox - Only for approved products -->
                 <div class="col-md-1 bulk-select" style="display: none;">
-                <!-- Sales Analytics (only for approved products) -->
-                {% if product.approval_status == 'approved' %}
-                  <div class="row mt-2">
-                    <div class="col-12">
-                      <small class="text-muted">
-                        <i class="fa fa-chart-line"></i> 
-                        Views: <span class="badge badge-info">{{ product.view_count|default:0 }}</span> | 
-                        Orders: <span class="badge badge-success">{{ product.order_count|default:0 }}</span> | 
-                        Revenue: <span class="badge badge-primary">Rs. {{ product.total_revenue|default:0|floatformat:2 }}</span>
-                        
-                        <!-- Add conversion rate if there are views -->
-                        {% if product.view_count > 0 %}
-                          | Conversion: <span class="badge badge-warning">{{ product.analytics.conversion_rate|floatformat:1 }}%</span>
-                        {% endif %}
-                      </small>
+                  {% if product.approval_status == 'approved' %}
+                    <div class="form-check">
+                      <input type="checkbox" class="form-check-input product-checkbox" 
+                             value="{{ product.id }}" id="product{{ product.id }}">
+                      <label class="form-check-label" for="product{{ product.id }}"></label>
                     </div>
-                  </div>
-                {% endif %}
+                  {% else %}
+                    <input type="checkbox" class="form-check-input product-checkbox" 
+                           value="{{ product.id }}" disabled>
+                  {% endif %}
                 </div>
                 
                 <!-- Product Image -->
@@ -156,7 +149,7 @@
                 </div>
                 
                 <!-- Product Info -->
-                <div class="col-md-4">
+                <div class="col-md-3">
                   <!-- Product Name -->
                   <h6 class="mb-1">
                     <span class="editable-field {% if product.approval_status != 'approved' %}text-muted{% endif %}" 
@@ -264,7 +257,7 @@
                 </div>
                 
                 <!-- Actions -->
-                <div class="col-md-1">
+                <div class="col-md-2">
                   <div class="dropdown">
                     <button class="btn btn-outline-secondary btn-sm dropdown-toggle" 
                             type="button" data-toggle="dropdown">
@@ -317,15 +310,21 @@
                 </div>
               {% endif %}
               
-              <!-- Sales Analytics (only for approved products) -->
+              <!-- Sales Analytics (only for approved products) - FIXED FIELD NAMES -->
               {% if product.approval_status == 'approved' %}
                 <div class="row mt-2">
                   <div class="col-12">
                     <small class="text-muted">
                       <i class="fa fa-chart-line"></i> 
-                      Views: <span class="badge badge-light">{{ product.views|default:0 }}</span> | 
-                      Orders: <span class="badge badge-light">{{ product.orders_count|default:0 }}</span> | 
-                      Revenue: <span class="badge badge-light">Rs. {{ product.total_revenue|default:0 }}</span>
+                      Views: <span class="badge badge-info">{{ product.view_count|default:0 }}</span> | 
+                      Orders: <span class="badge badge-success">{{ product.order_count|default:0 }}</span> | 
+                      Revenue: <span class="badge badge-primary">Rs. {{ product.total_revenue|default:0|floatformat:2 }}</span>
+                      
+                      <!-- Add conversion rate if there are views -->
+                      {% if product.view_count > 0 %}
+                        {% widthratio product.order_count 1 product.view_count as conversion_rate %}
+                        | Conversion: <span class="badge badge-warning">{{ conversion_rate|floatformat:1 }}%</span>
+                      {% endif %}
                     </small>
                   </div>
                 </div>
@@ -455,9 +454,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
     
     // Search functionality
-    document.getElementById('productSearch').addEventListener('input', filterProducts);
-    document.getElementById('statusFilter').addEventListener('change', filterProducts);
-    document.getElementById('stockFilter').addEventListener('change', filterProducts);
+    const productSearchEl = document.getElementById('productSearch');
+    const statusFilterEl = document.getElementById('statusFilter');
+    const stockFilterEl = document.getElementById('stockFilter');
+    
+    if (productSearchEl) productSearchEl.addEventListener('input', filterProducts);
+    if (statusFilterEl) statusFilterEl.addEventListener('change', filterProducts);
+    if (stockFilterEl) stockFilterEl.addEventListener('change', filterProducts);
     
     // Bulk mode toggle
     window.toggleBulkMode = function() {
@@ -468,11 +471,11 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (editMode) {
             bulkSelects.forEach(el => el.style.display = 'block');
-            bulkActions.style.display = 'block';
+            if (bulkActions) bulkActions.style.display = 'block';
             editIcons.forEach(el => el.style.display = 'inline');
         } else {
             bulkSelects.forEach(el => el.style.display = 'none');
-            bulkActions.style.display = 'none';
+            if (bulkActions) bulkActions.style.display = 'none';
             editIcons.forEach(el => el.style.display = 'none');
             selectedProducts.clear();
             updateSelectedCount();
@@ -506,18 +509,21 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     function updateSelectedCount() {
-        document.getElementById('selectedCount').textContent = `${selectedProducts.size} selected`;
+        const selectedCountEl = document.getElementById('selectedCount');
+        if (selectedCountEl) {
+            selectedCountEl.textContent = `${selectedProducts.size} selected`;
+        }
     }
     
     function filterProducts() {
-        const search = document.getElementById('productSearch').value.toLowerCase();
-        const status = document.getElementById('statusFilter').value;
-        const stock = document.getElementById('stockFilter').value;
+        const search = productSearchEl ? productSearchEl.value.toLowerCase() : '';
+        const status = statusFilterEl ? statusFilterEl.value : '';
+        const stock = stockFilterEl ? stockFilterEl.value : '';
         
         document.querySelectorAll('.product-item').forEach(item => {
-            const name = item.dataset.name;
-            const itemStatus = item.dataset.status;
-            const itemStock = parseInt(item.dataset.stock);
+            const name = item.dataset.name || '';
+            const itemStatus = item.dataset.status || '';
+            const itemStock = parseInt(item.dataset.stock) || 0;
             
             let show = true;
             
@@ -534,15 +540,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     window.clearFilters = function() {
-        document.getElementById('productSearch').value = '';
-        document.getElementById('statusFilter').value = '';
-        document.getElementById('stockFilter').value = '';
+        if (productSearchEl) productSearchEl.value = '';
+        if (statusFilterEl) statusFilterEl.value = '';
+        if (stockFilterEl) stockFilterEl.value = '';
         filterProducts();
     };
     
     // Stock adjustment - with permission check
     window.adjustStock = function(productId, change) {
         const input = document.querySelector(`input[data-product="${productId}"]`);
+        if (!input) {
+            showToast('Stock input not found', 'error');
+            return;
+        }
+        
         if (input.readOnly) {
             showToast('Only approved products can have stock updated', 'error');
             return;
@@ -556,8 +567,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Quick stock update for out of stock products
     window.quickStockUpdate = function(productId, amount) {
         const input = document.querySelector(`input[data-product="${productId}"]`);
-        input.value = amount;
-        updateStock(productId, amount);
+        if (input) {
+            input.value = amount;
+            updateStock(productId, amount);
+        }
     };
     
     window.updateStock = function(productId, newStock) {
@@ -573,8 +586,13 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             if (data.success) {
                 // Update stock indicator
-                const item = document.querySelector(`[data-product="${productId}"]`).closest('.product-item');
-                item.dataset.stock = newStock;
+                const item = document.querySelector(`[data-product="${productId}"]`);
+                if (item) {
+                    const productItem = item.closest('.product-item');
+                    if (productItem) {
+                        productItem.dataset.stock = newStock;
+                    }
+                }
                 
                 // Update stock status indicators
                 updateStockIndicators(productId, newStock);
@@ -584,32 +602,59 @@ document.addEventListener('DOMContentLoaded', function() {
                 showToast(data.message || 'Error updating stock', 'error');
                 // Revert the input value
                 const input = document.querySelector(`input[data-product="${productId}"]`);
-                input.value = data.original_stock || input.value;
+                if (input) {
+                    input.value = data.original_stock || input.value;
+                }
             }
         })
         .catch(error => {
+            console.error('Stock update error:', error);
             showToast('Network error updating stock', 'error');
         });
     };
     
     function updateStockIndicators(productId, newStock) {
-        const productCard = document.querySelector(`[data-product="${productId}"]`).closest('.product-item');
-        const stockIndicator = productCard.querySelector('.col-md-2 small:last-child');
+        const input = document.querySelector(`[data-product="${productId}"]`);
+        if (!input) return;
         
-        if (newStock == 0) {
-            stockIndicator.innerHTML = '<i class="fa fa-exclamation-triangle"></i> Out of Stock';
-            stockIndicator.className = 'text-danger';
-        } else if (newStock <= 5) {
-            stockIndicator.innerHTML = '<i class="fa fa-exclamation-circle"></i> Low Stock';
-            stockIndicator.className = 'text-warning';
-        } else {
-            stockIndicator.innerHTML = '<i class="fa fa-check-circle"></i> In Stock';
-            stockIndicator.className = 'text-success';
+        const productCard = input.closest('.product-item');
+        if (!productCard) return;
+        
+        const stockIndicators = productCard.querySelectorAll('.col-md-2 small');
+        let stockIndicator = null;
+        
+        // Find the stock indicator by looking for the one with stock status text
+        for (let indicator of stockIndicators) {
+            if (indicator.textContent.includes('Stock') || 
+                indicator.textContent.includes('Out of') || 
+                indicator.textContent.includes('Low') || 
+                indicator.textContent.includes('In Stock')) {
+                stockIndicator = indicator;
+                break;
+            }
+        }
+        
+        if (stockIndicator) {
+            if (newStock == 0) {
+                stockIndicator.innerHTML = '<i class="fa fa-exclamation-triangle"></i> Out of Stock';
+                stockIndicator.className = 'text-danger';
+            } else if (newStock <= 5) {
+                stockIndicator.innerHTML = '<i class="fa fa-exclamation-circle"></i> Low Stock';
+                stockIndicator.className = 'text-warning';
+            } else {
+                stockIndicator.innerHTML = '<i class="fa fa-check-circle"></i> In Stock';
+                stockIndicator.className = 'text-success';
+            }
         }
     }
     
     window.toggleProductStatus = function(productId) {
         const checkbox = document.getElementById(`status${productId}`);
+        if (!checkbox) {
+            showToast('Status checkbox not found', 'error');
+            return;
+        }
+        
         const isLive = checkbox.checked;
         
         fetch(`/users/toggle-product-status/${productId}/`, {
@@ -623,8 +668,13 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                const label = checkbox.nextElementSibling.querySelector('.visibility-label');
-                label.textContent = isLive ? '🟢 Live' : '🔴 Hidden';
+                const label = checkbox.nextElementSibling;
+                if (label) {
+                    const visibilityLabel = label.querySelector('.visibility-label');
+                    if (visibilityLabel) {
+                        visibilityLabel.textContent = isLive ? '🟢 Live' : '🔴 Hidden';
+                    }
+                }
                 showToast(`Product ${isLive ? 'made live' : 'hidden'}`, 'success');
             } else {
                 checkbox.checked = !isLive; // Revert on error
@@ -632,6 +682,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(error => {
+            console.error('Status toggle error:', error);
             checkbox.checked = !isLive; // Revert on error
             showToast('Network error updating product status', 'error');
         });
@@ -648,13 +699,20 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    document.querySelector(`[data-product="${productId}"]`).closest('.product-item').remove();
+                    const input = document.querySelector(`[data-product="${productId}"]`);
+                    if (input) {
+                        const productItem = input.closest('.product-item');
+                        if (productItem) {
+                            productItem.remove();
+                        }
+                    }
                     showToast('Product deleted successfully', 'success');
                 } else {
                     showToast(data.message || 'Error deleting product', 'error');
                 }
             })
             .catch(error => {
+                console.error('Delete error:', error);
                 showToast('Network error deleting product', 'error');
             });
         }
@@ -678,23 +736,35 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(error => {
+                console.error('Duplicate error:', error);
                 showToast('Network error duplicating product', 'error');
             });
         }
     };
     
     window.editProductModal = function(productId) {
-        $('#quickEditModal').modal('show');
-        document.getElementById('quickEditContent').innerHTML = '<div class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading...</div>';
+        const modal = document.getElementById('quickEditModal');
+        const content = document.getElementById('quickEditContent');
         
-        fetch(`/users/edit-product/${productId}/`)
-            .then(response => response.text())
-            .then(html => {
-                document.getElementById('quickEditContent').innerHTML = html;
-            })
-            .catch(error => {
-                document.getElementById('quickEditContent').innerHTML = '<div class="text-center text-danger">Error loading product details</div>';
-            });
+        if (modal && content) {
+            if (typeof $ !== 'undefined') {
+                $('#quickEditModal').modal('show');
+            } else {
+                modal.style.display = 'block';
+            }
+            
+            content.innerHTML = '<div class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading...</div>';
+            
+            fetch(`/users/edit-product/${productId}/`)
+                .then(response => response.text())
+                .then(html => {
+                    content.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Edit modal error:', error);
+                    content.innerHTML = '<div class="text-center text-danger">Error loading product details</div>';
+                });
+        }
     };
     
     window.showRejectionReason = function(reason) {
@@ -706,7 +776,14 @@ document.addEventListener('DOMContentLoaded', function() {
             showToast('Please select approved products first', 'warning');
             return;
         }
-        $('#bulkStockModal').modal('show');
+        const modal = document.getElementById('bulkStockModal');
+        if (modal) {
+            if (typeof $ !== 'undefined') {
+                $('#bulkStockModal').modal('show');
+            } else {
+                modal.style.display = 'block';
+            }
+        }
     };
     
     window.bulkToggleVisibility = function() {
@@ -714,14 +791,29 @@ document.addEventListener('DOMContentLoaded', function() {
             showToast('Please select approved products first', 'warning');
             return;
         }
-        $('#bulkVisibilityModal').modal('show');
+        const modal = document.getElementById('bulkVisibilityModal');
+        if (modal) {
+            if (typeof $ !== 'undefined') {
+                $('#bulkVisibilityModal').modal('show');
+            } else {
+                modal.style.display = 'block';
+            }
+        }
     };
     
     window.confirmBulkStock = function() {
-        const action = document.getElementById('stockAction').value;
-        const amount = parseInt(document.getElementById('stockAmount').value);
+        const actionEl = document.getElementById('stockAction');
+        const amountEl = document.getElementById('stockAmount');
         
-        if (!amount && amount !== 0) {
+        if (!actionEl || !amountEl) {
+            showToast('Form elements not found', 'error');
+            return;
+        }
+        
+        const action = actionEl.value;
+        const amount = parseInt(amountEl.value);
+        
+        if (isNaN(amount) && amount !== 0) {
             showToast('Please enter a valid amount', 'warning');
             return;
         }
@@ -741,7 +833,9 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                $('#bulkStockModal').modal('hide');
+                if (typeof $ !== 'undefined') {
+                    $('#bulkStockModal').modal('hide');
+                }
                 showToast(`Stock updated for ${data.updated_count} products`, 'success');
                 setTimeout(() => location.reload(), 1000);
             } else {
@@ -749,12 +843,20 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(error => {
+            console.error('Bulk stock error:', error);
             showToast('Network error updating stock', 'error');
         });
     };
     
     window.confirmBulkVisibility = function() {
-        const action = document.getElementById('visibilityAction').value;
+        const actionEl = document.getElementById('visibilityAction');
+        
+        if (!actionEl) {
+            showToast('Action element not found', 'error');
+            return;
+        }
+        
+        const action = actionEl.value;
         
         fetch('/users/bulk-toggle-visibility/', {
             method: 'POST',
@@ -770,7 +872,9 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                $('#bulkVisibilityModal').modal('hide');
+                if (typeof $ !== 'undefined') {
+                    $('#bulkVisibilityModal').modal('hide');
+                }
                 showToast(`Visibility updated for ${data.updated_count} products`, 'success');
                 setTimeout(() => location.reload(), 1000);
             } else {
@@ -778,6 +882,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(error => {
+            console.error('Bulk visibility error:', error);
             showToast('Network error updating visibility', 'error');
         });
     };
@@ -809,6 +914,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(error => {
+                console.error('Bulk delete error:', error);
                 showToast('Network error deleting products', 'error');
             });
         }

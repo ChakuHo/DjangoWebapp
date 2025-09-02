@@ -1,6 +1,6 @@
 {% load static %}
 
-<!-- ========================= MODERN FOOTER ========================= -->
+<!-- ========================= IMPROVED MODERN FOOTER ========================= -->
 <footer class="modern-footer">
   <!-- Newsletter Section -->
   <div class="newsletter-section">
@@ -36,11 +36,13 @@
     <div class="container">
       <div class="row">
         <!-- Company Info -->
-        <div class="col-lg-4 col-md-6 footer-column">
+        <div class="col-lg-3 col-md-6 footer-column">
           <div class="footer-widget">
             <div class="footer-brand">
               {% if site_settings and site_settings.logo %}
-              <img src="{{ site_settings.logo.url }}" class="brand-logo" alt="Logo">
+              <div class="brand-logo-container">
+                <img src="{{ site_settings.logo.url }}" class="brand-logo" alt="Logo">
+              </div>
               {% endif %}
               <h4 class="brand-name">
                 {% if site_settings and site_settings.site_title %}
@@ -133,7 +135,7 @@
         </div>
 
         <!-- Contact Info -->
-        <div class="col-lg-2 col-md-6 footer-column">
+        <div class="col-lg-3 col-md-12 footer-column">
           <div class="footer-widget">
             <h5 class="widget-title">Get in Touch</h5>
             <div class="contact-info">
@@ -209,23 +211,22 @@
           <div class="footer-bottom-links">
             <a href="#" onclick="openModal('privacyModal')">Privacy Policy</a>
             <a href="#" onclick="openModal('termsModal')">Terms of Service</a>
-            <a href="#" onclick="openModal('cookiesModal')">Cookie Policy</a>
             <a href="{% url 'contact' %}">Support</a>
           </div>
         </div>
         
         <div class="bottom-right">
           <div class="payment-methods">
-            <span class="payment-label">Secure Payments</span>
+            <span class="payment-label">Payment Options</span>
             <div class="payment-icons">
-              <div class="payment-icon visa" title="Visa">
-                <i class="fab fa-cc-visa"></i>
+              <div class="payment-icon qr" title="QR Payment">
+                <i class="fas fa-qrcode"></i>
               </div>
-              <div class="payment-icon mastercard" title="Mastercard">
-                <i class="fab fa-cc-mastercard"></i>
+              <div class="payment-icon fonepay" title="FonePay">
+                <span>FonePay</span>
               </div>
-              <div class="payment-icon paypal" title="PayPal">
-                <i class="fab fa-cc-paypal"></i>
+              <div class="payment-icon cod" title="Cash on Delivery">
+                <i class="fas fa-money-bill-wave"></i>
               </div>
               <div class="payment-icon esewa" title="eSewa">
                 <span>eSewa</span>
@@ -247,6 +248,8 @@
     </button>
   </div>
 </footer>
+
+<!-- ALL MODALS RESTORED! -->
 
 <!-- Enhanced Modals -->
 <div class="modal fade" id="helpModal" tabindex="-1">
@@ -357,6 +360,59 @@
   </div>
 </div>
 
+<div class="modal fade" id="trackModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-map-marked-alt"></i> Track Your Order</h5>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="track-order">
+          <div class="input-group mb-3">
+            <input type="text" class="form-control" placeholder="Enter your order number" id="trackingNumber">
+            <div class="input-group-append">
+              <button class="btn btn-primary" type="button" onclick="trackOrder()">Track</button>
+            </div>
+          </div>
+          <div class="tracking-info" id="trackingInfo" style="display: none;">
+            <div class="timeline">
+              <div class="timeline-item completed">
+                <div class="timeline-icon"><i class="fas fa-check"></i></div>
+                <div class="timeline-content">
+                  <h6>Order Confirmed</h6>
+                  <p>Your order has been placed successfully</p>
+                </div>
+              </div>
+              <div class="timeline-item active">
+                <div class="timeline-icon"><i class="fas fa-box"></i></div>
+                <div class="timeline-content">
+                  <h6>Processing</h6>
+                  <p>Your order is being prepared</p>
+                </div>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-icon"><i class="fas fa-truck"></i></div>
+                <div class="timeline-content">
+                  <h6>Shipped</h6>
+                  <p>Your order is on the way</p>
+                </div>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-icon"><i class="fas fa-home"></i></div>
+                <div class="timeline-content">
+                  <h6>Delivered</h6>
+                  <p>Order delivered successfully</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal fade" id="supportModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -383,6 +439,42 @@
             <h6>Phone Support</h6>
             <p>Call us for immediate assistance</p>
             <a href="tel:+977-1-234567" class="btn btn-success btn-sm">Call Now</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="warrantyModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-shield-alt"></i> Warranty Information</h5>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="warranty-info">
+          <div class="warranty-item">
+            <i class="fas fa-laptop"></i>
+            <div>
+              <h6>Electronics</h6>
+              <p>1-2 years manufacturer warranty</p>
+            </div>
+          </div>
+          <div class="warranty-item">
+            <i class="fas fa-tshirt"></i>
+            <div>
+              <h6>Clothing</h6>
+              <p>30 days quality guarantee</p>
+            </div>
+          </div>
+          <div class="warranty-item">
+            <i class="fas fa-home"></i>
+            <div>
+              <h6>Home & Garden</h6>
+              <p>6 months to 1 year warranty</p>
+            </div>
           </div>
         </div>
       </div>
@@ -444,7 +536,7 @@
 </div>
 
 <style>
-/* ========================= MODERN FOOTER STYLES ========================= */
+/* ========================= IMPROVED FOOTER STYLES ========================= */
 
 .modern-footer {
   margin-top: 80px;
@@ -602,38 +694,58 @@
 
 .footer-widget {
   height: 100%;
+  max-width: 100%;
+  overflow: hidden;
 }
 
-/* Brand Section */
+/* Brand Section with proper logo sizing */
 .footer-brand {
   display: flex;
   align-items: center;
   gap: 15px;
   margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.brand-logo-container {
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
 }
 
 .brand-logo {
-  width: 50px;
-  height: 50px;
-  border-radius: 12px;
-  object-fit: cover;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
 }
 
 .brand-name {
   color: white;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 700;
   margin: 0;
   background: linear-gradient(135deg, #3498db 0%, #9b59b6 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  flex: 1;
+  min-width: 0;
 }
 
 .brand-description {
-  color: #bdc3c7;
+  color: #ecf0f1;
   line-height: 1.6;
   margin-bottom: 30px;
+  font-size: 14px;
 }
 
 /* Widget Titles */
@@ -665,19 +777,20 @@
 }
 
 .footer-links li {
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .footer-links a {
-  color: #bdc3c7;
+  color: #ecf0f1;
   text-decoration: none;
   display: flex;
   align-items: center;
   gap: 12px;
   transition: all 0.3s ease;
-  padding: 8px 0;
+  padding: 6px 0;
   border-radius: 6px;
   position: relative;
+  font-size: 14px;
 }
 
 .footer-links a:hover {
@@ -691,6 +804,7 @@
   font-size: 14px;
   color: #3498db;
   transition: all 0.3s ease;
+  flex-shrink: 0;
 }
 
 .footer-links a:hover i {
@@ -755,19 +869,24 @@
 .contact-info {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .contact-item {
   display: flex;
   align-items: flex-start;
-  gap: 15px;
-  padding: 15px;
+  gap: 12px;
+  padding: 12px;
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
+  border-radius: 10px;
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   transition: all 0.3s ease;
+  min-height: 60px;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .contact-item:hover {
@@ -776,9 +895,9 @@
 }
 
 .contact-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
   background: linear-gradient(135deg, #3498db 0%, #9b59b6 100%);
   display: flex;
   align-items: center;
@@ -788,17 +907,19 @@
 
 .contact-icon i {
   color: white;
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .contact-details {
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .contact-label {
   display: block;
-  color: #95a5a6;
-  font-size: 12px;
+  color: #bdc3c7;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 4px;
@@ -809,6 +930,9 @@
   font-weight: 500;
   text-decoration: none;
   transition: color 0.3s ease;
+  font-size: 13px;
+  word-break: break-word;
+  line-height: 1.3;
 }
 
 .contact-value:hover {
@@ -820,29 +944,31 @@
 .footer-bottom {
   background: rgba(0, 0, 0, 0.3);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 30px 0;
+  padding: 25px 0;
 }
 
 .bottom-content {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 30px;
+  gap: 20px;
+  flex-wrap: wrap;
 }
 
 .copyright {
-  color: #95a5a6;
+  color: #bdc3c7;
   margin: 0;
   font-size: 14px;
 }
 
 .footer-bottom-links {
   display: flex;
-  gap: 30px;
+  gap: 25px;
+  flex-wrap: wrap;
 }
 
 .footer-bottom-links a {
-  color: #bdc3c7;
+  color: #ecf0f1;
   text-decoration: none;
   font-size: 14px;
   transition: color 0.3s ease;
@@ -869,16 +995,16 @@
   width: 100%;
 }
 
-/* Payment Methods */
+/* UPDATED: Payment Methods */
 .payment-methods {
   text-align: right;
 }
 
 .payment-label {
   display: block;
-  color: #95a5a6;
+  color: #bdc3c7;
   font-size: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -887,18 +1013,19 @@
   display: flex;
   gap: 8px;
   justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 .payment-icon {
-  width: 40px;
+  width: 45px;
   height: 28px;
   background: white;
-  border-radius: 6px;
+  border-radius: 5px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #2c3e50;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   transition: all 0.3s ease;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
@@ -909,10 +1036,27 @@
   box-shadow: 0 4px 15px rgba(0,0,0,0.2);
 }
 
-.payment-icon.visa { color: #1a1f71; }
-.payment-icon.mastercard { color: #eb001b; }
-.payment-icon.paypal { color: #003087; }
-.payment-icon.esewa { font-size: 10px; color: #60bb46; }
+.payment-icon.qr { 
+  color: #2c3e50; 
+  font-size: 16px;
+}
+
+.payment-icon.fonepay { 
+  font-size: 8px; 
+  color: #1e88e5; 
+  font-weight: 700;
+}
+
+.payment-icon.cod { 
+  color: #4caf50; 
+  font-size: 14px;
+}
+
+.payment-icon.esewa { 
+  font-size: 9px; 
+  color: #60bb46; 
+  font-weight: 700;
+}
 
 /* Floating Action Buttons */
 .floating-actions {
@@ -1051,12 +1195,12 @@
   color: #7f8c8d;
 }
 
-.return-policy {
+.return-policy, .warranty-info {
   display: grid;
   gap: 20px;
 }
 
-.policy-item {
+.policy-item, .warranty-item {
   display: flex;
   align-items: flex-start;
   gap: 15px;
@@ -1065,18 +1209,18 @@
   border-radius: 12px;
 }
 
-.policy-item i {
+.policy-item i, .warranty-item i {
   color: #3498db;
   font-size: 24px;
   margin-top: 5px;
 }
 
-.policy-item h6 {
+.policy-item h6, .warranty-item h6 {
   color: #2c3e50;
   margin-bottom: 5px;
 }
 
-.policy-item p {
+.policy-item p, .warranty-item p {
   color: #7f8c8d;
   margin: 0;
 }
@@ -1110,6 +1254,71 @@
   margin-bottom: 10px;
 }
 
+/* Track Order Styles */
+.track-order .input-group {
+  margin-bottom: 20px;
+}
+
+.timeline {
+  position: relative;
+  padding-left: 30px;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #ecf0f1;
+}
+
+.timeline-item {
+  position: relative;
+  margin-bottom: 30px;
+}
+
+.timeline-item:last-child {
+  margin-bottom: 0;
+}
+
+.timeline-icon {
+  position: absolute;
+  left: -22px;
+  top: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #ecf0f1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #95a5a6;
+  font-size: 12px;
+}
+
+.timeline-item.completed .timeline-icon {
+  background: #27ae60;
+  color: white;
+}
+
+.timeline-item.active .timeline-icon {
+  background: #3498db;
+  color: white;
+}
+
+.timeline-content h6 {
+  color: #2c3e50;
+  margin-bottom: 5px;
+}
+
+.timeline-content p {
+  color: #7f8c8d;
+  margin: 0;
+  font-size: 14px;
+}
+
 /* Responsive Design */
 @media (max-width: 991px) {
   .newsletter-content {
@@ -1141,7 +1350,6 @@
   }
   
   .footer-bottom-links {
-    flex-wrap: wrap;
     justify-content: center;
     gap: 15px;
   }
@@ -1180,6 +1388,54 @@
     padding: 10px 20px;
     font-size: 14px;
   }
+  
+  .footer-brand {
+    flex-direction: column;
+    text-align: center;
+    gap: 10px;
+  }
+  
+  .brand-name {
+    font-size: 18px;
+  }
+  
+  .contact-item {
+    padding: 10px;
+    gap: 10px;
+  }
+  
+  .contact-icon {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .contact-value {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 576px) {
+  .footer-main {
+    padding: 40px 0 20px;
+  }
+  
+  .newsletter-section {
+    padding: 30px 0;
+  }
+  
+  .contact-info {
+    gap: 12px;
+  }
+  
+  .footer-bottom-links {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .payment-icons {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
 }
 
 /* Animation Classes */
@@ -1216,11 +1472,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const btn = this.querySelector('.newsletter-btn');
             const originalText = btn.innerHTML;
             
-            // Loading state
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Subscribing...';
             btn.disabled = true;
             
-            // Simulate API call
             setTimeout(() => {
                 btn.innerHTML = '<i class="fas fa-check"></i> Subscribed!';
                 setTimeout(() => {
@@ -1271,7 +1525,6 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             const platform = this.className.split(' ')[1];
             console.log(`Social link clicked: ${platform}`);
-            // Add your analytics tracking here
         });
     });
 
@@ -1311,7 +1564,21 @@ function openModal(modalId) {
     }
 }
 
-// Add some interactive particles effect to newsletter section (optional)
+// Track Order Function
+function trackOrder() {
+    const trackingNumber = document.getElementById('trackingNumber').value;
+    const trackingInfo = document.getElementById('trackingInfo');
+    
+    if (trackingNumber.trim() !== '') {
+        trackingInfo.style.display = 'block';
+        // Here you would normally make an API call to get real tracking data
+        console.log('Tracking order:', trackingNumber);
+    } else {
+        alert('Please enter a tracking number');
+    }
+}
+
+// Add some interactive particles effect to newsletter section
 function createParticle() {
     const particle = document.createElement('div');
     particle.style.cssText = `

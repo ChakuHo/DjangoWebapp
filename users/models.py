@@ -165,6 +165,7 @@ class ChatMessage(models.Model):
     
     chat_room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name='messages')
     sender = models.ForeignKey(User, on_delete=models.CASCADE)
+    image = models.ImageField(upload_to='chat_images/', blank=True, null=True)
     message = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)

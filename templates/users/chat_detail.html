@@ -4,141 +4,180 @@
 {% block title %}Chat with {{ other_participant.get_full_name|default:other_participant.username }}{% endblock %}
 
 {% block content %}
+<!--  Cropper.js CDN -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+
 <section class="section-content padding-y bg">
     <div class="container">
         <div class="row">
             {% include 'users/includes/sidebar.html' %}
             
             <main class="col-md-9">
-                <div class="card chat-container">
-                    <!-- Enhanced Chat Header -->
-                    <div class="card-header chat-header d-flex justify-content-between align-items-center">
-                        <div class="d-flex align-items-center">
-                            <a href="{% url 'chat_list' %}" class="btn btn-outline-secondary btn-sm me-3">
+                <div class="chat-container">
+                    <!-- Chat Header -->
+                    <div class="chat-header">
+                        <div class="header-left">
+                            <a href="{% url 'chat_list' %}" class="back-btn">
                                 <i class="fa fa-arrow-left"></i>
                             </a>
                             
-                            <div class="user-avatar-container">
+                            <div class="participant-avatar">
                                 {% if other_participant.profile.profile_picture %}
                                     <img src="{{ other_participant.profile.profile_picture.url }}" 
-                                         class="rounded-circle chat-avatar" 
                                          alt="{{ other_participant.get_full_name|default:other_participant.username }}">
                                 {% else %}
-                                    <div class="chat-avatar-placeholder rounded-circle d-flex align-items-center justify-content-center"> 
+                                    <div class="avatar-placeholder">
                                         <i class="fa fa-user"></i>
                                     </div>
                                 {% endif %}
-                                <!-- Online status indicator -->
-                                <div class="online-status" id="online-status"></div>
+                                <div class="online-indicator"></div>
                             </div>
                             
-                            <div class="user-info ml-3">
-                                <h6 class="mb-0 chat-username">{{ other_participant.get_full_name|default:other_participant.username }}</h6>
+                            <div class="participant-info">
+                                <h6 class="participant-name">{{ other_participant.get_full_name|default:other_participant.username }}</h6>
                                 {% if other_participant.profile.seller_status == 'approved' %}
-                                    <small class="text-success seller-badge">
-                                        <i class="fa fa-store"></i> {{ other_participant.profile.business_name|default:"Verified Seller" }}
-                                    </small>
+                                    <div class="seller-badge">
+                                        <i class="fa fa-store"></i> Verified Seller
+                                    </div>
                                 {% endif %}
-                                <!-- Typing indicator -->
-                                <div class="typing-indicator" id="typing-indicator" style="display: none;">
-                                    <small class="text-muted">
-                                        <span class="typing-animation">
-                                            <span></span>
-                                            <span></span>
-                                            <span></span>
-                                        </span>
-                                        typing...
-                                    </small>
+                                <div class="typing-indicator" id="typing-indicator">
+                                    <span class="typing-text">typing</span>
+                                    <span class="typing-dots">
+                                        <span></span><span></span><span></span>
+                                    </span>
                                 </div>
                             </div>
                         </div>
                         
                         {% if chat_room.product %}
-                            <div class="text-end product-info">
-                                <small class="text-muted">Discussion about:</small><br>
-                                <a href="{{ chat_room.product.get_url }}" class="btn btn-outline-primary btn-sm product-link">
-                                    <i class="fa fa-external-link"></i> {{ chat_room.product.name|truncatechars:20 }}
+                            <div class="product-context">
+                                <div class="product-label">About</div>
+                                <a href="{{ chat_room.product.get_url }}" class="product-link">
+                                    <i class="fa fa-external-link-alt"></i>
+                                    {{ chat_room.product.name|truncatechars:25 }}
                                 </a>
                             </div>
                         {% endif %}
                     </div>
                     
-                    <!-- Enhanced Messages Area -->
-                    <div class="card-body p-0">
-                        <div id="chat-messages" class="chat-messages-container">
+                    <!-- Messages Area -->
+                    <div class="chat-body">
+                        <!-- Drag & Drop Overlay -->
+                        <div id="drag-overlay" class="drag-overlay">
+                            <div class="drag-content">
+                                <i class="fa fa-cloud-upload-alt"></i>
+                                <h4>Drop images here to crop & send</h4>
+                                <p>Supports JPG, PNG, GIF up to 10MB</p>
+                            </div>
+                        </div>
+                        
+                        <div id="chat-messages" class="messages-area">
                             {% for message in messages %}
-                                <div class="message-item mb-3 {% if message.sender == user %}sent{% else %}received{% endif %}" data-message-id="{{ message.id }}">
-                                    <div class="message-wrapper">
-                                        {% if message.sender != user %}
-                                            <div class="message-avatar">
-                                                {% if message.sender.profile.profile_picture %}
-                                                    <img src="{{ message.sender.profile.profile_picture.url }}" 
-                                                         class="rounded-circle" 
-                                                         alt="{{ message.sender.username }}">
-                                                {% else %}
-                                                    <div class="avatar-placeholder rounded-circle">
-                                                        <i class="fa fa-user"></i>
-                                                    </div>
-                                                {% endif %}
-                                            </div>
-                                        {% endif %}
-                                        
-                                        <div class="message-bubble {% if message.sender == user %}my-message{% else %}other-message{% endif %}">
-                                            <div class="message-content">
-                                                <p class="mb-1">{{ message.message|linebreaks }}</p>
-                                                <div class="message-meta">
-                                                    <small class="message-time">
-                                                        {{ message.get_time_display }}
-                                                    </small>
-                                                    {% if message.sender == user %}
-                                                        <small class="message-status">
-                                                            <span class="status-icon {% if message.status == 'read' %}read{% endif %}">
-                                                                {{ message.get_status_icon }}
-                                                            </span>
-                                                        </small>
-                                                    {% endif %}
+                                <div class="message-wrapper {% if message.sender == user %}sent{% else %}received{% endif %}" 
+                                     data-message-id="{{ message.id }}">
+                                    
+                                    {% if message.sender != user %}
+                                        <div class="message-avatar">
+                                            {% if message.sender.profile.profile_picture %}
+                                                <img src="{{ message.sender.profile.profile_picture.url }}" alt="{{ message.sender.username }}">
+                                            {% else %}
+                                                <div class="avatar-small">
+                                                    <i class="fa fa-user"></i>
                                                 </div>
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
+                                    
+                                    <div class="message-content">
+                                        <div class="message-bubble {% if message.sender == user %}my-bubble{% else %}other-bubble{% endif %}">
+                                            {% if message.image %}
+                                                <div class="message-image">
+                                                    <img src="{{ message.image.url }}" alt="Shared image" onclick="openImageModal(this.src)" loading="lazy">
+                                                </div>
+                                            {% endif %}
+                                            
+                                            {% if message.message %}
+                                                <div class="message-text">{{ message.message|linebreaks }}</div>
+                                            {% endif %}
+                                            
+                                            <div class="message-time">
+                                                {{ message.get_time_display }}
+                                                {% if message.sender == user %}
+                                                    <span class="message-status">{{ message.get_status_icon }}</span>
+                                                {% endif %}
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             {% empty %}
-                                <div class="empty-chat text-center text-muted py-5">
-                                    <i class="fa fa-comments empty-icon"></i>
-                                    <p class="mt-3">No messages yet. Start the conversation!</p>
+                                <div class="empty-state">
+                                    <div class="empty-icon">
+                                        <i class="fa fa-comments"></i>
+                                    </div>
+                                    <h6>Start your conversation</h6>
+                                    <p>Send a message to begin chatting</p>
                                 </div>
                             {% endfor %}
                         </div>
                     </div>
                     
-                    <!-- Enhanced Message Input -->
-                    <div class="card-footer chat-input-footer">
-                        <form id="message-form" class="d-flex align-items-center">
-                            {% csrf_token %}
-                            <input type="hidden" id="chat-id" value="{{ chat_room.id }}">
-                            
-                            <div class="input-group flex-grow-1">
-                                <input type="text" 
-                                       id="message-input" 
-                                       class="form-control chat-input" 
-                                       placeholder="Type your message..." 
-                                       maxlength="1000"
-                                       autocomplete="off"
-                                       required>
-                                       
-                                <div class="input-group-append">
-                                    <button type="button" class="btn btn-outline-secondary emoji-btn" title="Emoji (Coming Soon)">
-                                        <i class="fa fa-smile"></i>
+                    <!--  Input Area -->
+                    <div class="chat-footer">
+                        <!-- Image Preview -->
+                        <div id="image-preview-area" class="image-preview">
+                            <div class="preview-header">
+                                <span><i class="fa fa-image"></i> Image ready to send</span>
+                                <div class="preview-actions">
+                                    <button type="button" class="btn btn-sm btn-info" onclick="editImage()" title="Edit Image">
+                                        <i class="fa fa-edit"></i>
                                     </button>
-                                    <button type="button" class="btn btn-outline-secondary attach-btn" title="Attach File (Coming Soon)">
-                                        <i class="fa fa-paperclip"></i>
+                                    <button type="button" class="btn btn-sm btn-danger" onclick="clearImagePreview()">
+                                        <i class="fa fa-times"></i>
                                     </button>
                                 </div>
                             </div>
+                            <div class="preview-image">
+                                <img id="preview-img" src="" alt="Preview">
+                                <div class="file-info">
+                                    <small id="file-size-info"></small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <form id="message-form" class="message-form">
+                            {% csrf_token %}
+                            <input type="hidden" id="chat-id" value="{{ chat_room.id }}">
+                            <input type="file" id="image-input" accept="image/*" style="display: none;" multiple>
                             
-                            <button type="submit" class="btn btn-primary send-button ml-2" id="send-button">
-                                <i class="fa fa-paper-plane"></i>
-                            </button>
+                            <div class="input-container">
+                                <!-- Simplified attachment options -->
+                                <div class="attachment-options">
+                                    <button type="button" class="attach-btn" onclick="document.getElementById('image-input').click()" title="Upload & Crop Images (Ctrl+V to paste)">
+                                        <i class="fa fa-image"></i>
+                                    </button>
+                                </div>
+                                
+                                <input type="text" 
+                                       id="message-input" 
+                                       class="message-input" 
+                                       placeholder="Type a message... (Ctrl+V to paste images, Ctrl+Enter to send)" 
+                                       maxlength="1000"
+                                       autocomplete="off">
+                                
+                                <button type="submit" class="send-btn" id="send-button">
+                                    <i class="fa fa-paper-plane"></i>
+                                </button>
+                            </div>
+                            
+                            <!--  input help -->
+                            <div class="input-help">
+                                <small>
+                                    <i class="fa fa-magic"></i> 
+                                    <span class="help-text">Drag & drop, paste, or upload images • Ctrl+Enter to send</span>
+                                    <span class="char-count"><span id="char-count">0</span>/1000</span>
+                                </small>
+                            </div>
                         </form>
                     </div>
                 </div>
@@ -147,286 +186,1077 @@
     </div>
 </section>
 
+<!-- 🔥 FIXED: BRIGHT AND CLEAR Image Cropper Modal -->
+<div id="imageCropperModal" class="cropper-modal">
+    <div class="cropper-container">
+        <div class="cropper-header">
+            <h5><i class="fa fa-crop"></i> Crop & Edit Image</h5>
+            <div class="header-actions">
+                <!-- Quality selector -->
+                <select id="quality-selector" class="quality-select">
+                    <option value="0.9">High Quality</option>
+                    <option value="0.7" selected>Good Quality</option>
+                    <option value="0.5">Fast Upload</option>
+                </select>
+                <button type="button" class="close-cropper" onclick="closeCropper()">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="cropper-body">
+            <!-- 🔥 FIXED: Bright Cropper Canvas -->
+            <div class="cropper-canvas">
+                <img id="cropperImage" src="" alt="Image to crop">
+            </div>
+            
+            <!-- 🔥 FIXED:  Cropper Controls - Now Fully Visible -->
+            <div class="cropper-controls">
+                <!-- Aspect Ratios -->
+                <div class="control-group">
+                    <label>Aspect Ratio:</label>
+                    <div class="aspect-buttons">
+                        <button type="button" class="aspect-btn active" data-ratio="free" title="Free">
+                            <i class="fa fa-expand-arrows-alt"></i>
+                        </button>
+                        <button type="button" class="aspect-btn" data-ratio="1" title="Square (1:1)">
+                            <i class="fa fa-square"></i>
+                        </button>
+                        <button type="button" class="aspect-btn" data-ratio="1.33" title="4:3">
+                            <span>4:3</span>
+                        </button>
+                        <button type="button" class="aspect-btn" data-ratio="1.78" title="16:9">
+                            <span>16:9</span>
+                        </button>
+                        <button type="button" class="aspect-btn" data-ratio="0.75" title="3:4 Portrait">
+                            <span>3:4</span>
+                        </button>
+                        <button type="button" class="aspect-btn" data-ratio="2.35" title="Cinematic">
+                            <span>21:9</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Tools -->
+                <div class="control-group">
+                    <label>Tools:</label>
+                    <div class="tool-buttons">
+                        <button type="button" class="tool-btn" onclick="rotateCropper(-90)" title="Rotate Left">
+                            <i class="fa fa-undo"></i>
+                        </button>
+                        <button type="button" class="tool-btn" onclick="rotateCropper(90)" title="Rotate Right">
+                            <i class="fa fa-redo"></i>
+                        </button>
+                        <button type="button" class="tool-btn" onclick="flipCropper('horizontal')" title="Flip Horizontal">
+                            <i class="fa fa-arrows-alt-h"></i>
+                        </button>
+                        <button type="button" class="tool-btn" onclick="flipCropper('vertical')" title="Flip Vertical">
+                            <i class="fa fa-arrows-alt-v"></i>
+                        </button>
+                        <button type="button" class="tool-btn" onclick="resetCropper()" title="Reset">
+                            <i class="fa fa-refresh"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Zoom -->
+                <div class="control-group">
+                    <label>Zoom:</label>
+                    <div class="zoom-controls">
+                        <button type="button" class="tool-btn" onclick="zoomCropper(-0.1)" title="Zoom Out">
+                            <i class="fa fa-search-minus"></i>
+                        </button>
+                        <input type="range" id="zoomSlider" min="0.1" max="3" step="0.1" value="1" class="zoom-slider">
+                        <button type="button" class="tool-btn" onclick="zoomCropper(0.1)" title="Zoom In">
+                            <i class="fa fa-search-plus"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Image Info -->
+                <div class="control-group">
+                    <label>Image Info:</label>
+                    <div class="image-info">
+                        <small id="original-size"></small>
+                        <small id="crop-size"></small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="cropper-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeCropper()">
+                <i class="fa fa-times"></i> Cancel
+            </button>
+            <button type="button" class="btn btn-primary" onclick="applyCrop()">
+                <i class="fa fa-check"></i> Apply & Send
+            </button>
+        </div>
+    </div>
+</div>
 
+<!-- Image Modal -->
+<div id="imageModal" class="image-modal" onclick="closeImageModal()">
+    <span class="modal-close">&times;</span>
+    <img class="modal-image" id="modalImage">
+</div>
+
+<!-- 🔥 COMPLETELY FIXED CSS with Crystal Clear Cropper Controls -->
 <style>
-/* Chat Container */
+/* Chat Container Styles - All Original Styles Preserved */
 .chat-container {
-    height: 80vh;
+    background: #ffffff;
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    height: 600px;
+    min-height: 600px;
+    max-height: 600px;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 0 15px rgba(0,0,0,0.1);
-    border-radius: 8px;
-    overflow: hidden;
+    position: relative;
 }
 
-/* Chat Header */
 .chat-header {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-    padding: 15px 20px;
-    border-bottom: none;
-}
-
-.user-avatar-container {
-    position: relative;
-}
-
-.chat-avatar {
-    width: 45px;
-    height: 45px;
-    object-fit: cover;
-    border: 2px solid rgba(255,255,255,0.3);
-}
-
-.chat-avatar-placeholder {
-    width: 45px;
-    height: 45px;
-    background: rgba(255,255,255,0.2);
-    color: white;
-    border: 2px solid rgba(255,255,255,0.3);
-}
-
-.online-status {
-    position: absolute;
-    bottom: 2px;
-    right: 2px;
-    width: 10px;
-    height: 10px;
-    background: #28a745;
-    border: 2px solid white;
-    border-radius: 50%;
-}
-
-.chat-username {
-    font-weight: 600;
-    font-size: 1.05rem;
-}
-
-.seller-badge {
-    font-size: 0.8rem;
-    background: rgba(40, 167, 69, 0.2);
-    padding: 2px 6px;
-    border-radius: 8px;
-}
-
-.product-link {
-    background: rgba(255,255,255,0.1);
-    border-color: rgba(255,255,255,0.3);
-    color: white;
-}
-
-.product-link:hover {
-    background: rgba(255,255,255,0.2);
-    color: white;
-}
-
-/* Messages Container */
-.chat-messages-container {
-    flex: 1;
-    overflow-y: auto;
-    padding: 15px;
-    background: #f8f9fa;
-    scroll-behavior: smooth;
-}
-
-/*  Message Items */
-.message-item {
-    margin-bottom: 15px;
-    animation: fadeInUp 0.3s ease-out;
-}
-
-@keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.message-wrapper {
-    display: flex;
-    align-items: flex-end;
-    gap: 8px; /*  consistent spacing */
-}
-
-.message-item.sent .message-wrapper {
-    justify-content: flex-end;
-}
-
-.message-avatar {
-    width: 32px;
-    height: 32px;
-    flex-shrink: 0;
-}
-
-.message-avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.avatar-placeholder {
-    width: 32px;
-    height: 32px;
-    background: #dee2e6;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    color: #6c757d;
-}
-
-/*  Message Bubbles */
-.message-bubble {
-    max-width: 70%;
-    border-radius: 16px;
-    position: relative;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-}
-
-.my-message {
-    background: #007bff;
-    color: white;
-    border-bottom-right-radius: 4px;
-}
-
-.other-message {
-    background: white;
-    color: #333;
-    border: 1px solid #e9ecef;
-    border-bottom-left-radius: 4px;
-}
-
-
-.message-content {
-    padding: 10px 14px; 
-}
-
-.message-content p {
-    margin: 0 0 4px 0; 
-    line-height: 1.4;
-    word-wrap: break-word;
-    text-align: left; 
-}
-
-.message-meta {
+    padding: 20px 25px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 0.7rem;
-    margin-top: 4px;
+    height: 90px;
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
 }
 
-.my-message .message-meta {
-    color: rgba(255,255,255,0.8);
+.chat-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="1" fill="rgba(255,255,255,0.03)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+    pointer-events: none;
 }
 
-.other-message .message-meta {
-    color: #6c757d;
-}
-
-.status-icon {
-    margin-left: 4px;
-    opacity: 0.8;
-}
-
-.status-icon.read {
-    color: #28a745;
-    opacity: 1;
-}
-
-/* Typing Indicator */
-.typing-indicator {
-    margin-left: 8px;
-}
-
-.typing-animation {
-    display: inline-flex;
+.header-left {
+    display: flex;
     align-items: center;
+    z-index: 1;
+}
+
+.back-btn {
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    color: white;
+    padding: 10px 12px;
+    border-radius: 12px;
+    margin-right: 15px;
+    transition: all 0.3s ease;
+    text-decoration: none;
+}
+
+.back-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    color: white;
+    text-decoration: none;
+    transform: translateX(-3px);
+}
+
+.participant-avatar {
+    position: relative;
+    margin-right: 15px;
+}
+
+.participant-avatar img, .avatar-placeholder {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+}
+
+.avatar-placeholder {
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+}
+
+.online-indicator {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 14px;
+    height: 14px;
+    background: #4CAF50;
+    border: 3px solid white;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(76, 175, 80, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+}
+
+.participant-name {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.seller-badge {
+    background: rgba(76, 175, 80, 0.2);
+    color: #4CAF50;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    margin-top: 3px;
+    display: inline-block;
+}
+
+.typing-indicator {
+    display: none;
+    align-items: center;
+    margin-top: 5px;
+    font-size: 0.85rem;
+    opacity: 0.9;
+}
+
+.typing-dots {
+    margin-left: 5px;
+    display: inline-flex;
     gap: 2px;
 }
 
-.typing-animation span {
-    width: 3px;
-    height: 3px;
-    background: #6c757d;
+.typing-dots span {
+    width: 4px;
+    height: 4px;
+    background: currentColor;
     border-radius: 50%;
     animation: typing 1.4s infinite;
 }
 
-.typing-animation span:nth-child(2) { animation-delay: 0.2s; }
-.typing-animation span:nth-child(3) { animation-delay: 0.4s; }
+.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
 
 @keyframes typing {
     0%, 80%, 100% { transform: scale(1); opacity: 0.5; }
-    40% { transform: scale(1.1); opacity: 1; }
+    40% { transform: scale(1.3); opacity: 1; }
 }
 
-/* Chat Input */
-.chat-input-footer {
-    background: white;
-    border-top: 1px solid #e9ecef;
-    padding: 12px 16px;
+.product-context {
+    text-align: right;
+    z-index: 1;
 }
 
-.chat-input {
-    border: 1px solid #dee2e6;
+.product-label {
+    font-size: 0.75rem;
+    opacity: 0.8;
+    margin-bottom: 5px;
+}
+
+.product-link {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 12px;
+    text-decoration: none;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
+}
+
+.product-link:hover {
+    background: rgba(255, 255, 255, 0.25);
+    color: white;
+    text-decoration: none;
+    transform: translateY(-2px);
+}
+
+.chat-body {
+    flex: 1;
+    display: flex;
+    background: linear-gradient(to bottom, #f8f9fa, #ffffff);
+    min-height: 0;
+    position: relative;
+}
+
+.drag-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 123, 255, 0.9);
+    color: white;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+}
+
+.drag-overlay.active {
+    display: flex;
+}
+
+.drag-content {
+    text-align: center;
+    padding: 40px;
+    border: 3px dashed rgba(255, 255, 255, 0.5);
     border-radius: 20px;
-    padding: 10px 16px;
-    font-size: 0.9rem;
+    background: rgba(255, 255, 255, 0.1);
 }
 
-.chat-input:focus {
-    border-color: #007bff;
-    box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
-    outline: none;
+.drag-content i {
+    font-size: 60px;
+    margin-bottom: 20px;
+    opacity: 0.8;
 }
 
-.send-button {
+.drag-content h4 {
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.messages-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 25px;
+    scroll-behavior: smooth;
+    height: 100%;
+}
+
+.messages-area::-webkit-scrollbar {
+    width: 12px;
+}
+
+.messages-area::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 6px;
+}
+
+.messages-area::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 6px;
+    border: 2px solid #f1f1f1;
+}
+
+.messages-area::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+.messages-area {
+    scrollbar-width: auto;
+    scrollbar-color: #c1c1c1 #f1f1f1;
+}
+
+.message-wrapper {
+    display: flex;
+    margin-bottom: 20px;
+    animation: messageSlide 0.4s ease-out;
+}
+
+@keyframes messageSlide {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.message-wrapper.sent {
+    justify-content: flex-end;
+}
+
+.message-avatar {
+    width: 35px;
+    height: 35px;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+.message-avatar img, .avatar-small {
+    width: 100%;
+    height: 100%;
     border-radius: 50%;
-    width: 40px;
-    height: 40px;
+}
+
+.avatar-small {
+    background: #e9ecef;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #007bff;
-    border: none;
+    color: #6c757d;
+    font-size: 14px;
 }
 
-.send-button:hover {
-    background: #0056b3;
+.message-content {
+    max-width: 70%;
 }
 
-.emoji-btn, .attach-btn {
-    border-radius: 0;
+.message-bubble {
+    border-radius: 20px;
+    padding: 12px 16px;
+    position: relative;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
 }
 
-.emoji-btn:hover, .attach-btn:hover {
+.message-bubble:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+}
+
+.my-bubble {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+    border-bottom-right-radius: 8px;
+}
+
+.other-bubble {
+    background: white;
+    color: #333;
+    border: 1px solid #e9ecef;
+    border-bottom-left-radius: 8px;
+}
+
+.message-image {
+    margin-bottom: 8px;
+}
+
+.message-image img {
+    max-width: 250px;
+    max-height: 200px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.message-image img:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.message-text {
+    line-height: 1.4;
+    word-wrap: break-word;
+}
+
+.message-time {
+    font-size: 0.7rem;
+    margin-top: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.my-bubble .message-time {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.other-bubble .message-time {
+    color: #6c757d;
+}
+
+.message-status {
+    color: #4CAF50;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #6c757d;
+}
+
+.empty-icon i {
+    font-size: 60px;
+    color: #dee2e6;
+    margin-bottom: 20px;
+}
+
+.empty-state h6 {
+    font-size: 1.2rem;
+    margin-bottom: 10px;
+    color: #495057;
+}
+
+.chat-footer {
+    background: white;
+    border-top: 1px solid #e9ecef;
+    padding: 20px 25px;
+    flex-shrink: 0;
+    height: auto;
+    min-height: 80px;
+}
+
+.image-preview {
     background: #f8f9fa;
-    color: #007bff;
+    border: 2px dashed #dee2e6;
+    border-radius: 12px;
+    margin-bottom: 15px;
+    overflow: hidden;
+    display: none;
 }
 
-/* Empty Chat */
-.empty-chat .empty-icon {
-    font-size: 48px;
-    opacity: 0.3;
-    margin-bottom: 15px;
+.preview-header {
+    background: #e9ecef;
+    padding: 10px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9rem;
+}
+
+.preview-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.preview-image {
+    padding: 15px;
+    text-align: center;
+}
+
+.preview-image img {
+    max-width: 200px;
+    max-height: 150px;
+    border-radius: 8px;
+}
+
+.file-info {
+    margin-top: 8px;
+    color: #6c757d;
+}
+
+.input-container {
+    display: flex;
+    align-items: center;
+    background: #f8f9fa;
+    border: 2px solid #e9ecef;
+    border-radius: 25px;
+    padding: 8px 12px;
+    transition: all 0.3s ease;
+}
+
+.input-container:focus-within {
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.attachment-options {
+    display: flex;
+    gap: 5px;
+    margin-right: 8px;
+}
+
+.attach-btn, .send-btn {
+    background: none;
+    border: none;
+    padding: 10px;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.attach-btn {
+    color: #6c757d;
+}
+
+.attach-btn:hover {
+    background: #e9ecef;
+    color: #007bff;
+    transform: scale(1.1);
+}
+
+.message-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    padding: 12px 16px;
+    font-size: 0.95rem;
+    background: transparent;
+    resize: none;
+}
+
+.send-btn {
+    background: #007bff;
+    color: white;
+    margin-left: 8px;
+    width: 40px;
+    height: 40px;
+}
+
+.send-btn:hover {
+    background: #0056b3;
+    transform: scale(1.05);
+}
+
+.send-btn:disabled {
+    background: #6c757d;
+    transform: none;
+}
+
+.input-help {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+}
+
+.input-help small {
+    color: #6c757d;
+    font-size: 0.75rem;
+}
+
+.char-count {
+    font-weight: 500;
+}
+
+.char-count.warning {
+    color: #ffc107;
+}
+
+.char-count.danger {
+    color: #dc3545;
+}
+
+/* 🔥 COMPLETELY FIXED: CRYSTAL CLEAR IMAGE CROPPER - NO MORE DIM CONTROLS! */
+.cropper-modal {
+    display: none;
+    position: fixed;
+    z-index: 10000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    animation: fadeIn 0.3s ease;
+}
+
+.cropper-container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #ffffff;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 900px;
+    max-height: 90%;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.cropper-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.cropper-header h5 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.quality-select {
+    background: rgba(255, 255, 255, 0.95) !important;
+    color: #333 !important;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-size: 0.9rem;
+    opacity: 1 !important;
+}
+
+.quality-select option {
+    background: #ffffff;
+    color: #333;
+}
+
+.close-cropper {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.close-cropper:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
+}
+
+.cropper-body {
+    display: flex;
+    height: 500px;
+}
+
+/* 🔥 FIXED: Bright Image Canvas - No Filters */
+.cropper-canvas {
+    flex: 1;
+    background: #ffffff;
+    position: relative;
+    overflow: hidden;
+}
+
+.cropper-canvas img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: none !important;
+    opacity: 1 !important;
+}
+
+/* 🔥 CRITICAL FIX: Controls Panel - FULLY VISIBLE AND CLEAR */
+.cropper-controls {
+    width: 250px;
+    background: #ffffff !important;
+    border-left: 1px solid #dee2e6;
+    padding: 20px;
+    overflow-y: auto;
+    position: relative;
+    z-index: 10001;
+}
+
+/* 🔥 KEY FIX: Override ALL Cropper.js styles that make things dim */
+.cropper-container .cropper-canvas {
+    background: #ffffff !important;
+}
+
+.cropper-container .cropper-modal {
+    display: none !important; /* Completely hide the dim overlay */
+}
+
+.cropper-container .cropper-view-box {
+    outline: 3px solid #007bff !important;
+    outline-color: rgba(0, 123, 255, 0.9) !important;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.2) !important;
+}
+
+.cropper-container .cropper-face {
+    background-color: transparent !important;
+    opacity: 1 !important;
+}
+
+.cropper-container .cropper-line,
+.cropper-container .cropper-point {
+    background-color: #007bff !important;
+    opacity: 0.9 !important;
+}
+
+/* 🔥 FIXED: All Control Elements - Crystal Clear Visibility */
+.control-group {
+    margin-bottom: 20px;
+    background: transparent !important;
+}
+
+.control-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #495057 !important;
+    font-size: 0.9rem;
+    background: transparent !important;
+    opacity: 1 !important;
+}
+
+.aspect-buttons, .tool-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    background: transparent !important;
+}
+
+.aspect-btn, .tool-btn {
+    background: white !important;
+    border: 2px solid #dee2e6;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.8rem;
+    min-width: 45px;
+    text-align: center;
+    color: #495057 !important;
+    opacity: 1 !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.aspect-btn:hover, .tool-btn:hover {
+    border-color: #007bff;
+    background: #f0f8ff !important;
+    transform: translateY(-2px);
+    color: #007bff !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.aspect-btn.active {
+    background: #007bff !important;
+    color: white !important;
+    border-color: #007bff;
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+.zoom-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent !important;
+}
+
+.zoom-slider {
+    flex: 1;
+    margin: 0 8px;
+    opacity: 1 !important;
+    background: #f8f9fa;
+    height: 6px;
+    border-radius: 3px;
+    outline: none;
+}
+
+.zoom-slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #007bff;
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.zoom-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #007bff;
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.image-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: transparent !important;
+}
+
+.image-info small {
+    color: #6c757d !important;
+    font-size: 0.75rem;
+    opacity: 1 !important;
+    background: transparent !important;
+}
+
+.cropper-footer {
+    background: #ffffff !important;
+    border-top: 1px solid #dee2e6;
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    z-index: 10001;
+}
+
+.btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: none;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    opacity: 1 !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn-secondary {
+    background: #6c757d !important;
+    color: white !important;
+}
+
+.btn-secondary:hover {
+    background: #5a6268 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-primary {
+    background: #007bff !important;
+    color: white !important;
+}
+
+.btn-primary:hover {
+    background: #0056b3 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+}
+
+.btn-info {
+    background: #17a2b8 !important;
+    color: white !important;
+}
+
+.btn-danger {
+    background: #dc3545 !important;
+    color: white !important;
+}
+
+/* 🔥 OVERRIDE: Force all cropper control text to be visible */
+.cropper-controls *, 
+.cropper-controls *::before, 
+.cropper-controls *::after {
+    opacity: 1 !important;
+    color: inherit !important;
+    background-color: inherit !important;
+}
+
+/* Image Modal Styles */
+.image-modal {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    animation: fadeIn 0.3s ease;
+}
+
+.modal-close {
+    position: absolute;
+    top: 20px;
+    right: 35px;
+    color: white;
+    font-size: 40px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.modal-close:hover {
+    transform: scale(1.1);
+    opacity: 0.8;
+}
+
+.modal-image {
+    display: block;
+    margin: auto;
+    max-width: 90%;
+    max-height: 90%;
+    margin-top: 5%;
+    border-radius: 10px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* Toast Animation Styles */
+@keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOutRight {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
-    .chat-container { height: 70vh; }
-    .message-bubble { max-width: 85%; }
-    .chat-header { padding: 10px 15px; }
-    .chat-username { font-size: 1rem; }
-    .product-info { display: none; }
+    .chat-container { 
+        height: 500px; 
+        min-height: 500px; 
+        max-height: 500px; 
+    }
+    .chat-header { 
+        padding: 15px 20px; 
+        height: 70px; 
+    }
+    .participant-name { font-size: 1rem; }
+    .product-context { display: none; }
+    .message-content { max-width: 85%; }
+    .messages-area { padding: 20px 15px; }
+    .chat-footer { padding: 15px 20px; min-height: 70px; }
+    
+    .cropper-container {
+        width: 95%;
+        height: 90%;
+    }
+    
+    .cropper-body {
+        flex-direction: column;
+        height: auto;
+    }
+    
+    .cropper-canvas {
+        height: 300px;
+    }
+    
+    .cropper-controls {
+        width: 100%;
+        border-left: none;
+        border-top: 1px solid #dee2e6;
+    }
 }
 
 @media (max-width: 576px) {
-    .chat-input-footer { padding: 8px; }
-    .emoji-btn, .attach-btn { display: none; }
-    .message-meta { font-size: 0.65rem; }
+    .chat-container { 
+        height: 450px; 
+        min-height: 450px; 
+        max-height: 450px; 
+    }
+    .participant-avatar img, .avatar-placeholder { width: 40px; height: 40px; }
+    .message-avatar { width: 30px; height: 30px; }
+    .input-help .help-text { display: none; }
+    .chat-footer { min-height: 60px; }
+    
+    .aspect-buttons, .tool-buttons {
+        gap: 4px;
+    }
+    
+    .aspect-btn, .tool-btn {
+        padding: 6px 8px;
+        font-size: 0.7rem;
+        min-width: 35px;
+    }
+    
+    .cropper-controls {
+        padding: 15px;
+    }
 }
 </style>
 
-<!-- JavaScript -->
+<!-- 🔥 FIXED JavaScript with Crystal Clear Cropper -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const messageForm = document.getElementById('message-form');
@@ -434,154 +1264,44 @@ document.addEventListener('DOMContentLoaded', function() {
     const chatMessages = document.getElementById('chat-messages');
     const sendButton = document.getElementById('send-button');
     const chatId = document.getElementById('chat-id').value;
+    const imageInput = document.getElementById('image-input');
+    const imagePreviewArea = document.getElementById('image-preview-area');
+    const previewImg = document.getElementById('preview-img');
     const typingIndicator = document.getElementById('typing-indicator');
+    const charCount = document.getElementById('char-count');
+    const dragOverlay = document.getElementById('drag-overlay');
+    
+    // Cropper variables
+    let cropper = null;
+    let originalImageFile = null;
+    let croppedImageBlob = null;
     
     let lastMessageId = 0;
     let typingTimer;
     let isTyping = false;
+    let dragCounter = 0;
 
-    // ENHANCED: Completely block any clearing operations that might affect chat
-    const originalFetch = window.fetch;
-    window.fetch = function(url, options) {
-        // Block any requests that might clear chat data
-        if (url.includes('clear-messages') || url.includes('clear-notifications')) {
-            console.log('🛡️ Chat protection: Blocking clear request to preserve chat data');
-            
-            // Allow the request but store chat state
-            const chatMessagesBackup = chatMessages.innerHTML;
-            
-            return originalFetch.apply(this, arguments).then(response => {
-                // Restore chat messages after clearing
-                setTimeout(() => {
-                    if (chatMessages && chatMessages.innerHTML !== chatMessagesBackup) {
-                        console.log('🔄 Restoring chat messages after clear operation');
-                        chatMessages.innerHTML = chatMessagesBackup;
-                    }
-                }, 100);
-                
-                return response;
-            });
-        }
-        
-        return originalFetch.apply(this, arguments);
-    };
-
-    // Additional protection: Override any clear functions
-    window.clearMessages = function() {
-        console.log('🛡️ Chat protection: Preventing clearMessages from affecting chat');
-        
-        // Only clear notifications, never chat
-        fetch('/clear-notifications-only/', {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-            }
-        }).then(response => response.json())
-        .then(data => {
-            console.log('✅ Notifications cleared, chat preserved:', data);
-        }).catch(error => {
-            console.error('❌ Error clearing notifications:', error);
-        });
-    };
-    
-    // Get last message ID for polling
-    const messages = chatMessages.querySelectorAll('.message-item');
+    // Get last message ID
+    const messages = chatMessages.querySelectorAll('.message-wrapper');
     if (messages.length > 0) {
         const lastMessage = messages[messages.length - 1];
         lastMessageId = parseInt(lastMessage.getAttribute('data-message-id')) || 0;
     }
     
-    // Auto-scroll to bottom with smooth animation
     function scrollToBottom() {
-        chatMessages.scrollTo({
-            top: chatMessages.scrollHeight,
-            behavior: 'smooth'
-        });
+        chatMessages.scrollTop = chatMessages.scrollHeight;
     }
     
-    // Initial scroll
     setTimeout(scrollToBottom, 100);
     
-    // Send message with enhanced feedback
-    messageForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const message = messageInput.value.trim();
-        if (!message) return;
-        
-        // Clear typing indicator
-        clearTyping();
-        
-        // Disable input during send
-        sendButton.disabled = true;
-        messageInput.disabled = true;
-        sendButton.innerHTML = '<i class="fa fa-spinner fa-spin"></i>';
-        
-        fetch('{% url "send_message" %}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-            },
-            body: `chat_id=${chatId}&message=${encodeURIComponent(message)}`
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                addMessageToChat(data.message);
-                messageInput.value = '';
-                lastMessageId = data.message.id;
-                scrollToBottom();
-            } else {
-                showNotification('Error sending message: ' + (data.error || 'Unknown error'), 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showNotification('Error sending message', 'error');
-        })
-        .finally(() => {
-            sendButton.disabled = false;
-            messageInput.disabled = false;
-            sendButton.innerHTML = '<i class="fa fa-paper-plane"></i>';
-            messageInput.focus();
-        });
-    });
-    
-    // Add message to chat UI with enhanced styling
-    function addMessageToChat(messageData) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message-item mb-3 ${messageData.is_mine ? 'sent' : 'received'}`;
-        messageDiv.setAttribute('data-message-id', messageData.id);
-        
-        const avatarHtml = messageData.is_mine ? '' : `
-            <div class="message-avatar">
-                <div class="avatar-placeholder rounded-circle">
-                    <i class="fa fa-user"></i>
-                </div>
-            </div>
-        `;
-        
-        messageDiv.innerHTML = `
-            <div class="message-wrapper">
-                ${avatarHtml}
-                <div class="message-bubble ${messageData.is_mine ? 'my-message' : 'other-message'}">
-                    <div class="message-content">
-                        <p class="mb-1">${messageData.message}</p>
-                        <div class="message-meta">
-                            <small class="message-time">${messageData.timestamp}</small>
-                            ${messageData.is_mine ? `<small class="message-status"><span class="status-icon">${messageData.status_icon}</span></small>` : ''}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        chatMessages.appendChild(messageDiv);
-    }
-    
-    // Typing indicator functionality
+    // Character count tracking
     messageInput.addEventListener('input', function() {
+        const currentLength = this.value.length;
+        charCount.textContent = currentLength;
+        
+        charCount.parentElement.className = currentLength > 900 ? 'char-count danger' : 
+                                           currentLength > 800 ? 'char-count warning' : 'char-count';
+        
         if (!isTyping) {
             setTyping();
             isTyping = true;
@@ -594,45 +1314,371 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 3000);
     });
     
+    // Keyboard shortcuts
     messageInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
+        if (e.ctrlKey && e.key === 'Enter') {
             e.preventDefault();
             messageForm.dispatchEvent(new Event('submit'));
         }
     });
     
+    // Drag & Drop functionality
+    document.addEventListener('dragenter', function(e) {
+        e.preventDefault();
+        dragCounter++;
+        if (e.dataTransfer.types.includes('Files')) {
+            dragOverlay.classList.add('active');
+        }
+    });
+    
+    document.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        dragCounter--;
+        if (dragCounter === 0) {
+            dragOverlay.classList.remove('active');
+        }
+    });
+    
+    document.addEventListener('dragover', function(e) {
+        e.preventDefault();
+    });
+    
+    document.addEventListener('drop', function(e) {
+        e.preventDefault();
+        dragCounter = 0;
+        dragOverlay.classList.remove('active');
+        
+        const files = Array.from(e.dataTransfer.files);
+        const imageFiles = files.filter(file => file.type.startsWith('image/'));
+        
+        if (imageFiles.length > 0) {
+            handleImageFile(imageFiles[0]);
+            if (imageFiles.length > 1) {
+                showToast(`Processing first image only. ${imageFiles.length - 1} more files ignored.`, 'info');
+            }
+        }
+    });
+    
+    //  image handling
+    imageInput.addEventListener('change', function(e) {
+        if (e.target.files && e.target.files[0]) {
+            handleImageFile(e.target.files[0]);
+        }
+    });
+    
+    // Image paste functionality
+    messageInput.addEventListener('paste', function(e) {
+        const items = e.clipboardData.items;
+        
+        for (let item of items) {
+            if (item.type.startsWith('image/')) {
+                e.preventDefault();
+                const file = item.getAsFile();
+                handleImageFile(file);
+                break;
+            }
+        }
+    });
+    
+    function handleImageFile(file) {
+        if (file.size > 10 * 1024 * 1024) {
+            showToast('Image too large. Maximum size is 10MB.', 'error');
+            return;
+        }
+        
+        if (!file.type.startsWith('image/')) {
+            showToast('Please select a valid image file.', 'error');
+            return;
+        }
+        
+        originalImageFile = file;
+        openCropper(file);
+    }
+    
+    // 🔥 FIXED: CRYSTAL CLEAR CROPPER with NO DIM OVERLAY
+    window.openCropper = function(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('cropperImage').src = e.target.result;
+            document.getElementById('imageCropperModal').style.display = 'block';
+            
+            // Show original file info
+            document.getElementById('original-size').textContent = `Original: ${formatFileSize(file.size)}`;
+            
+            // Initialize cropper with BRIGHT settings - NO DIM OVERLAY
+            setTimeout(() => {
+                const image = document.getElementById('cropperImage');
+                cropper = new Cropper(image, {
+                    aspectRatio: NaN,
+                    viewMode: 1,
+                    dragMode: 'move',
+                    autoCropArea: 0.8,
+                    restore: false,
+                    guides: true,
+                    center: true,
+                    highlight: false,
+                    cropBoxMovable: true,
+                    cropBoxResizable: true,
+                    toggleDragModeOnDblclick: false,
+                    responsive: true,
+                    // 🔥 CRITICAL: Disable the dim overlay completely
+                    background: false,
+                    modal: false,
+                    crop: function(event) {
+                        // Update crop size info
+                        const data = cropper.getCropBoxData();
+                        document.getElementById('crop-size').textContent = 
+                            `Crop: ${Math.round(data.width)}×${Math.round(data.height)}px`;
+                    }
+                });
+                
+                // Setup zoom slider
+                const zoomSlider = document.getElementById('zoomSlider');
+                zoomSlider.addEventListener('input', function() {
+                    if (cropper) {
+                        cropper.zoomTo(parseFloat(this.value));
+                    }
+                });
+            }, 300);
+        };
+        reader.readAsDataURL(file);
+    };
+    
+    window.closeCropper = function() {
+        if (cropper) {
+            cropper.destroy();
+            cropper = null;
+        }
+        document.getElementById('imageCropperModal').style.display = 'none';
+        imageInput.value = '';
+        originalImageFile = null;
+    };
+    
+    // Aspect ratio buttons
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('aspect-btn') || e.target.parentElement.classList.contains('aspect-btn')) {
+            const btn = e.target.classList.contains('aspect-btn') ? e.target : e.target.parentElement;
+            const ratio = btn.getAttribute('data-ratio');
+            
+            document.querySelectorAll('.aspect-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            if (cropper) {
+                if (ratio === 'free') {
+                    cropper.setAspectRatio(NaN);
+                } else {
+                    cropper.setAspectRatio(parseFloat(ratio));
+                }
+            }
+        }
+    });
+    
+    window.rotateCropper = function(degree) {
+        if (cropper) {
+            cropper.rotate(degree);
+        }
+    };
+    
+    window.flipCropper = function(direction) {
+        if (cropper) {
+            if (direction === 'horizontal') {
+                cropper.scaleX(-cropper.getData().scaleX || -1);
+            } else {
+                cropper.scaleY(-cropper.getData().scaleY || -1);
+            }
+        }
+    };
+    
+    window.resetCropper = function() {
+        if (cropper) {
+            cropper.reset();
+            document.getElementById('zoomSlider').value = 1;
+        }
+    };
+    
+    window.zoomCropper = function(ratio) {
+        if (cropper) {
+            cropper.zoom(ratio);
+            const currentZoom = cropper.getData().scaleX;
+            document.getElementById('zoomSlider').value = currentZoom;
+        }
+    };
+    
+    window.applyCrop = function() {
+        if (cropper) {
+            const quality = parseFloat(document.getElementById('quality-selector').value);
+            const canvas = cropper.getCroppedCanvas({
+                width: 800,
+                height: 600,
+                imageSmoothingEnabled: true,
+                imageSmoothingQuality: 'high',
+            });
+            
+            canvas.toBlob(function(blob) {
+                croppedImageBlob = blob;
+                
+                // Show preview with file info
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImg.src = e.target.result;
+                    imagePreviewArea.style.display = 'block';
+                    document.getElementById('file-size-info').textContent = formatFileSize(blob.size);
+                };
+                reader.readAsDataURL(blob);
+                
+                closeCropper();
+                showToast('Image cropped successfully!', 'success');
+            }, 'image/jpeg', quality);
+        }
+    };
+    
+    window.editImage = function() {
+        if (originalImageFile) {
+            openCropper(originalImageFile);
+        }
+    };
+    
+    window.clearImagePreview = function() {
+        imagePreviewArea.style.display = 'none';
+        croppedImageBlob = null;
+        originalImageFile = null;
+        imageInput.value = '';
+    };
+    
+    // Utility function
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+    
+    // Typing indicator functions
     function setTyping() {
         fetch(`{% url "set_typing" chat_room.id %}`, {
             method: 'POST',
-            headers: {
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-            }
+            headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value }
         });
     }
     
     function clearTyping() {
         fetch(`{% url "clear_typing" chat_room.id %}`, {
             method: 'POST',
-            headers: {
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-            }
+            headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value }
         });
     }
     
-    // Check for typing users
     function checkTyping() {
         fetch(`{% url "get_typing_users" chat_room.id %}`)
         .then(response => response.json())
         .then(data => {
             if (data.success && data.typing_users.length > 0) {
-                typingIndicator.style.display = 'block';
+                typingIndicator.style.display = 'flex';
             } else {
                 typingIndicator.style.display = 'none';
             }
         });
     }
     
-    // Poll for new messages with enhanced features
+    //  send message
+    messageForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const message = messageInput.value.trim();
+        
+        if (!message && !croppedImageBlob) {
+            messageInput.focus();
+            return;
+        }
+        
+        clearTyping();
+        
+        sendButton.disabled = true;
+        sendButton.innerHTML = '<i class="fa fa-spinner fa-spin"></i>';
+        
+        const formData = new FormData();
+        formData.append('chat_id', chatId);
+        formData.append('message', message);
+        
+        if (croppedImageBlob) {
+            formData.append('image', croppedImageBlob, 'cropped_image.jpg');
+        }
+        
+        fetch('{% url "send_message" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                addMessageToChat(data.message);
+                messageInput.value = '';
+                charCount.textContent = '0';
+                charCount.parentElement.className = 'char-count';
+                clearImagePreview();
+                lastMessageId = data.message.id;
+                scrollToBottom();
+                showToast('Message sent!', 'success');
+            } else {
+                showToast('Error sending message: ' + (data.error || 'Unknown error'), 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Network error. Please try again.', 'error');
+        })
+        .finally(() => {
+            sendButton.disabled = false;
+            sendButton.innerHTML = '<i class="fa fa-paper-plane"></i>';
+            messageInput.focus();
+        });
+    });
+    
+    function addMessageToChat(messageData) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message-wrapper ${messageData.is_mine ? 'sent' : 'received'}`;
+        messageDiv.setAttribute('data-message-id', messageData.id);
+        
+        let imageHtml = '';
+        if (messageData.image) {
+            imageHtml = `
+                <div class="message-image">
+                    <img src="${messageData.image}" alt="Shared image" onclick="openImageModal(this.src)" loading="lazy">
+                </div>
+            `;
+        }
+        
+        const messageTextHtml = messageData.message ? `<div class="message-text">${messageData.message}</div>` : '';
+        
+        messageDiv.innerHTML = `
+            ${!messageData.is_mine ? `
+                <div class="message-avatar">
+                    <div class="avatar-small">
+                        <i class="fa fa-user"></i>
+                    </div>
+                </div>
+            ` : ''}
+            <div class="message-content">
+                <div class="message-bubble ${messageData.is_mine ? 'my-bubble' : 'other-bubble'}">
+                    ${imageHtml}
+                    ${messageTextHtml}
+                    <div class="message-time">
+                        ${messageData.timestamp}
+                        ${messageData.is_mine ? `<span class="message-status">${messageData.status_icon}</span>` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        chatMessages.appendChild(messageDiv);
+        scrollToBottom();
+    }
+    
+    // Poll for new messages
     function pollMessages() {
         fetch(`{% url "get_new_messages" chat_room.id %}?last_id=${lastMessageId}`)
         .then(response => response.json())
@@ -642,71 +1688,59 @@ document.addEventListener('DOMContentLoaded', function() {
                     addMessageToChat(message);
                     lastMessageId = message.id;
                 });
-                scrollToBottom();
-                
-                // Show notification for new messages (if page not focused)
-                if (!document.hasFocus()) {
-                    showDesktopNotification(data.messages[0]);
-                }
             }
         })
         .catch(error => console.error('Error polling messages:', error));
         
-        // Check typing status
         checkTyping();
     }
     
-    // Poll every 2 seconds for better real-time feel
-    setInterval(pollMessages, 2000);
+    setInterval(pollMessages, 3000);
     
-    // Show notification
-    function showNotification(message, type = 'info') {
-        console.log(`${type.toUpperCase()}: ${message}`);
+    //  toast notifications
+    function showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `alert alert-${type === 'error' ? 'danger' : type} toast-notification`;
+        toast.style.cssText = `
+            position: fixed; top: 20px; right: 20px; z-index: 10001;
+            min-width: 300px; border-radius: 10px;
+            animation: slideInRight 0.3s ease-out;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+        `;
+        toast.innerHTML = `
+            <i class="fa fa-${type === 'error' ? 'exclamation-triangle' : type === 'success' ? 'check-circle' : 'info-circle'}"></i>
+            ${message}
+        `;
+        
+        document.body.appendChild(toast);
+        setTimeout(() => {
+            toast.style.animation = 'slideOutRight 0.3s ease-out';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
     }
     
-    // Desktop notifications 
-    function showDesktopNotification(message) {
-        if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification(`New message from ${message.sender_name}`, {
-                body: message.message,
-                icon: '/static/images/logo.png'
-            });
-        }
-    }
-    
-    // Request notification permission
-    if ('Notification' in window && Notification.permission === 'default') {
-        Notification.requestPermission();
-    }
-    
-    // Focus on input
     messageInput.focus();
-    
-    // Clear typing when user leaves
     window.addEventListener('beforeunload', clearTyping);
     
-    // ENHANCED: Additional protection against page reloads affecting chat
-    window.addEventListener('beforeunload', function() {
-        localStorage.setItem('chatPreservation_' + chatId, JSON.stringify({
-            lastMessageId: lastMessageId,
-            timestamp: Date.now()
-        }));
-    });
-    
-    // Restore chat state if needed
-    const chatPreservation = localStorage.getItem('chatPreservation_' + chatId);
-    if (chatPreservation) {
-        try {
-            const data = JSON.parse(chatPreservation);
-            if (Date.now() - data.timestamp < 300000) { // 5 minutes
-                lastMessageId = data.lastMessageId;
-                console.log('🔄 Restored chat state from localStorage');
+    // Close cropper on Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            if (document.getElementById('imageCropperModal').style.display === 'block') {
+                closeCropper();
             }
-            localStorage.removeItem('chatPreservation_' + chatId);
-        } catch (e) {
-            console.error('Error restoring chat state:', e);
+            closeImageModal();
         }
-    }
-}); 
+    });
+});
+
+// Image modal functions
+function openImageModal(src) {
+    document.getElementById('modalImage').src = src;
+    document.getElementById('imageModal').style.display = 'block';
+}
+
+function closeImageModal() {
+    document.getElementById('imageModal').style.display = 'none';
+}
 </script>
 {% endblock %}

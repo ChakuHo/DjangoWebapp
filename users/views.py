@@ -808,6 +808,11 @@ def my_selling_items(request):
     # Calculate analytics for each product
     for product in products:
         if product.approval_status == 'approved':
+            # 🔥 INCREMENT VIEW COUNT when seller views their products
+            if hasattr(product, 'view_count'):
+                product.view_count = (product.view_count or 0) + 1
+                product.save(update_fields=['view_count'])
+            
             # Get fresh analytics data
             analytics = product.get_analytics_data()
             # analytics to product object for template access
@@ -1111,6 +1116,130 @@ def get_add_product_context():
         'category_variations': json.dumps(category_variations)
     }
 
+def revert_analytics_after_rejection(order):
+    """Revert product analytics when order payment is rejected"""
+    try:
+        print(f"🔄 REVERTING ANALYTICS for order #{order.order_number}")
+        
+        # Get all order items
+        from orders.models import OrderItem
+        order_items = OrderItem.objects.filter(order=order, ordered=True)
+        
+        reverted_products = []
+        total_reverted_revenue = 0
+        
+        for item in order_items:
+            product = item.product
+            
+            # Revert order count
+            if hasattr(product, 'order_count') and product.order_count > 0:
+                product.order_count = max(0, product.order_count - item.quantity)
+                print(f"📊 {product.name}: order_count {product.order_count + item.quantity} → {product.order_count}")
+            
+            # Revert total revenue
+            if hasattr(product, 'total_revenue') and product.total_revenue > 0:
+                item_revenue = item.quantity * item.price
+                product.total_revenue = max(0, product.total_revenue - item_revenue)
+                total_reverted_revenue += item_revenue
+                print(f"💰 {product.name}: revenue reverted by Rs.{item_revenue}")
+            
+            # Save the product
+            product.save()
+            reverted_products.append(product.name)
+        
+        print(f"✅ Analytics reverted for {len(reverted_products)} products. Total revenue reverted: Rs.{total_reverted_revenue}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error reverting analytics: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def revert_analytics_after_rejection(order):
+    """Revert product analytics when order payment is rejected"""
+    try:
+        print(f"🔄 REVERTING ANALYTICS for order #{order.order_number}")
+        
+        # Get all order items
+        from orders.models import OrderItem
+        order_items = OrderItem.objects.filter(order=order, ordered=True)
+        
+        reverted_products = []
+        total_reverted_revenue = 0
+        
+        for item in order_items:
+            product = item.product
+            
+            # Revert order count
+            if hasattr(product, 'order_count') and product.order_count > 0:
+                old_count = product.order_count
+                product.order_count = max(0, product.order_count - item.quantity)
+                print(f"📊 {product.name}: order_count {old_count} → {product.order_count}")
+            
+            # Revert total revenue
+            if hasattr(product, 'total_revenue') and product.total_revenue > 0:
+                item_revenue = item.quantity * item.price
+                old_revenue = product.total_revenue
+                product.total_revenue = max(0, product.total_revenue - item_revenue)
+                total_reverted_revenue += item_revenue
+                print(f"💰 {product.name}: revenue {old_revenue} → {product.total_revenue} (reverted Rs.{item_revenue})")
+            
+            # Save the product
+            product.save()
+            reverted_products.append(product.name)
+        
+        print(f"✅ Analytics reverted for {len(reverted_products)} products. Total revenue reverted: Rs.{total_reverted_revenue}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error reverting analytics: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def revert_analytics_after_rejection(order):
+    """Revert product analytics when order payment is rejected"""
+    try:
+        print(f"🔄 REVERTING ANALYTICS for order #{order.order_number}")
+        
+        # Get all order items
+        from orders.models import OrderItem
+        order_items = OrderItem.objects.filter(order=order, ordered=True)
+        
+        reverted_products = []
+        total_reverted_revenue = 0
+        
+        for item in order_items:
+            product = item.product
+            
+            # Revert order count
+            if hasattr(product, 'order_count') and product.order_count > 0:
+                old_count = product.order_count
+                product.order_count = max(0, product.order_count - item.quantity)
+                print(f"📊 {product.name}: order_count {old_count} → {product.order_count}")
+            
+            # Revert total revenue
+            if hasattr(product, 'total_revenue') and product.total_revenue > 0:
+                item_revenue = item.quantity * item.price
+                old_revenue = float(product.total_revenue)
+                product.total_revenue = max(0, old_revenue - item_revenue)
+                total_reverted_revenue += item_revenue
+                print(f"💰 {product.name}: revenue {old_revenue} → {product.total_revenue} (reverted Rs.{item_revenue})")
+            
+            # Save the product
+            product.save(update_fields=['order_count', 'total_revenue'])
+            reverted_products.append(product.name)
+        
+        print(f"✅ Analytics reverted for {len(reverted_products)} products. Total revenue reverted: Rs.{total_reverted_revenue}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error reverting analytics: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
 @login_required
 def verify_qr_payments(request):
     """Allow sellers to verify QR payments they received"""
@@ -1147,6 +1276,18 @@ def verify_qr_payments(request):
                 order.qr_payment_verified_at = timezone.now()
                 order.save()
                 
+                # 🔥 UPDATE ANALYTICS WHEN PAYMENT IS VERIFIED
+                print(f"✅ Payment verified - updating analytics for order #{order.order_number}")
+                for item in order.items.filter(ordered=True):
+                    product = item.product
+                    # Update order count
+                    product.order_count += item.quantity
+                    # Update revenue
+                    item_revenue = item.quantity * item.price
+                    product.total_revenue += item_revenue
+                    product.save(update_fields=['order_count', 'total_revenue'])
+                    print(f"📊 Updated {product.name}: +{item.quantity} orders, +Rs.{item_revenue} revenue")
+                
                 # Send confirmation email
                 from orders.views import send_order_confirmation_email
                 send_order_confirmation_email(order)
@@ -1170,7 +1311,10 @@ def verify_qr_payments(request):
                 # Import the functions
                 from orders.views import send_order_rejection_email, revert_stock_after_rejection
                 
-                # Revert stock first
+                # 🔥 REVERT ANALYTICS FIRST (before reverting stock)
+                analytics_reverted = revert_analytics_after_rejection(order)
+                
+                # Revert stock
                 stock_reverted = revert_stock_after_rejection(order)
                 
                 # Update order status
@@ -1193,14 +1337,23 @@ def verify_qr_payments(request):
                     url='/orders/my-orders/'
                 )
                 
-                if stock_reverted and email_sent:
-                    messages.warning(request, f'❌ Payment rejected for Order #{order.order_number}. Stock reverted and customer notified via email.')
+                # 🔥 ENHANCED SUCCESS MESSAGE with analytics tracking
+                if analytics_reverted and stock_reverted and email_sent:
+                    messages.warning(request, f'❌ Payment rejected for Order #{order.order_number}. Analytics reverted, stock reverted, and customer notified via email.')
+                elif analytics_reverted and stock_reverted:
+                    messages.warning(request, f'❌ Payment rejected for Order #{order.order_number}. Analytics and stock reverted. (Email notification failed)')
+                elif analytics_reverted and email_sent:
+                    messages.warning(request, f'❌ Payment rejected for Order #{order.order_number}. Analytics reverted and customer notified. (Stock reversion failed)')
+                elif stock_reverted and email_sent:
+                    messages.warning(request, f'❌ Payment rejected for Order #{order.order_number}. Stock reverted and customer notified. (Analytics reversion failed)')
+                elif analytics_reverted:
+                    messages.warning(request, f'❌ Payment rejected for Order #{order.order_number}. Analytics reverted. (Stock reversion and email notification failed)')
                 elif stock_reverted:
-                    messages.warning(request, f'❌ Payment rejected for Order #{order.order_number}. Stock reverted. (Email notification failed)')
+                    messages.warning(request, f'❌ Payment rejected for Order #{order.order_number}. Stock reverted. (Analytics reversion and email notification failed)')
                 elif email_sent:
-                    messages.warning(request, f'❌ Payment rejected for Order #{order.order_number}. Customer notified. (Stock reversion failed)')
+                    messages.warning(request, f'❌ Payment rejected for Order #{order.order_number}. Customer notified. (Analytics and stock reversion failed)')
                 else:
-                    messages.error(request, f'❌ Payment rejected for Order #{order.order_number}. WARNING: Stock reversion and email notification failed!')
+                    messages.error(request, f'❌ Payment rejected for Order #{order.order_number}. WARNING: Analytics reversion, stock reversion, and email notification ALL FAILED!')
                 
         except Exception as e:
             print(f"❌ Error in verification: {str(e)}")
@@ -1390,24 +1543,32 @@ def start_chat_about_product(request, product_id):
 
 @login_required
 def send_message(request):
-    """AJAX endpoint to send message with enhanced status"""
+    """AJAX endpoint to send message with IMAGE SUPPORT"""
     if request.method == 'POST':
         chat_id = request.POST.get('chat_id')
         message_text = request.POST.get('message', '').strip()
+        image_file = request.FILES.get('image') 
         
-        if not message_text:
-            return JsonResponse({'success': False, 'error': 'Message cannot be empty'})
+        if not message_text and not image_file:  
+            return JsonResponse({'success': False, 'error': 'Message or image is required'})
         
-        if chat_id and message_text:
+        if chat_id:
             try:
                 chat_room = get_object_or_404(ChatRoom, id=chat_id, participants=request.user)
                 
+                # Create message with image support
                 message = ChatMessage.objects.create(
                     chat_room=chat_room,
                     sender=request.user,
                     message=message_text,
-                    status='sent'  #  Set initial status
+                    status='sent'
                 )
+                
+                # IMAGE HANDLING
+                if image_file:
+                    # Save image to message (you'll need to add image field to ChatMessage model)
+                    message.image = image_file
+                    message.save()
                 
                 # Update chat room timestamp
                 chat_room.updated_at = timezone.now()
@@ -1426,12 +1587,14 @@ def send_message(request):
                         'message': message.message,
                         'sender': message.sender.username,
                         'sender_name': message.sender.get_full_name() or message.sender.username,
-                        'timestamp': message.get_time_display(),  #  Human-readable time
-                        'status_icon': message.get_status_icon(),  #  Status icon
-                        'is_mine': True
+                        'timestamp': message.get_time_display(),
+                        'status_icon': message.get_status_icon(),
+                        'is_mine': True,
+                        'image': message.image.url if hasattr(message, 'image') and message.image else None  # 🔥 ADD THIS
                     }
                 })
             except Exception as e:
+                print(f"Error sending message: {e}")  # 🔥 ADD DEBUG
                 return JsonResponse({'success': False, 'error': str(e)})
     
     return JsonResponse({'success': False, 'error': 'Invalid request'})

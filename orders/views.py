@@ -674,6 +674,8 @@ def place_order(request):
                 order.status = 'Confirmed'
                 order.is_ordered = True
                 order.save()
+
+                update_product_analytics_on_completion(order) # for analytics
                 
                 print(f"🔄 COD ORDER COMPLETED - ID: {order.id}")
                 
@@ -839,7 +841,7 @@ def esewa_return(request, order_id):
         
         print(f"✅ Payment created: {payment.payment_id}, Created: {created}")
 
-        # FIXED: Get cart items correctly using cart relationship
+        # Get cart items correctly using cart relationship
         if not order.items.filter(ordered=True).exists():
             try:
                 cart = Cart.objects.get(user=order.user)
@@ -881,6 +883,8 @@ def esewa_return(request, order_id):
         order.payment_reference = txn_code
         order.payment_gateway_response = json.dumps(payload)
         order.save()
+
+        update_product_analytics_on_completion(order)
         
         print(f"✅ Order completed: {order.id}")
         
@@ -895,6 +899,25 @@ def esewa_return(request, order_id):
     print(f"❌ eSewa payment failed: Status={status}")
     messages.error(request, "eSewa payment was not completed.")
     return redirect('checkout')
+
+def update_product_analytics_on_completion(order):
+    """Update product analytics when order is completed"""
+    print(f"📊 Updating analytics for completed order #{order.order_number}")
+    
+    for item in order.items.filter(ordered=True):
+        product = item.product
+        
+        # Update order count
+        product.order_count += item.quantity
+        
+        # Update total revenue  
+        item_revenue = item.quantity * item.price
+        product.total_revenue += item_revenue
+        
+        # Save changes
+        product.save(update_fields=['order_count', 'total_revenue'])
+        
+        print(f"📊 {product.name}: +{item.quantity} orders, +Rs.{item_revenue} revenue")
 
 @login_required
 def confirm_qr_payment(request, order_id):
@@ -918,7 +941,7 @@ def confirm_qr_payment(request, order_id):
                 context = {
                     'order': order,
                     'qr_reference': qr_reference,
-                    'seller_qr_codes': [],  # You may need to rebuild this
+                    'seller_qr_codes': [],  
                     'total_amount': order.grand_total,
                     'error': 'Transaction ID is required'
                 }
