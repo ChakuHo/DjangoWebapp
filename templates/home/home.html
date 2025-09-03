@@ -8,6 +8,33 @@
 </section>
 <!-- ========================= SECTION MAIN END// ========================= -->
 
+<!-- ========================= BANNER POPUP ========================= -->
+<section class="banner-popup" id="welcomeBanner">
+  <div class="container">
+    <div class="banner-card">
+      <button class="banner-close" onclick="closeBanner()">&times;</button>
+      <div class="row align-items-center">
+        <div class="col-md-8">
+          <div class="banner-content">
+            <h2>🎉 Special Offers Available!</h2>
+            <p>Get up to 50% off on selected items. Free shipping on orders above Rs. 999</p>
+            <div class="banner-actions">
+              <a href="{% url 'products:product' %}" class="btn btn-primary btn-sm">Shop Now</a>
+              <span class="offer-timer">Limited Time Offer</span>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4 text-center">
+          <div class="banner-visual">
+            <span class="discount-badge">50% OFF</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- ========================= BANNER POPUP END// ========================= -->
+
 <!-- ========================= SECTION  ========================= -->
 <section class="section-name padding-y-sm">
   <div class="container">
@@ -32,6 +59,11 @@
               {% else %}
               <img src="https://via.placeholder.com/300x300?text=No+Image" />
               {% endif %}
+              
+              <!-- Wishlist Icon -->
+              <div class="wishlist-icon" data-product-id="{{ product.id }}">
+                <i class="far fa-heart"></i>
+              </div>
               
               <!-- Product badges -->
               <div class="product-badges">
@@ -106,7 +138,173 @@
 </section>
 
 <style>
-/* Enhanced Home Page Styling */
+/* Banner Popup Style */
+.banner-popup {
+  margin: 20px 0;
+  animation: slideDown 0.5s ease-out;
+}
+
+.banner-card {
+  background: #fff;
+  border: 2px solid #007bff;
+  border-radius: 10px;
+  padding: 20px;
+  position: relative;
+  box-shadow: 0 4px 15px rgba(0, 123, 255, 0.2);
+  background-image: 
+    radial-gradient(circle at 20% 20%, rgba(0, 123, 255, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(0, 86, 179, 0.08) 0%, transparent 50%);
+}
+
+.banner-close {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #666;
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.banner-close:hover {
+  background: #f8f9fa;
+  color: #007bff;
+  transform: rotate(90deg);
+}
+
+.banner-content h2 {
+  color: #333;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.banner-content p {
+  color: #666;
+  font-size: 1rem;
+  margin-bottom: 15px;
+}
+
+.banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.banner-actions .btn {
+  padding: 8px 20px;
+  border-radius: 25px;
+  font-weight: 600;
+  background: linear-gradient(45deg, #007bff, #0056b3);
+  border: none;
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.banner-actions .btn:hover {
+  background: linear-gradient(45deg, #0056b3, #004085);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+.offer-timer {
+  background: linear-gradient(45deg, #007bff, #0056b3);
+  color: white;
+  padding: 5px 12px;
+  border-radius: 15px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  animation: pulse 2s infinite;
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+}
+
+.banner-visual {
+  position: relative;
+}
+
+.discount-badge {
+  display: inline-block;
+  background: linear-gradient(45deg, #007bff, #0056b3);
+  color: white;
+  font-size: 2rem;
+  font-weight: bold;
+  padding: 20px;
+  border-radius: 50%;
+  box-shadow: 0 4px 15px rgba(0, 123, 255, 0.4);
+  animation: bounce 2s infinite;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-10px); }
+  60% { transform: translateY(-5px); }
+}
+
+/* Wishlist Icon Styles */
+.wishlist-icon {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.8);
+}
+
+.wishlist-icon:hover {
+  background: rgba(255, 255, 255, 1);
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.wishlist-icon i {
+  font-size: 18px;
+  color: #6c757d;
+  transition: all 0.3s ease;
+}
+
+.wishlist-icon:hover i {
+  color: #e74c3c;
+  transform: scale(1.1);
+}
+
+.wishlist-icon.active i {
+  color: #e74c3c;
+  font-weight: 900;
+}
+
+.wishlist-icon.active {
+  background: rgba(231, 76, 60, 0.1);
+  border-color: #e74c3c;
+}
+
 .card-product-grid {
   transition: all 0.3s ease;
   border: none;
@@ -207,18 +405,17 @@
   text-decoration: none;
 }
 
-/* Updated Price Colors */
 .price {
   font-weight: bold;
   font-size: 1.2em;
 }
 
 .price-discounted {
-  color: #28a745 !important; /* Green for discounted prices */
+  color: #28a745 !important;
 }
 
 .price-regular {
-  color: #007bff !important; /* Blue for regular prices */
+  color: #007bff !important;
 }
 
 .price-old {
@@ -240,7 +437,6 @@
   box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
 }
 
-/* Fix for See All button */
 .see-all-btn {
   position: relative;
   z-index: 10;
@@ -282,8 +478,20 @@
   border-radius: 2px;
 }
 
-/* Responsive improvements */
 @media (max-width: 768px) {
+  .banner-card {
+    padding: 15px;
+  }
+  
+  .banner-content h2 {
+    font-size: 1.3rem;
+  }
+  
+  .discount-badge {
+    font-size: 1.5rem;
+    padding: 15px;
+  }
+  
   .col-md-3 {
     margin-bottom: 1.5rem;
   }
@@ -298,6 +506,12 @@
 }
 
 @media (max-width: 576px) {
+  .banner-actions {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
   .card-product-grid {
     margin-bottom: 1rem;
   }
@@ -310,7 +524,197 @@
     font-size: 10px;
     padding: 3px 6px;
   }
+  
+  .wishlist-icon {
+    width: 35px;
+    height: 35px;
+  }
+  
+  .wishlist-icon i {
+    font-size: 16px;
+  }
 }
 </style>
+
+<script>
+// Banner close functionality
+function closeBanner() {
+    document.getElementById('welcomeBanner').style.display = 'none';
+}
+
+function getCsrfToken() {
+    const token = document.querySelector('[name=csrfmiddlewaretoken]');
+    return token ? token.value : '';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Load user's current wishlist and update heart icons on page load
+    loadWishlistStatus();
+    
+    // Wishlist functionality
+    const wishlistIcons = document.querySelectorAll('.wishlist-icon');
+    
+    wishlistIcons.forEach(icon => {
+        icon.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const productId = this.dataset.productId;
+            const heartIcon = this.querySelector('i');
+            
+            // Store current state
+            const wasActive = this.classList.contains('active');
+            
+            // Toggle visual state immediately for better UX
+            if (wasActive) {
+                heartIcon.classList.remove('fas');
+                heartIcon.classList.add('far');
+                this.classList.remove('active');
+            } else {
+                heartIcon.classList.remove('far');
+                heartIcon.classList.add('fas');
+                this.classList.add('active');
+            }
+            
+            // AJAX call to your existing toggle_wishlist view
+            fetch(`/users/wishlist/toggle/${productId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCsrfToken(),
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    'product_id': productId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update based on server response
+                    if (data.in_wishlist) {
+                        heartIcon.classList.remove('far');
+                        heartIcon.classList.add('fas');
+                        this.classList.add('active');
+                    } else {
+                        heartIcon.classList.remove('fas');
+                        heartIcon.classList.add('far');
+                        this.classList.remove('active');
+                    }
+                    
+                    // Show feedback message briefly
+                    showWishlistMessage(data.message);
+                } else {
+                    // Revert on error
+                    if (wasActive) {
+                        heartIcon.classList.remove('far');
+                        heartIcon.classList.add('fas');
+                        this.classList.add('active');
+                    } else {
+                        heartIcon.classList.remove('fas');
+                        heartIcon.classList.add('far');
+                        this.classList.remove('active');
+                    }
+                    showWishlistMessage('Error updating wishlist', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                // Revert on error
+                if (wasActive) {
+                    heartIcon.classList.remove('far');
+                    heartIcon.classList.add('fas');
+                    this.classList.add('active');
+                } else {
+                    heartIcon.classList.remove('fas');
+                    heartIcon.classList.add('far');
+                    this.classList.remove('active');
+                }
+                showWishlistMessage('Network error', 'error');
+            });
+        });
+    });
+});
+
+// Function to load current wishlist status and update icons
+function loadWishlistStatus() {
+    {% if user.is_authenticated %}
+    fetch('/users/wishlist/check/', {
+        method: 'GET',
+        headers: {
+            'X-CSRFToken': getCsrfToken(),
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Update heart icons for products already in wishlist
+            data.wishlist_products.forEach(productId => {
+                const wishlistIcon = document.querySelector(`[data-product-id="${productId}"]`);
+                if (wishlistIcon) {
+                    const heartIcon = wishlistIcon.querySelector('i');
+                    heartIcon.classList.remove('far');
+                    heartIcon.classList.add('fas');
+                    wishlistIcon.classList.add('active');
+                }
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Error loading wishlist status:', error);
+    });
+    {% endif %}
+}
+
+// Function to show wishlist feedback messages
+function showWishlistMessage(message, type = 'success') {
+    // Create a temporary toast message
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type === 'error' ? 'danger' : 'success'} wishlist-toast`;
+    toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        min-width: 250px;
+        animation: slideIn 0.3s ease;
+    `;
+    toast.innerHTML = `
+        <i class="fa fa-${type === 'error' ? 'exclamation-circle' : 'check-circle'} mr-2"></i>
+        ${message}
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 300);
+    }, 3000);
+}
+
+
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes slideOut {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+    }
+    .wishlist-toast {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        border: none;
+        border-radius: 8px;
+    }
+`;
+document.head.appendChild(style);
+</script>
 
 {% endblock %}

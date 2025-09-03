@@ -286,17 +286,18 @@ class CategoryVariation(models.Model):
     def __str__(self):
         return f"{self.category.category_name} - {self.variation_type.name}"
 
+
 class ProductVariation(models.Model):
     """Specific product variations (e.g., Red T-shirt in Size Large)"""
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='variations')
     variation_type = models.ForeignKey(VariationType, on_delete=models.CASCADE)
     variation_option = models.ForeignKey(VariationOption, on_delete=models.CASCADE)
     price_adjustment = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    stock_quantity = models.PositiveIntegerField(default=0)
+    stock_quantity = models.PositiveIntegerField(default=0)  # ✅ This is correct
     sku = models.CharField(max_length=100, blank=True)
     is_active = models.BooleanField(default=True)
     
-    #  Multiple images for each variation
+    # Multiple images for each variation
     image1 = models.ImageField(upload_to='product_variations/', null=True, blank=True)
     image2 = models.ImageField(upload_to='product_variations/', null=True, blank=True) 
     image3 = models.ImageField(upload_to='product_variations/', null=True, blank=True)
@@ -321,4 +322,29 @@ class ProductVariation(models.Model):
         if self.image1: images.append(self.image1)
         if self.image2: images.append(self.image2)
         if self.image3: images.append(self.image3)
+        
+        # ✅ FIXED: Also check VariationImage model
+        variation_images = self.images.all()
+        for var_img in variation_images:
+            images.append(var_img.image)
+            
         return images if images else [self.product.image] if self.product.image else []
+    
+    # added this property for template compatibility
+    @property
+    def stock(self):
+        """Alias for stock_quantity for template compatibility"""
+        return self.stock_quantity
+    
+class VariationImage(models.Model):
+    """Images for specific product variations"""
+    variation = models.ForeignKey(ProductVariation, on_delete=models.CASCADE, related_name='images')
+    image = models.ImageField(upload_to='variation_images/')
+    is_primary = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-is_primary', 'created_at']
+    
+    def __str__(self):
+        return f"Image for {self.variation}"

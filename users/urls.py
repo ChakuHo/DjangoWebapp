@@ -32,10 +32,8 @@ urlpatterns = [
     path('delete-product/<int:product_id>/', views.delete_product, name='delete_product'),
     path('duplicate-product/<int:product_id>/', views.duplicate_product, name='duplicate_product'),
     path('edit-product/<int:product_id>/', views.edit_product, name='edit_product'),
-    path('bulk-update-stock/', views.bulk_update_stock, name='bulk_update_stock'),
-    path('bulk-toggle-visibility/', views.bulk_toggle_visibility, name='bulk_toggle_visibility'),
-    path('bulk-delete-products/', views.bulk_delete_products, name='bulk_delete_products'),
-
+    path('bulk-operations/', views.bulk_product_operations, name='bulk_product_operations'),
+    
     # Chat URLs
     path('chat/', views.chat_list, name='chat_list'),
     path('chat/<int:chat_id>/', views.chat_detail, name='chat_detail'),
@@ -62,6 +60,7 @@ urlpatterns = [
     path('wishlist/add/<int:product_id>/', views.add_to_wishlist, name='add_to_wishlist'),
     path('wishlist/remove/<int:product_id>/', views.remove_from_wishlist, name='remove_from_wishlist'),
     path('wishlist/toggle/<int:product_id>/', views.toggle_wishlist, name='toggle_wishlist'),
+    path('wishlist/check/', views.check_wishlist_status, name='check_wishlist_status'),
     path('wishlist/clear-all/', views.clear_all_wishlist, name='clear_all_wishlist'),
 
     # for customers

@@ -220,11 +220,11 @@
                   
                   <!-- Stock Status Indicator -->
                   {% if product.stock == 0 %}
-                    <small class="text-danger"><i class="fa fa-exclamation-triangle"></i> Out of Stock</small>
+                    <small class="text-danger stock-indicator"><i class="fa fa-exclamation-triangle"></i> Out of Stock</small>
                   {% elif product.stock <= 5 %}
-                    <small class="text-warning"><i class="fa fa-exclamation-circle"></i> Low Stock</small>
+                    <small class="text-warning stock-indicator"><i class="fa fa-exclamation-circle"></i> Low Stock</small>
                   {% else %}
-                    <small class="text-success"><i class="fa fa-check-circle"></i> In Stock</small>
+                    <small class="text-success stock-indicator"><i class="fa fa-check-circle"></i> In Stock</small>
                   {% endif %}
                 </div>
                 
@@ -310,7 +310,7 @@
                 </div>
               {% endif %}
               
-              <!-- Sales Analytics (only for approved products) - FIXED FIELD NAMES -->
+              <!--  Sales Analytics with CORRECT conversion calculation -->
               {% if product.approval_status == 'approved' %}
                 <div class="row mt-2">
                   <div class="col-12">
@@ -320,10 +320,12 @@
                       Orders: <span class="badge badge-success">{{ product.order_count|default:0 }}</span> | 
                       Revenue: <span class="badge badge-primary">Rs. {{ product.total_revenue|default:0|floatformat:2 }}</span>
                       
-                      <!-- Add conversion rate if there are views -->
-                      {% if product.view_count > 0 %}
-                        {% widthratio product.order_count 1 product.view_count as conversion_rate %}
+                      <!--  Proper conversion rate calculation -->
+                      {% if product.view_count > 0 and product.order_count > 0 %}
+                        {% widthratio product.order_count product.view_count 100 as conversion_rate %}
                         | Conversion: <span class="badge badge-warning">{{ conversion_rate|floatformat:1 }}%</span>
+                      {% elif product.view_count > 0 %}
+                        | Conversion: <span class="badge badge-secondary">0.0%</span>
                       {% endif %}
                     </small>
                   </div>
@@ -450,8 +452,15 @@ document.addEventListener('DOMContentLoaded', function() {
     let editMode = false;
     let selectedProducts = new Set();
     
-    // Get CSRF token
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    //  Better CSRF token handling
+    const csrfTokenEl = document.querySelector('[name=csrfmiddlewaretoken]');
+    const csrfToken = csrfTokenEl ? csrfTokenEl.value : '';
+    
+    if (!csrfToken) {
+        console.error('CSRF token not found');
+        showToast('Security token missing - please refresh the page', 'error');
+        return;
+    }
     
     // Search functionality
     const productSearchEl = document.getElementById('productSearch');
@@ -574,6 +583,11 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     
     window.updateStock = function(productId, newStock) {
+        if (!csrfToken) {
+            showToast('Security token missing', 'error');
+            return;
+        }
+        
         fetch(`/users/update-product-stock/${productId}/`, {
             method: 'POST',
             headers: {
@@ -594,7 +608,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
                 
-                // Update stock status indicators
+                //  Better stock indicator update
                 updateStockIndicators(productId, newStock);
                 
                 showToast('Stock updated successfully', 'success');
@@ -613,6 +627,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     };
     
+    //  Better stock indicator update function
     function updateStockIndicators(productId, newStock) {
         const input = document.querySelector(`[data-product="${productId}"]`);
         if (!input) return;
@@ -620,30 +635,19 @@ document.addEventListener('DOMContentLoaded', function() {
         const productCard = input.closest('.product-item');
         if (!productCard) return;
         
-        const stockIndicators = productCard.querySelectorAll('.col-md-2 small');
-        let stockIndicator = null;
-        
-        // Find the stock indicator by looking for the one with stock status text
-        for (let indicator of stockIndicators) {
-            if (indicator.textContent.includes('Stock') || 
-                indicator.textContent.includes('Out of') || 
-                indicator.textContent.includes('Low') || 
-                indicator.textContent.includes('In Stock')) {
-                stockIndicator = indicator;
-                break;
-            }
-        }
+        // Find stock indicator by class
+        const stockIndicator = productCard.querySelector('.stock-indicator');
         
         if (stockIndicator) {
             if (newStock == 0) {
                 stockIndicator.innerHTML = '<i class="fa fa-exclamation-triangle"></i> Out of Stock';
-                stockIndicator.className = 'text-danger';
+                stockIndicator.className = 'text-danger stock-indicator';
             } else if (newStock <= 5) {
                 stockIndicator.innerHTML = '<i class="fa fa-exclamation-circle"></i> Low Stock';
-                stockIndicator.className = 'text-warning';
+                stockIndicator.className = 'text-warning stock-indicator';
             } else {
                 stockIndicator.innerHTML = '<i class="fa fa-check-circle"></i> In Stock';
-                stockIndicator.className = 'text-success';
+                stockIndicator.className = 'text-success stock-indicator';
             }
         }
     }
@@ -978,6 +982,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .visibility-label {
     font-weight: 500;
+}
+
+/*  Better stock indicator styling */
+.stock-indicator {
+    display: block;
+    margin-top: 5px;
+    font-size: 0.75rem;
 }
 
 @keyframes slideIn {

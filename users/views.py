@@ -29,46 +29,282 @@ from django.db import transaction
 from django.core.files.storage import default_storage
 import os
 from orders.views import send_order_shipped_email, send_order_delivered_email
+from functools import wraps
+from django.core.exceptions import PermissionDenied
+
+# ========== PERMISSION DECORATORS ==========
+
+def require_approved_seller(f):
+    """Decorator to check if user is approved seller - returns JSON for AJAX"""
+    @wraps(f)
+    def wrapper(request, *args, **kwargs):
+        try:
+            profile = request.user.profile
+        except Profile.DoesNotExist:
+            profile = Profile.objects.create(user=request.user)
+            
+        if profile.seller_status != 'approved':
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False, 
+                    'message': 'Only approved sellers can perform this action'
+                })
+            else:
+                messages.error(request, 'You need to be an approved seller to access this page.')
+                return redirect('dashboard')
+        return f(request, *args, **kwargs)
+    return wrapper
+
+def require_approved_product(f):
+    """Decorator to check if product is approved before allowing edits"""
+    @wraps(f)
+    def wrapper(request, product_id, *args, **kwargs):
+        try:
+            product = get_object_or_404(Product, id=product_id, seller=request.user)
+            
+            if product.approval_status != 'approved':
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': False, 
+                        'message': 'Only approved products can be modified',
+                        'approval_status': product.approval_status
+                    })
+                else:
+                    messages.error(request, 'Only approved products can be modified.')
+                    return redirect('my_selling_items')
+                    
+        except Product.DoesNotExist:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False, 
+                    'message': 'Product not found or access denied'
+                })
+            else:
+                messages.error(request, 'Product not found.')
+                return redirect('my_selling_items')
+                
+        return f(request, product_id, *args, **kwargs)
+    return wrapper
+
+def require_admin(f):
+    """Decorator to check if user is admin/staff"""
+    @wraps(f)
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_staff:
+            messages.error(request, 'Access denied.')
+            return redirect('dashboard')
+        return f(request, *args, **kwargs)
+    return wrapper
+
+# ========== HELPER FUNCTIONS ==========
+
+def ajax_response(success=True, message="", **extra_data):
+    """Standardized AJAX response helper"""
+    response_data = {
+        'success': success,
+        'message': message,
+        **extra_data
+    }
+    return JsonResponse(response_data)
+
+def notify_user(user, title, message, notification_type='system', icon='fa-info', color='info', url='/dashboard/'):
+    """Simplified notification creation helper"""
+    return create_notification(
+        user=user,
+        notification_type=notification_type,
+        title=title,
+        message=message,
+        icon=icon,
+        color=color,
+        url=url
+    )
+
+def handle_ajax_or_redirect(request, success_message="", error_message="", redirect_url='dashboard'):
+    """Handle both AJAX and regular requests uniformly"""
+    def decorator(success=True, **extra_data):
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return ajax_response(success, success_message if success else error_message, **extra_data)
+        else:
+            if success:
+                messages.success(request, success_message)
+            else:
+                messages.error(request, error_message)
+            return redirect(redirect_url)
+    return decorator
 
 
-def send_registration_confirmation_email(user):
-    """Send welcome/registration confirmation email to new users"""
-    print(f"🔄 REGISTRATION EMAIL FUNCTION CALLED for {user.email}")
+def send_user_email(user, email_type, **kwargs):
+    """Unified email sending system for all user notifications"""
     
-    try:
-        subject = '🎉 Welcome to ISLINGTON MARKETPLACE!'
+    email_templates = {
+        'registration': {
+            'subject': ' Welcome to ISLINGTON MARKETPLACE!',
+            'greeting': 'Welcome to ISLINGTON MARKETPLACE!\n\nYour account has been successfully created and you\'re now part of our community.',
+            'details': {
+                'Name': f'{user.first_name} {user.last_name}',
+                'Username': user.username,
+                'Email': user.email,
+                'Registration Date': user.date_joined.strftime('%B %d, %Y at %I:%M %p')
+            },
+            'sections': {
+                'WHAT\'S NEXT?': [
+                    '✓ Browse thousands of products',
+                    '✓ Add items to your cart and checkout',
+                    '✓ Track your orders in real-time', 
+                    '✓ Apply to become a seller and start your business',
+                    '✓ Manage your profile and preferences'
+                ],
+                'READY TO SHOP?': [
+                    'Start exploring our marketplace and discover amazing products from verified sellers.'
+                ],
+                'INTERESTED IN SELLING?': [
+                    'Apply to become a seller from your dashboard and start your entrepreneurial journey with us!'
+                ]
+            }
+        },
         
+        'seller_application': {
+            'subject': ' Seller Application Received - ISLINGTON MARKETPLACE',
+            'greeting': 'Thank you for applying to become a seller on ISLINGTON MARKETPLACE!\n\nYour seller application has been successfully submitted and is now under review.',
+            'details': {
+                'Name': f'{user.first_name} {user.last_name}',
+                'Email': user.email,
+                'Business Name': user.profile.business_name,
+                'Application Date': user.profile.seller_application_date.strftime('%B %d, %Y at %I:%M %p') if user.profile.seller_application_date else 'Today'
+            },
+            'sections': {
+                'WHAT HAPPENS NEXT?': [
+                    '✓ Our team will review your application',
+                    '✓ We\'ll verify your business information',
+                    '✓ You\'ll receive an email once the review is complete',
+                    '✓ Typical review time: 1-3 business days'
+                ],
+                'APPLICATION STATUS': [
+                    'Current Status: Under Review',
+                    'You can check your application status anytime from your dashboard.'
+                ],
+                'AFTER APPROVAL': [
+                    'Once approved, you\'ll be able to:',
+                    '• Add products to sell',
+                    '• Manage your inventory', 
+                    '• Receive and process orders',
+                    '• Access seller analytics'
+                ]
+            }
+        },
+        
+        'seller_approval': {
+            'subject': ' Seller Application Approved - ISLINGTON MARKETPLACE',
+            'greeting': 'Congratulations! Your seller application has been APPROVED!\n\n🎉 Welcome to the ISLINGTON MARKETPLACE seller community!',
+            'details': {
+                'Name': f'{user.first_name} {user.last_name}',
+                'Email': user.email,
+                'Business Name': user.profile.business_name,
+                'Approval Date': timezone.now().strftime('%B %d, %Y at %I:%M %p')
+            },
+            'sections': {
+                'GET STARTED NOW': [
+                    'You can now start selling on our marketplace:',
+                    '',
+                    '✓ Add Your Products',
+                    '  - Go to Dashboard → Add Product',
+                    '  - Upload high-quality images',
+                    '  - Set competitive prices',
+                    '',
+                    '✓ Manage Your Store',
+                    '  - View your selling analytics',
+                    '  - Track order performance', 
+                    '  - Update inventory levels',
+                    '',
+                    '✓ Process Orders',
+                    '  - Receive order notifications',
+                    '  - Manage shipping and delivery',
+                    '  - Communicate with customers'
+                ],
+                'PAYMENT PROCESSING': [
+                    'Your QR payment method is ready:',
+                    f'Method: {user.profile.qr_payment_method}',
+                    f'Account: {user.profile.qr_payment_info}'
+                ],
+                'NEXT STEPS': [
+                    '1. Login to your dashboard',
+                    '2. Add your first product',
+                    '3. Set up your payment QR code (if not done)',
+                    '4. Start receiving orders!'
+                ]
+            }
+        },
+        
+        'seller_rejection': {
+            'subject': ' Seller Application Update - ISLINGTON MARKETPLACE',
+            'greeting': 'Thank you for your interest in becoming a seller on ISLINGTON MARKETPLACE.\n\nAfter careful review, we are unable to approve your seller application at this time.',
+            'details': {
+                'Name': f'{user.first_name} {user.last_name}',
+                'Email': user.email,
+                'Business Name': user.profile.business_name,
+                'Review Date': timezone.now().strftime('%B %d, %Y at %I:%M %p')
+            },
+            'sections': {
+                'FEEDBACK': [
+                    kwargs.get('rejection_reason', 'No specific reason provided.')
+                ] if kwargs.get('rejection_reason') else [],
+                'REAPPLICATION PROCESS': [
+                    'You\'re welcome to reapply in the future:',
+                    '',
+                    '✓ Review our seller guidelines',
+                    '✓ Ensure all requirements are met',
+                    '✓ Provide complete business information', 
+                    '✓ Upload clear QR payment code'
+                ],
+                'NEED ASSISTANCE?': [
+                    'If you have questions about this decision or need guidance for reapplying:',
+                    f'• Contact our support team at {settings.DEFAULT_FROM_EMAIL}',
+                    '• Visit our seller FAQ section',
+                    '• Review our seller requirements'
+                ],
+                'CONTINUE SHOPPING': [
+                    'While you work on your seller application, you can continue enjoying our marketplace as a customer.'
+                ]
+            }
+        }
+    }
+    
+    template = email_templates.get(email_type)
+    if not template:
+        print(f"❌ Unknown email type: {email_type}")
+        return False
+        
+    try:
+        print(f" Sending {email_type} email to {user.email}")
+        
+        # Build email content
         message = f"""
 Dear {user.first_name or user.username},
 
-🎉 Welcome to ISLINGTON MARKETPLACE! 
+{template['greeting']}
 
-Your account has been successfully created and you're now part of our community.
+ DETAILS:
+═══════════════════════════════════════"""
+        
+        # Add details section
+        for key, value in template['details'].items():
+            message += f"\n{key}: {value}"
+            
+        # Add dynamic sections
+        for section_title, section_content in template['sections'].items():
+            message += f"""
 
-👤 ACCOUNT DETAILS:
-═══════════════════════════════════════
-Name: {user.first_name} {user.last_name}
-Username: {user.username}
-Email: {user.email}
-Registration Date: {user.date_joined.strftime('%B %d, %Y at %I:%M %p')}
+ {section_title}:
+═══════════════════════════════════════"""
+            for line in section_content:
+                if line:  # Skip empty lines in formatting
+                    message += f"\n{line}"
+                else:
+                    message += "\n"  # Preserve spacing
+            
+        message += f"""
 
-🚀 WHAT'S NEXT?
-═══════════════════════════════════════
-✓ Browse thousands of products
-✓ Add items to your cart and checkout
-✓ Track your orders in real-time
-✓ Apply to become a seller and start your business
-✓ Manage your profile and preferences
-
-🛍️ READY TO SHOP?
-═══════════════════════════════════════
-Start exploring our marketplace and discover amazing products from verified sellers.
-
-💼 INTERESTED IN SELLING?
-═══════════════════════════════════════
-Apply to become a seller from your dashboard and start your entrepreneurial journey with us!
-
-Thank you for joining ISLINGTON MARKETPLACE. We're excited to have you aboard!
+Thank you for choosing ISLINGTON MARKETPLACE!
 
 Best regards,
 The ISLINGTON MARKETPLACE Team
@@ -77,266 +313,23 @@ The ISLINGTON MARKETPLACE Team
 Need help? Contact us at {settings.DEFAULT_FROM_EMAIL}
         """
         
-        print("🔄 SENDING REGISTRATION EMAIL NOW...")
-        
         send_mail(
-            subject=subject,
+            subject=template['subject'],
             message=message,
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[user.email],
             fail_silently=False,
         )
         
-        print(f"✅ Registration confirmation email sent to {user.email}")
+        print(f" {email_type.title()} email sent successfully to {user.email}")
         return True
         
     except Exception as e:
-        print(f"❌ Registration email sending failed: {e}")
+        print(f"❌ {email_type.title()} email failed: {e}")
         import traceback
         traceback.print_exc()
         return False
 
-def send_seller_application_email(user):
-    """Send confirmation email when user applies to become seller"""
-    print(f"🔄 SELLER APPLICATION EMAIL FUNCTION CALLED for {user.email}")
-    
-    try:
-        subject = '📋 Seller Application Received - ISLINGTON MARKETPLACE'
-        
-        message = f"""
-Dear {user.first_name or user.username},
-
-Thank you for applying to become a seller on ISLINGTON MARKETPLACE! 
-
-🎯 APPLICATION RECEIVED
-═══════════════════════════════════════
-Your seller application has been successfully submitted and is now under review.
-
-👤 APPLICANT DETAILS:
-═══════════════════════════════════════
-Name: {user.first_name} {user.last_name}
-Email: {user.email}
-Business Name: {user.profile.business_name}
-Application Date: {user.profile.seller_application_date.strftime('%B %d, %Y at %I:%M %p')}
-
-⏳ WHAT HAPPENS NEXT?
-═══════════════════════════════════════
-✓ Our team will review your application
-✓ We'll verify your business information
-✓ You'll receive an email once the review is complete
-✓ Typical review time: 1-3 business days
-
-📝 APPLICATION STATUS
-═══════════════════════════════════════
-Current Status: Under Review
-You can check your application status anytime from your dashboard.
-
-💼 AFTER APPROVAL
-═══════════════════════════════════════
-Once approved, you'll be able to:
-• Add products to sell
-• Manage your inventory
-• Receive and process orders
-• Access seller analytics
-
-Thank you for choosing ISLINGTON MARKETPLACE to grow your business!
-
-Best regards,
-The ISLINGTON MARKETPLACE Team
-
----
-Questions? Contact us at {settings.DEFAULT_FROM_EMAIL}
-        """
-        
-        print("🔄 SENDING SELLER APPLICATION EMAIL NOW...")
-        
-        send_mail(
-            subject=subject,
-            message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[user.email],
-            fail_silently=False,
-        )
-        
-        print(f"✅ Seller application email sent to {user.email}")
-        return True
-        
-    except Exception as e:
-        print(f"❌ Seller application email sending failed: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
-
-def send_seller_approval_email(user):
-    """Send email when seller application is approved"""
-    print(f"🔄 SELLER APPROVAL EMAIL FUNCTION CALLED for {user.email}")
-    
-    try:
-        subject = '🎉 Seller Application Approved - ISLINGTON MARKETPLACE'
-        
-        message = f"""
-Dear {user.first_name or user.username},
-
-Congratulations! Your seller application has been APPROVED! 🎉
-
-✅ APPLICATION APPROVED
-═══════════════════════════════════════
-Welcome to the ISLINGTON MARKETPLACE seller community!
-
-👤 SELLER DETAILS:
-═══════════════════════════════════════
-Name: {user.first_name} {user.last_name}
-Email: {user.email}
-Business Name: {user.profile.business_name}
-Approval Date: {timezone.now().strftime('%B %d, %Y at %I:%M %p')}
-
-🚀 GET STARTED NOW
-═══════════════════════════════════════
-You can now start selling on our marketplace:
-
-✓ Add Your Products
-  - Go to Dashboard → Add Product
-  - Upload high-quality images
-  - Set competitive prices
-
-✓ Manage Your Store
-  - View your selling analytics
-  - Track order performance
-  - Update inventory levels
-
-✓ Process Orders
-  - Receive order notifications
-  - Manage shipping and delivery
-  - Communicate with customers
-
-✓ Grow Your Business
-  - Access seller insights
-  - Optimize your listings
-  - Build customer relationships
-
-🎯 NEXT STEPS
-═══════════════════════════════════════
-1. Login to your dashboard
-2. Add your first product
-3. Set up your payment QR code (if not done)
-4. Start receiving orders!
-
-💰 PAYMENT PROCESSING
-═══════════════════════════════════════
-Your QR payment method is ready:
-Method: {user.profile.qr_payment_method}
-Account: {user.profile.qr_payment_info}
-
-🛍️ START SELLING TODAY
-═══════════════════════════════════════
-Your seller account is now active and ready to receive orders!
-
-Best regards,
-The ISLINGTON MARKETPLACE Team
-
----
-Need help? Contact us at {settings.DEFAULT_FROM_EMAIL}
-Seller Support: Available 24/7 from your dashboard
-        """
-        
-        print("🔄 SENDING SELLER APPROVAL EMAIL NOW...")
-        
-        send_mail(
-            subject=subject,
-            message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[user.email],
-            fail_silently=False,
-        )
-        
-        print(f"✅ Seller approval email sent to {user.email}")
-        return True
-        
-    except Exception as e:
-        print(f"❌ Seller approval email sending failed: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
-
-def send_seller_rejection_email(user, rejection_reason=""):
-    """Send email when seller application is rejected"""
-    print(f"🔄 SELLER REJECTION EMAIL FUNCTION CALLED for {user.email}")
-    
-    try:
-        subject = '📋 Seller Application Update - ISLINGTON MARKETPLACE'
-        
-        reason_text = ""
-        if rejection_reason:
-            reason_text = f"""
-📝 FEEDBACK:
-═══════════════════════════════════════
-{rejection_reason}
-"""
-
-        message = f"""
-Dear {user.first_name or user.username},
-
-Thank you for your interest in becoming a seller on ISLINGTON MARKETPLACE.
-
-📋 APPLICATION STATUS UPDATE
-═══════════════════════════════════════
-After careful review, we are unable to approve your seller application at this time.
-
-👤 APPLICATION DETAILS:
-═══════════════════════════════════════
-Name: {user.first_name} {user.last_name}
-Email: {user.email}
-Business Name: {user.profile.business_name}
-Review Date: {timezone.now().strftime('%B %d, %Y at %I:%M %p')}
-{reason_text}
-
-🔄 REAPPLICATION PROCESS
-═══════════════════════════════════════
-You're welcome to reapply in the future:
-
-✓ Review our seller guidelines
-✓ Ensure all requirements are met
-✓ Provide complete business information
-✓ Upload clear QR payment code
-
-📞 NEED ASSISTANCE?
-═══════════════════════════════════════
-If you have questions about this decision or need guidance for reapplying:
-• Contact our support team at {settings.DEFAULT_FROM_EMAIL}
-• Visit our seller FAQ section
-• Review our seller requirements
-
-🛍️ CONTINUE SHOPPING
-═══════════════════════════════════════
-While you work on your seller application, you can continue enjoying our marketplace as a customer.
-
-Thank you for your understanding.
-
-Best regards,
-The ISLINGTON MARKETPLACE Team
-
----
-Questions? Contact us at {settings.DEFAULT_FROM_EMAIL}
-        """
-        
-        print("🔄 SENDING SELLER REJECTION EMAIL NOW...")
-        
-        send_mail(
-            subject=subject,
-            message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[user.email],
-            fail_silently=False,
-        )
-        
-        print(f"✅ Seller rejection email sent to {user.email}")
-        return True
-        
-    except Exception as e:
-        print(f"❌ Seller rejection email sending failed: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
 
 
 def login_view(request):
@@ -432,7 +425,7 @@ def register_view(request):
                 url='/dashboard/'
             )
             
-            email_sent = send_registration_confirmation_email(user)
+            email_sent = send_user_email(user, 'registration')
             if email_sent:
                 messages.success(request, 'Account created successfully! Welcome email sent to your inbox.')
             else:
@@ -445,153 +438,6 @@ def register_view(request):
             return render(request, 'users/register.html', {'error': 'Error creating account'})
     return render(request, 'users/register.html')
 
-@login_required
-def dashboard(request):
-    try:
-        profile = request.user.profile
-    except Profile.DoesNotExist:
-        profile = Profile.objects.create(user=request.user)
-
-    # Calculate orders count
-    orders_count = Order.objects.filter(user=request.user).count()
-    
-    # Calculate received orders count (for sellers)
-    received_orders_count = 0
-    if profile.seller_status == 'approved':
-        received_orders_count = OrderItem.objects.filter(seller=request.user).count()
-
-    # Real unread messages count
-    unread_messages_count = profile.get_unread_messages_count()
-    
-    # Wishlist count
-    wishlist_count = Wishlist.get_wishlist_count(request.user)
-
-    # Add pending QR count for sidebar
-    pending_qr_count = 0
-    if profile.seller_status == 'approved':
-        pending_qr_count = Order.objects.filter(
-            items__seller=request.user,
-            payment_method='QR Payment',
-            payment_status='pending_verification'
-        ).distinct().count()
-
-    # Add seller stats if they're a seller
-    seller_stats = {}
-    if profile.seller_status == 'approved':
-        seller_products = Product.objects.filter(seller=request.user)
-        seller_stats = {
-            'total_products': seller_products.count(),
-            'pending_products': seller_products.filter(approval_status='pending').count(),
-            'approved_products': seller_products.filter(approval_status='approved', status=True).count(),
-            'rejected_products': seller_products.filter(approval_status='rejected').count(),
-        }
-
-    #  NOTIFICATION SYSTEM - Get real notifications 
-    notifications = get_recent_notifications(request.user, limit=10)
-    total_notifications = get_unread_notification_count(request.user)
-
-    # Generate recent activities
-    recent_activities = []
-    
-    # Recent orders
-    recent_orders = Order.objects.filter(user=request.user).order_by('-created_at')[:3]
-    for order in recent_orders:
-        recent_activities.append({
-            'message': f'Order #{order.id} placed successfully',
-            'created_at': order.created_at,
-            'icon': 'fa-shopping-cart',
-            'badge_color': 'primary'
-        })
-    
-    # Recent wishlist additions
-    recent_wishlist = Wishlist.objects.filter(user=request.user).order_by('-added_at')[:2]
-    for item in recent_wishlist:
-        recent_activities.append({
-            'message': f'Added "{item.product.name}" to wishlist',
-            'created_at': item.added_at,
-            'icon': 'fa-heart',
-            'badge_color': 'danger'
-        })
-    
-    # Recent chat messages 
-    recent_chat_messages = ChatMessage.objects.filter(
-        chat_room__participants=request.user
-    ).exclude(sender=request.user).order_by('-timestamp')[:2]
-    
-    for msg in recent_chat_messages:
-        recent_activities.append({
-            'message': f'New message from {msg.sender.get_full_name() or msg.sender.username}',
-            'created_at': msg.timestamp,
-            'icon': 'fa-comments',
-            'badge_color': 'info'
-        })
-    # seller analytics summary
-
-    if profile.seller_status == 'approved':
-        seller_products = Product.objects.filter(seller=request.user, approval_status='approved')
-    
-    total_views = sum(p.view_count for p in seller_products)
-    total_orders = sum(p.order_count for p in seller_products)
-    total_revenue = sum(p.total_revenue for p in seller_products)
-    
-    seller_stats = {
-        'total_products': seller_products.count(),
-        'total_views': total_views,
-        'total_orders': total_orders,
-        'total_revenue': total_revenue,
-        'avg_conversion': (total_orders / total_views * 100) if total_views > 0 else 0,
-    }
-
-    # Recent seller activities (if seller)
-    if profile.seller_status == 'approved':
-        # Recent products
-        recent_products = Product.objects.filter(seller=request.user).order_by('-created_at')[:2]
-        for product in recent_products:
-            recent_activities.append({
-                'message': f'Product "{product.name}" added for review',
-                'created_at': product.created_at,
-                'icon': 'fa-plus',
-                'badge_color': 'success'
-            })
-        
-        # Recent received orders
-        recent_received = OrderItem.objects.filter(seller=request.user).order_by('-order__created_at')[:2]
-        for item in recent_received:
-            recent_activities.append({
-                'message': f'New order received for "{item.product.name}"',
-                'created_at': item.order.created_at,
-                'icon': 'fa-bell',
-                'badge_color': 'warning'
-            })
-        
-        # Add QR payment notifications to recent activities
-        if pending_qr_count > 0:
-            recent_activities.append({
-                'message': f'{pending_qr_count} QR payment(s) awaiting verification',
-                'created_at': timezone.now(),
-                'icon': 'fa-qrcode',
-                'badge_color': 'warning'
-            })
-    
-    # Sort activities by date
-    recent_activities.sort(key=lambda x: x['created_at'], reverse=True)
-    recent_activities = recent_activities[:5]
-
-    # Additional stats
-    context = {
-        'profile': profile,
-        'orders_count': orders_count,
-        'received_orders_count': received_orders_count,
-        'user': request.user,
-        'seller_stats': seller_stats,
-        'recent_activities': recent_activities,
-        'wishlist_count': wishlist_count,  # Updated with real count
-        'unread_messages_count': unread_messages_count, 
-        'pending_qr_count': pending_qr_count,
-        'notifications': notifications,
-        'total_notifications': total_notifications,
-    }
-    return render(request, 'users/dashboard.html', context)
 
 @login_required
 def received_orders(request):
@@ -631,7 +477,7 @@ def received_orders(request):
             'pending_reviews_count': pending_reviews_count,
             'reviewed_product_ids': reviewed_product_ids,
         }
-        return render(request, 'users/received_orders.html', context)  # Use existing template!
+        return render(request, 'users/received_orders.html', context)
         
     except Exception as e:
         print(f"Error in received_orders view: {e}")
@@ -794,7 +640,7 @@ def logout_view(request):
 
 @login_required
 def my_selling_items(request):
-    """Display seller's products with real analytics"""
+    """Display seller's products with FIXED analytics - NO VIEW INFLATION"""
     profile = request.user.profile
 
     # Gate: Only approved sellers can access
@@ -802,20 +648,13 @@ def my_selling_items(request):
         messages.error(request, 'You need to be an approved seller to access this page.')
         return redirect('dashboard')
 
-    # Get seller's products with analytics
+    # Get seller's products with analytics - NO VIEW INCREMENT!
     products = Product.objects.filter(seller=request.user).order_by('-created_at')
     
-    # Calculate analytics for each product
     for product in products:
         if product.approval_status == 'approved':
-            # 🔥 INCREMENT VIEW COUNT when seller views their products
-            if hasattr(product, 'view_count'):
-                product.view_count = (product.view_count or 0) + 1
-                product.save(update_fields=['view_count'])
-            
-            # Get fresh analytics data
+            # Get fresh analytics data WITHOUT incrementing views
             analytics = product.get_analytics_data()
-            # analytics to product object for template access
             product.analytics = analytics
 
     context = {
@@ -887,8 +726,8 @@ def become_seller(request):
             url='/dashboard/'
         )
 
-        # 🔥 SEND SELLER APPLICATION EMAIL
-        email_sent = send_seller_application_email(request.user)
+        #  SEND SELLER APPLICATION EMAIL
+        email_sent = send_user_email(request.user, 'seller_application')
         if email_sent:
             messages.success(request, 'Seller application submitted with QR code! Confirmation email sent to your inbox. We will review and get back to you.')
         else:
@@ -900,7 +739,7 @@ def become_seller(request):
 
 @login_required
 def add_product(request):
-    """Add new product - ONLY for approved sellers"""
+    """ new product - ONLY for approved sellers"""
     profile = request.user.profile
 
     # Gate: Only approved sellers can add products
@@ -993,7 +832,7 @@ def add_product(request):
             for key in request.FILES.keys():
                 if key.startswith('variation_'):
                     parts = key.split('_')
-                    if len(parts) >= 4:  # variation_type_option_image1
+                    if len(parts) >= 4:  
                         var_type_id = parts[1]
                         option_id = parts[2]
                         field = '_'.join(parts[3:])
@@ -1031,7 +870,7 @@ def add_product(request):
                                     is_active=True
                                 )
                                 
-                                # Add images if uploaded
+                                #  images if uploaded
                                 files = variation_files.get(var_type_id, {}).get(option_id, {})
                                 if 'image1' in files:
                                     product_variation.image1 = files['image1']
@@ -1042,7 +881,7 @@ def add_product(request):
                                 
                                 product_variation.save()
                                 
-                                print(f"✅ Created variation: {variation_type.name} - {variation_option.value} for {product.name}")
+                                print(f" Created variation: {variation_type.name} - {variation_option.value} for {product.name}")
                                 
                             except VariationOption.DoesNotExist:
                                 continue
@@ -1116,50 +955,11 @@ def get_add_product_context():
         'category_variations': json.dumps(category_variations)
     }
 
-def revert_analytics_after_rejection(order):
-    """Revert product analytics when order payment is rejected"""
-    try:
-        print(f"🔄 REVERTING ANALYTICS for order #{order.order_number}")
-        
-        # Get all order items
-        from orders.models import OrderItem
-        order_items = OrderItem.objects.filter(order=order, ordered=True)
-        
-        reverted_products = []
-        total_reverted_revenue = 0
-        
-        for item in order_items:
-            product = item.product
-            
-            # Revert order count
-            if hasattr(product, 'order_count') and product.order_count > 0:
-                product.order_count = max(0, product.order_count - item.quantity)
-                print(f"📊 {product.name}: order_count {product.order_count + item.quantity} → {product.order_count}")
-            
-            # Revert total revenue
-            if hasattr(product, 'total_revenue') and product.total_revenue > 0:
-                item_revenue = item.quantity * item.price
-                product.total_revenue = max(0, product.total_revenue - item_revenue)
-                total_reverted_revenue += item_revenue
-                print(f"💰 {product.name}: revenue reverted by Rs.{item_revenue}")
-            
-            # Save the product
-            product.save()
-            reverted_products.append(product.name)
-        
-        print(f"✅ Analytics reverted for {len(reverted_products)} products. Total revenue reverted: Rs.{total_reverted_revenue}")
-        return True
-        
-    except Exception as e:
-        print(f"❌ Error reverting analytics: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
 
 def revert_analytics_after_rejection(order):
     """Revert product analytics when order payment is rejected"""
     try:
-        print(f"🔄 REVERTING ANALYTICS for order #{order.order_number}")
+        print(f" REVERTING ANALYTICS for order #{order.order_number}")
         
         # Get all order items
         from orders.models import OrderItem
@@ -1175,49 +975,7 @@ def revert_analytics_after_rejection(order):
             if hasattr(product, 'order_count') and product.order_count > 0:
                 old_count = product.order_count
                 product.order_count = max(0, product.order_count - item.quantity)
-                print(f"📊 {product.name}: order_count {old_count} → {product.order_count}")
-            
-            # Revert total revenue
-            if hasattr(product, 'total_revenue') and product.total_revenue > 0:
-                item_revenue = item.quantity * item.price
-                old_revenue = product.total_revenue
-                product.total_revenue = max(0, product.total_revenue - item_revenue)
-                total_reverted_revenue += item_revenue
-                print(f"💰 {product.name}: revenue {old_revenue} → {product.total_revenue} (reverted Rs.{item_revenue})")
-            
-            # Save the product
-            product.save()
-            reverted_products.append(product.name)
-        
-        print(f"✅ Analytics reverted for {len(reverted_products)} products. Total revenue reverted: Rs.{total_reverted_revenue}")
-        return True
-        
-    except Exception as e:
-        print(f"❌ Error reverting analytics: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
-
-def revert_analytics_after_rejection(order):
-    """Revert product analytics when order payment is rejected"""
-    try:
-        print(f"🔄 REVERTING ANALYTICS for order #{order.order_number}")
-        
-        # Get all order items
-        from orders.models import OrderItem
-        order_items = OrderItem.objects.filter(order=order, ordered=True)
-        
-        reverted_products = []
-        total_reverted_revenue = 0
-        
-        for item in order_items:
-            product = item.product
-            
-            # Revert order count
-            if hasattr(product, 'order_count') and product.order_count > 0:
-                old_count = product.order_count
-                product.order_count = max(0, product.order_count - item.quantity)
-                print(f"📊 {product.name}: order_count {old_count} → {product.order_count}")
+                print(f" {product.name}: order_count {old_count} → {product.order_count}")
             
             # Revert total revenue
             if hasattr(product, 'total_revenue') and product.total_revenue > 0:
@@ -1225,13 +983,13 @@ def revert_analytics_after_rejection(order):
                 old_revenue = float(product.total_revenue)
                 product.total_revenue = max(0, old_revenue - item_revenue)
                 total_reverted_revenue += item_revenue
-                print(f"💰 {product.name}: revenue {old_revenue} → {product.total_revenue} (reverted Rs.{item_revenue})")
+                print(f" {product.name}: revenue {old_revenue} → {product.total_revenue} (reverted Rs.{item_revenue})")
             
             # Save the product
             product.save(update_fields=['order_count', 'total_revenue'])
             reverted_products.append(product.name)
         
-        print(f"✅ Analytics reverted for {len(reverted_products)} products. Total revenue reverted: Rs.{total_reverted_revenue}")
+        print(f" Analytics reverted for {len(reverted_products)} products. Total revenue reverted: Rs.{total_reverted_revenue}")
         return True
         
     except Exception as e:
@@ -1240,151 +998,6 @@ def revert_analytics_after_rejection(order):
         traceback.print_exc()
         return False
 
-@login_required
-def verify_qr_payments(request):
-    """Allow sellers to verify QR payments they received"""
-    profile = request.user.profile
-    
-    # Gate: Only approved sellers can access
-    if profile.seller_status != 'approved':
-        messages.error(request, 'You need to be an approved seller to access this page.')
-        return redirect('dashboard')
-
-    # Handle verification actions
-    if request.method == 'POST':
-        order_id = request.POST.get('order_id')
-        action = request.POST.get('action')
-        
-        try:
-            order = Order.objects.filter(
-                id=order_id, 
-                items__seller=request.user,
-                payment_method='QR Payment',
-                payment_status='pending_verification'
-            ).distinct().first()
-            
-            # Check if order exists
-            if not order:
-                messages.error(request, 'Order not found or unauthorized access.')
-                return redirect('verify_qr_payments')
-            
-            if action == 'verify':
-                order.payment_status = 'completed'
-                order.status = 'Confirmed'
-                order.order_status = 'confirmed'
-                order.qr_payment_verified_by = request.user
-                order.qr_payment_verified_at = timezone.now()
-                order.save()
-                
-                # 🔥 UPDATE ANALYTICS WHEN PAYMENT IS VERIFIED
-                print(f"✅ Payment verified - updating analytics for order #{order.order_number}")
-                for item in order.items.filter(ordered=True):
-                    product = item.product
-                    # Update order count
-                    product.order_count += item.quantity
-                    # Update revenue
-                    item_revenue = item.quantity * item.price
-                    product.total_revenue += item_revenue
-                    product.save(update_fields=['order_count', 'total_revenue'])
-                    print(f"📊 Updated {product.name}: +{item.quantity} orders, +Rs.{item_revenue} revenue")
-                
-                # Send confirmation email
-                from orders.views import send_order_confirmation_email
-                send_order_confirmation_email(order)
-                
-                # Create notification for payment verification
-                create_notification(
-                    user=order.user,
-                    notification_type='order',
-                    title='Payment Verified!',
-                    message=f'Your payment for Order #{order.order_number} has been verified and confirmed.',
-                    icon='fa-check-circle',
-                    color='success',
-                    url='/orders/my-orders/'
-                )
-                
-                messages.success(request, f'✅ Payment verified for Order #{order.order_number}. Customer notified!')
-                
-            elif action == 'reject':
-                print(f"🚫 REJECTING ORDER #{order.order_number}")
-                
-                # Import the functions
-                from orders.views import send_order_rejection_email, revert_stock_after_rejection
-                
-                # 🔥 REVERT ANALYTICS FIRST (before reverting stock)
-                analytics_reverted = revert_analytics_after_rejection(order)
-                
-                # Revert stock
-                stock_reverted = revert_stock_after_rejection(order)
-                
-                # Update order status
-                order.payment_status = 'rejected'
-                order.status = 'Payment Rejected'
-                order.order_status = 'cancelled'
-                order.save()
-                
-                # Send rejection email
-                email_sent = send_order_rejection_email(order)
-                
-                # Create notification for payment rejection
-                create_notification(
-                    user=order.user,
-                    notification_type='order',
-                    title='Payment Rejected',
-                    message=f'Your payment for Order #{order.order_number} could not be verified and has been rejected.',
-                    icon='fa-times-circle',
-                    color='danger',
-                    url='/orders/my-orders/'
-                )
-                
-                # 🔥 ENHANCED SUCCESS MESSAGE with analytics tracking
-                if analytics_reverted and stock_reverted and email_sent:
-                    messages.warning(request, f'❌ Payment rejected for Order #{order.order_number}. Analytics reverted, stock reverted, and customer notified via email.')
-                elif analytics_reverted and stock_reverted:
-                    messages.warning(request, f'❌ Payment rejected for Order #{order.order_number}. Analytics and stock reverted. (Email notification failed)')
-                elif analytics_reverted and email_sent:
-                    messages.warning(request, f'❌ Payment rejected for Order #{order.order_number}. Analytics reverted and customer notified. (Stock reversion failed)')
-                elif stock_reverted and email_sent:
-                    messages.warning(request, f'❌ Payment rejected for Order #{order.order_number}. Stock reverted and customer notified. (Analytics reversion failed)')
-                elif analytics_reverted:
-                    messages.warning(request, f'❌ Payment rejected for Order #{order.order_number}. Analytics reverted. (Stock reversion and email notification failed)')
-                elif stock_reverted:
-                    messages.warning(request, f'❌ Payment rejected for Order #{order.order_number}. Stock reverted. (Analytics reversion and email notification failed)')
-                elif email_sent:
-                    messages.warning(request, f'❌ Payment rejected for Order #{order.order_number}. Customer notified. (Analytics and stock reversion failed)')
-                else:
-                    messages.error(request, f'❌ Payment rejected for Order #{order.order_number}. WARNING: Analytics reversion, stock reversion, and email notification ALL FAILED!')
-                
-        except Exception as e:
-            print(f"❌ Error in verification: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            messages.error(request, f'Error: {str(e)}')
-
-    # Get pending orders for this seller 
-    pending_orders = Order.objects.filter(
-        items__seller=request.user,
-        payment_method='QR Payment',
-        payment_status='pending_verification'
-    ).distinct().order_by('-created_at')
-    
-    # Get recently verified orders 
-    verified_orders = Order.objects.filter(
-        items__seller=request.user,
-        payment_method='QR Payment',
-        payment_status='completed',
-        qr_payment_verified_by=request.user
-    ).distinct().order_by('-qr_payment_verified_at')[:10]
-    
-    # Calculate total pending amount
-    total_pending_amount = sum(order.grand_total for order in pending_orders)
-    
-    context = {
-        'pending_orders': pending_orders,
-        'verified_orders': verified_orders,
-        'total_pending_amount': total_pending_amount,
-    }
-    return render(request, 'users/verify_qr_payments.html', context)
 
 # CHAT SYSTEM
 
@@ -1407,7 +1020,7 @@ def chat_list(request):
             'product'
         ).order_by('-updated_at')
         
-        # Add unread count and last message for each chat
+        #  unread count and last message for each chat
         chat_data = []
         for chat in chat_rooms:
             try:
@@ -1499,7 +1112,7 @@ def start_chat_with_user(request, username):
         chat_room = ChatRoom.objects.create()
         chat_room.participants.add(request.user, other_user)
         
-        # Add a welcome message
+        #   welcome message
         ChatMessage.objects.create(
             chat_room=chat_room,
             sender=request.user,
@@ -1532,7 +1145,7 @@ def start_chat_about_product(request, product_id):
         chat_room = ChatRoom.objects.create(product=product)
         chat_room.participants.add(request.user, seller)
         
-        # Add initial message about the product
+        # initial message about the product
         ChatMessage.objects.create(
             chat_room=chat_room,
             sender=request.user,
@@ -1590,11 +1203,11 @@ def send_message(request):
                         'timestamp': message.get_time_display(),
                         'status_icon': message.get_status_icon(),
                         'is_mine': True,
-                        'image': message.image.url if hasattr(message, 'image') and message.image else None  # 🔥 ADD THIS
+                        'image': message.image.url if hasattr(message, 'image') and message.image else None  #  ADD THIS
                     }
                 })
             except Exception as e:
-                print(f"Error sending message: {e}")  # 🔥 ADD DEBUG
+                print(f"Error sending message: {e}")  #  ADD DEBUG
                 return JsonResponse({'success': False, 'error': str(e)})
     
     return JsonResponse({'success': False, 'error': 'Invalid request'})
@@ -1703,114 +1316,187 @@ def get_new_messages(request, chat_id):
 # PRODUCT MANAGEMENT
 
 @login_required
+@require_approved_seller
+@require_approved_product
 def update_product_stock(request, product_id):
-    """AJAX endpoint to update product stock - ONLY for approved products"""
-    if request.method == 'POST':
-        try:
-            # Get product with seller and approval checks
-            product = get_object_or_404(Product, id=product_id, seller=request.user)
-            
-            # PERMISSION CHECK: Only approved products can be edited
-            if product.approval_status != 'approved':
-                return JsonResponse({
-                    'success': False, 
-                    'message': 'Only approved products can have stock updated',
-                    'original_stock': product.stock
-                })
-            
-            data = json.loads(request.body)
-            new_stock = int(data.get('stock', 0))
-            
-            # Validate stock value
-            if new_stock < 0:
-                return JsonResponse({
-                    'success': False, 
-                    'message': 'Stock cannot be negative',
-                    'original_stock': product.stock
-                })
-            
-            old_stock = product.stock
-            product.stock = new_stock
-            product.save()
-            
-            # Create notification for significant stock changes
-            if old_stock == 0 and new_stock > 0:
-                create_notification(
-                    user=request.user,
-                    notification_type='system',
-                    title='Product Back in Stock!',
-                    message=f'"{product.name}" is now back in stock with {new_stock} units.',
-                    icon='fa-box',
-                    color='success',
-                    url='/my-selling-items/'
-                )
-            
-            return JsonResponse({
-                'success': True,
-                'message': f'Stock updated to {new_stock}',
-                'new_stock': new_stock
-            })
-            
-        except ValueError:
-            return JsonResponse({
-                'success': False, 
-                'message': 'Please enter a valid number'
-            })
-        except Exception as e:
-            print(f"Error updating stock: {e}")
-            return JsonResponse({
-                'success': False, 
-                'message': 'Error updating stock'
-            })
-    
-    return JsonResponse({'success': False, 'message': 'Invalid request method'})
-
-@login_required
-def toggle_product_status(request, product_id):
-    """AJAX endpoint to toggle product live/hidden status - ONLY for approved products"""
-    if request.method == 'POST':
-        try:
-            product = get_object_or_404(Product, id=product_id, seller=request.user)
-            
-            # PERMISSION CHECK: Only approved products can have visibility toggled
-            if product.approval_status != 'approved':
-                return JsonResponse({
-                    'success': False, 
-                    'message': 'Only approved products can have visibility changed'
-                })
-            
-            data = json.loads(request.body)
-            new_status = data.get('status', False)
-            
-            product.status = new_status
-            product.save()
-            
-            # Create notification for visibility change
-            status_text = 'live' if new_status else 'hidden'
-            create_notification(
-                user=request.user,
-                notification_type='system',
-                title=f'Product {status_text.title()}!',
-                message=f'"{product.name}" is now {status_text} on the marketplace.',
-                icon='fa-eye' if new_status else 'fa-eye-slash',
-                color='success' if new_status else 'warning',
+    """AJAX endpoint to update product stock"""
+    if request.method != 'POST':
+        return ajax_response(False, 'Invalid request method')
+        
+    try:
+        product = get_object_or_404(Product, id=product_id, seller=request.user)
+        data = json.loads(request.body)
+        new_stock = int(data.get('stock', 0))
+        
+        if new_stock < 0:
+            return ajax_response(False, 'Stock cannot be negative', original_stock=product.stock)
+        
+        old_stock = product.stock
+        product.stock = new_stock
+        product.save()
+        
+        # Create notification for significant stock changes
+        if old_stock == 0 and new_stock > 0:
+            notify_user(
+                request.user,
+                'Product Back in Stock!',
+                f'"{product.name}" is now back in stock with {new_stock} units.',
+                icon='fa-box',
+                color='success',
                 url='/my-selling-items/'
             )
+        
+        return ajax_response(True, f'Stock updated to {new_stock}', new_stock=new_stock)
+        
+    except ValueError:
+        return ajax_response(False, 'Please enter a valid number')
+    except Exception as e:
+        print(f"Error updating stock: {e}")
+        return ajax_response(False, 'Error updating stock')
+
+@login_required
+@require_approved_seller  
+@require_approved_product
+def toggle_product_status(request, product_id):
+    """AJAX endpoint to toggle product live/hidden status"""
+    if request.method != 'POST':
+        return ajax_response(False, 'Invalid request method')
+        
+    try:
+        product = get_object_or_404(Product, id=product_id, seller=request.user)
+        data = json.loads(request.body)
+        new_status = data.get('status', False)
+        
+        product.status = new_status
+        product.save()
+        
+        status_text = 'live' if new_status else 'hidden'
+        notify_user(
+            request.user,
+            f'Product {status_text.title()}!',
+            f'"{product.name}" is now {status_text} on the marketplace.',
+            icon='fa-eye' if new_status else 'fa-eye-slash',
+            color='success' if new_status else 'warning',
+            url='/my-selling-items/'
+        )
+        
+        return ajax_response(True, f'Product is now {status_text}', status=new_status)
+        
+    except Exception as e:
+        print(f"Error toggling product status: {e}")
+        return ajax_response(False, 'Error updating product visibility')
+
+@login_required  
+@require_approved_seller
+def delete_product(request, product_id):
+    """AJAX endpoint to delete product"""
+    if request.method != 'POST':
+        return ajax_response(False, 'Invalid request method')
+        
+    try:
+        product = get_object_or_404(Product, id=product_id, seller=request.user)
+        product_name = product.name
+        
+        product.delete()
+        
+        notify_user(
+            request.user,
+            'Product Deleted!',
+            f'"{product_name}" has been removed from your products.',
+            icon='fa-trash',
+            color='info',
+            url='/my-selling-items/'
+        )
+        
+        return ajax_response(True, f'"{product_name}" deleted successfully')
+        
+    except Exception as e:
+        print(f"Error deleting product: {e}")
+        return ajax_response(False, 'Error deleting product')
+
+@login_required
+@require_approved_seller
+@require_approved_product  
+def duplicate_product(request, product_id):
+    """AJAX endpoint to duplicate product"""
+    if request.method != 'POST':
+        return ajax_response(False, 'Invalid request method')
+        
+    try:
+        original_product = get_object_or_404(Product, id=product_id, seller=request.user)
+        
+        with transaction.atomic():
+            # Create duplicate product
+            duplicate_product = Product.objects.create(
+                name=f"{original_product.name} (Copy)",
+                description=original_product.description,
+                price=original_product.price,
+                stock=original_product.stock,
+                category=original_product.category,
+                brand=original_product.brand,
+                spec=original_product.spec,
+                seller=request.user,
+                status=False, 
+                admin_approved=False, 
+                approval_status='pending',  
+                submitted_for_approval=timezone.now(),
+                product_type=original_product.product_type,
+                condition=original_product.condition,
+                years_used=original_product.years_used,
+                is_on_sale=original_product.is_on_sale,
+                original_price=original_product.original_price,
+                discount_percentage=original_product.discount_percentage,
+                sale_start_date=original_product.sale_start_date,
+                sale_end_date=original_product.sale_end_date,
+            )
             
-            return JsonResponse({
-                'success': True,
-                'message': f'Product is now {status_text}',
-                'status': new_status
-            })
+            # Copy main product image if exists
+            if original_product.image:
+                try:
+                    original_image_path = original_product.image.path
+                    if os.path.exists(original_image_path):
+                        import uuid
+                        file_extension = os.path.splitext(original_product.image.name)[1]
+                        new_filename = f"products/{uuid.uuid4()}{file_extension}"
+                        
+                        with open(original_image_path, 'rb') as original_file:
+                            duplicate_product.image.save(new_filename, original_file, save=True)
+                except Exception as e:
+                    print(f"Error copying product image: {e}")
             
-        except Exception as e:
-            print(f"Error toggling product status: {e}")
-            return JsonResponse({
-                'success': False, 
-                'message': 'Error updating product visibility'
-            })
-    
-    return JsonResponse({'success': False, 'message': 'Invalid request method'})
+            # Copy variations if any exist
+            original_variations = ProductVariation.objects.filter(product=original_product)
+            for variation in original_variations:
+                ProductVariation.objects.create(
+                    product=duplicate_product,
+                    variation_type=variation.variation_type,
+                    variation_option=variation.variation_option,
+                    price_adjustment=variation.price_adjustment,
+                    stock_quantity=variation.stock_quantity,
+                    sku=f"{variation.sku}_copy" if variation.sku else "",
+                    is_active=variation.is_active,
+                )
+        
+        notify_user(
+            request.user,
+            'Product Duplicated!',
+            f'A copy of "{original_product.name}" has been created and submitted for approval.',
+            icon='fa-copy',
+            color='info',
+            url='/my-selling-items/'
+        )
+        
+        return ajax_response(
+            True, 
+            'Product duplicated successfully! The copy is now pending approval.',
+            duplicate_id=duplicate_product.id
+        )
+        
+    except Exception as e:
+        print(f"Error duplicating product: {e}")
+        import traceback
+        traceback.print_exc()
+        return ajax_response(False, 'Error duplicating product')
 
 @login_required
 def delete_product(request, product_id):
@@ -1876,11 +1562,10 @@ def duplicate_product(request, product_id):
                     brand=original_product.brand,
                     spec=original_product.spec,
                     seller=request.user,
-                    status=False,  # Start as hidden
-                    admin_approved=False,  # Needs approval again
-                    approval_status='pending',  # Needs approval
+                    status=False, 
+                    admin_approved=False, 
+                    approval_status='pending',  
                     submitted_for_approval=timezone.now(),
-                    # Copy other fields
                     product_type=original_product.product_type,
                     condition=original_product.condition,
                     years_used=original_product.years_used,
@@ -1923,7 +1608,6 @@ def duplicate_product(request, product_id):
                         stock_quantity=variation.stock_quantity,
                         sku=f"{variation.sku}_copy" if variation.sku else "",
                         is_active=variation.is_active,
-                        # Note: Images are not copied for variations to avoid complexity
                     )
             
             # Create notification
@@ -2039,215 +1723,223 @@ def edit_product(request, product_id):
         })
 
 @login_required
-def bulk_update_stock(request):
-    """AJAX endpoint for bulk stock updates - ONLY for approved products"""
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            product_ids = data.get('products', [])
-            action = data.get('action')
-            amount = int(data.get('amount', 0))
+@require_approved_seller
+def bulk_product_operations(request):
+    """Unified bulk operations handler for all product actions"""
+    if request.method != 'POST':
+        return ajax_response(False, 'Invalid request method')
+        
+    try:
+        data = json.loads(request.body)
+        operation_type = data.get('operation_type')
+        product_ids = data.get('products', [])
+        
+        if not operation_type:
+            return ajax_response(False, 'Operation type is required')
             
-            if amount < 0:
-                return JsonResponse({
-                    'success': False, 
-                    'message': 'Amount cannot be negative'
-                })
-            
-            # Get products with permission check
-            products = Product.objects.filter(
-                id__in=product_ids, 
-                seller=request.user,
-                approval_status='approved'  # ONLY approved products
-            )
-            
-            if not products.exists():
-                return JsonResponse({
-                    'success': False, 
-                    'message': 'No approved products found to update'
-                })
-            
-            updated_count = 0
-            with transaction.atomic():
-                for product in products:
-                    old_stock = product.stock
-                    
-                    if action == 'set':
-                        product.stock = amount
-                    elif action == 'add':
-                        product.stock += amount
-                    elif action == 'subtract':
-                        product.stock = max(0, product.stock - amount)
-                    
-                    product.save()
-                    updated_count += 1
-            
-            # Create notification
-            create_notification(
-                user=request.user,
-                notification_type='system',
-                title='Bulk Stock Update Complete!',
-                message=f'Stock updated for {updated_count} approved products.',
-                icon='fa-boxes',
-                color='success',
-                url='/my-selling-items/'
-            )
-            
-            return JsonResponse({
-                'success': True, 
-                'updated_count': updated_count,
-                'message': f'Stock updated for {updated_count} products'
-            })
-            
-        except ValueError:
-            return JsonResponse({
-                'success': False, 
-                'message': 'Please enter a valid amount'
-            })
-        except Exception as e:
-            print(f"Error in bulk stock update: {e}")
-            return JsonResponse({
-                'success': False, 
-                'message': 'Error updating stock'
-            })
-    
-    return JsonResponse({'success': False, 'message': 'Invalid request method'})
-
-@login_required
-def bulk_toggle_visibility(request):
-    """AJAX endpoint for bulk visibility toggle - ONLY for approved products"""
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            product_ids = data.get('products', [])
-            action = data.get('action', 'toggle')
-            
-            # Get products with permission check
-            products = Product.objects.filter(
-                id__in=product_ids, 
-                seller=request.user,
-                approval_status='approved'  # ONLY approved products
-            )
-            
-            if not products.exists():
-                return JsonResponse({
-                    'success': False, 
-                    'message': 'No approved products found to update'
-                })
-            
-            updated_count = 0
-            show_count = 0
-            hide_count = 0
-            
-            with transaction.atomic():
-                for product in products:
-                    if action == 'show':
-                        product.status = True
-                        show_count += 1
-                    elif action == 'hide':
-                        product.status = False
-                        hide_count += 1
-                    elif action == 'toggle':
-                        product.status = not product.status
-                        if product.status:
-                            show_count += 1
-                        else:
-                            hide_count += 1
-                    
-                    product.save()
-                    updated_count += 1
-            
-            # Create notification
-            if action == 'show':
-                message = f'{show_count} products made live'
-            elif action == 'hide':
-                message = f'{hide_count} products hidden'
-            else:
-                message = f'{show_count} products made live, {hide_count} products hidden'
-            
-            create_notification(
-                user=request.user,
-                notification_type='system',
-                title='Bulk Visibility Update!',
-                message=f'Visibility updated: {message}.',
-                icon='fa-eye',
-                color='info',
-                url='/my-selling-items/'
-            )
-            
-            return JsonResponse({
-                'success': True, 
-                'updated_count': updated_count,
-                'show_count': show_count,
-                'hide_count': hide_count,
-                'message': f'Visibility updated for {updated_count} products'
-            })
-            
-        except Exception as e:
-            print(f"Error in bulk visibility update: {e}")
-            return JsonResponse({
-                'success': False, 
-                'message': 'Error updating visibility'
-            })
-    
-    return JsonResponse({'success': False, 'message': 'Invalid request method'})
-
-@login_required
-def bulk_delete_products(request):
-    """AJAX endpoint for bulk product deletion"""
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            product_ids = data.get('products', [])
-            
-            # Get products belonging to current user
+        if not product_ids:
+            return ajax_response(False, 'No products selected')
+        
+        # Get products with permission check - ONLY approved products for most operations
+        if operation_type == 'delete':
+            # Delete can work on any product owned by seller
             products = Product.objects.filter(id__in=product_ids, seller=request.user)
-            
-            if not products.exists():
-                return JsonResponse({
-                    'success': False, 
-                    'message': 'No products found to delete'
-                })
-            
-            deleted_count = products.count()
-            product_names = [p.name for p in products[:3]]  # Get first 3 names
-            
-            # Delete the products
-            with transaction.atomic():
-                products.delete()
-            
-            # Create notification
-            if deleted_count == 1:
-                message = f'"{product_names[0]}" has been deleted'
-            elif deleted_count <= 3:
-                message = f'{", ".join(product_names)} have been deleted'
-            else:
-                message = f'{deleted_count} products have been deleted'
-            
-            create_notification(
-                user=request.user,
-                notification_type='system',
-                title='Products Deleted!',
-                message=message,
-                icon='fa-trash',
-                color='info',
-                url='/my-selling-items/'
+        else:
+            # Other operations only work on approved products
+            products = Product.objects.filter(
+                id__in=product_ids, 
+                seller=request.user,
+                approval_status='approved'
             )
+        
+        if not products.exists():
+            status_filter = "approved " if operation_type != 'delete' else ""
+            return ajax_response(False, f'No {status_filter}products found to update')
+        
+        # Route to specific operation handler
+        if operation_type == 'stock_update':
+            return _handle_bulk_stock_update(request, products, data)
+        elif operation_type == 'visibility_toggle':
+            return _handle_bulk_visibility_toggle(request, products, data)
+        elif operation_type == 'delete':
+            return _handle_bulk_delete(request, products, data)
+        else:
+            return ajax_response(False, f'Unknown operation type: {operation_type}')
             
-            return JsonResponse({
-                'success': True, 
-                'deleted_count': deleted_count,
-                'message': f'{deleted_count} products deleted successfully'
-            })
+    except json.JSONDecodeError:
+        return ajax_response(False, 'Invalid JSON data')
+    except Exception as e:
+        print(f"Error in bulk operations: {e}")
+        return ajax_response(False, 'Error processing bulk operation')
+
+def _handle_bulk_stock_update(request, products, data):
+    """Handle bulk stock updates"""
+    try:
+        action = data.get('action')  # 'set', 'add', 'subtract'
+        amount = int(data.get('amount', 0))
+        
+        if amount < 0:
+            return ajax_response(False, 'Amount cannot be negative')
             
-        except Exception as e:
-            print(f"Error in bulk delete: {e}")
-            return JsonResponse({
-                'success': False, 
-                'message': 'Error deleting products'
-            })
-    
-    return JsonResponse({'success': False, 'message': 'Invalid request method'})
+        if action not in ['set', 'add', 'subtract']:
+            return ajax_response(False, 'Invalid stock action')
+        
+        updated_count = 0
+        stock_changes = []
+        
+        with transaction.atomic():
+            for product in products:
+                old_stock = product.stock
+                
+                if action == 'set':
+                    product.stock = amount
+                elif action == 'add':
+                    product.stock += amount
+                elif action == 'subtract':
+                    product.stock = max(0, product.stock - amount)
+                
+                product.save()
+                updated_count += 1
+                
+                stock_changes.append({
+                    'product': product.name,
+                    'old_stock': old_stock,
+                    'new_stock': product.stock
+                })
+        
+        # Create notification
+        notify_user(
+            request.user,
+            'Bulk Stock Update Complete!',
+            f'Stock updated for {updated_count} approved products using {action} action.',
+            icon='fa-boxes',
+            color='success',
+            url='/my-selling-items/'
+        )
+        
+        return ajax_response(
+            True, 
+            f'Stock {action} operation completed for {updated_count} products',
+            updated_count=updated_count,
+            stock_changes=stock_changes
+        )
+        
+    except ValueError:
+        return ajax_response(False, 'Please enter a valid amount')
+    except Exception as e:
+        print(f"Error in bulk stock update: {e}")
+        return ajax_response(False, 'Error updating stock')
+
+def _handle_bulk_visibility_toggle(request, products, data):
+    """Handle bulk visibility changes"""
+    try:
+        action = data.get('action', 'toggle')  # 'show', 'hide', 'toggle'
+        
+        if action not in ['show', 'hide', 'toggle']:
+            return ajax_response(False, 'Invalid visibility action')
+        
+        updated_count = 0
+        show_count = 0
+        hide_count = 0
+        visibility_changes = []
+        
+        with transaction.atomic():
+            for product in products:
+                old_status = product.status
+                
+                if action == 'show':
+                    product.status = True
+                    show_count += 1
+                elif action == 'hide':
+                    product.status = False
+                    hide_count += 1
+                elif action == 'toggle':
+                    product.status = not product.status
+                    if product.status:
+                        show_count += 1
+                    else:
+                        hide_count += 1
+                
+                product.save()
+                updated_count += 1
+                
+                visibility_changes.append({
+                    'product': product.name,
+                    'old_status': 'live' if old_status else 'hidden',
+                    'new_status': 'live' if product.status else 'hidden'
+                })
+        
+        # Create appropriate message
+        if action == 'show':
+            message = f'{show_count} products made live'
+        elif action == 'hide':
+            message = f'{hide_count} products hidden'
+        else:
+            message = f'{show_count} products made live, {hide_count} products hidden'
+        
+        # Create notification
+        notify_user(
+            request.user,
+            'Bulk Visibility Update!',
+            f'Visibility updated: {message}.',
+            icon='fa-eye',
+            color='info',
+            url='/my-selling-items/'
+        )
+        
+        return ajax_response(
+            True, 
+            f'Visibility {action} operation completed for {updated_count} products',
+            updated_count=updated_count,
+            show_count=show_count,
+            hide_count=hide_count,
+            visibility_changes=visibility_changes
+        )
+        
+    except Exception as e:
+        print(f"Error in bulk visibility update: {e}")
+        return ajax_response(False, 'Error updating visibility')
+
+def _handle_bulk_delete(request, products, data):
+    """Handle bulk product deletion"""
+    try:
+        deleted_count = products.count()
+        product_names = [p.name for p in products[:5]]  # Get first 5 names for notification
+        
+        # Delete the products
+        with transaction.atomic():
+            products.delete()
+        
+        # Create appropriate notification message
+        if deleted_count == 1:
+            message = f'"{product_names[0]}" has been deleted'
+        elif deleted_count <= 5:
+            message = f'{", ".join(product_names)} have been deleted'
+        else:
+            shown_names = ", ".join(product_names[:3])
+            message = f'{shown_names} and {deleted_count - 3} other products have been deleted'
+        
+        # Create notification
+        notify_user(
+            request.user,
+            'Products Deleted!',
+            message,
+            icon='fa-trash',
+            color='info',
+            url='/my-selling-items/'
+        )
+        
+        return ajax_response(
+            True, 
+            f'{deleted_count} products deleted successfully',
+            deleted_count=deleted_count,
+            deleted_products=product_names
+        )
+        
+    except Exception as e:
+        print(f"Error in bulk delete: {e}")
+        return ajax_response(False, 'Error deleting products')
+
 
 
 # QR PAYMENT MANAGEMENT
@@ -2335,20 +2027,20 @@ def remove_qr(request):
 def clear_messages(request):
     """🛡️ BULLETPROOF: Clear notifications ONLY - NEVER touch chat data"""
     try:
-        print(f"🔄 Clear messages called by {request.user.username}")
+        print(f" Clear messages called by {request.user.username}")
         
         # 1. Clear Django flash messages safely
         storage = messages.get_messages(request)
         list(storage)  # Consume all messages safely
-        print("✅ Django flash messages cleared")
+        print(" Django flash messages cleared")
         
         # 2. Clear ONLY notifications - with explicit chat protection
         notifications_cleared = 0
         try:
             notifications_cleared = Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
-            print(f"✅ Marked {notifications_cleared} notifications as read")
+            print(f" Marked {notifications_cleared} notifications as read")
         except Exception as e:
-            print(f"⚠️ Error clearing notifications: {e}")
+            print(f" Error clearing notifications: {e}")
         
         # 3. 🛡️ VERIFY chat data is untouched
         chat_rooms_count = ChatRoom.objects.filter(participants=request.user).count()
@@ -2496,7 +2188,7 @@ def clear_django_messages_only(request):
 
 @login_required
 def add_to_wishlist(request, product_id):
-    """Add product to wishlist via AJAX"""
+    """ product to wishlist via AJAX"""
     if request.method == 'POST':
         try:
             product = get_object_or_404(Product, id=product_id)
@@ -2641,7 +2333,7 @@ def toggle_wishlist(request, product_id):
                 in_wishlist = False
                 message = f'"{product_name}" removed from wishlist!'
             else:
-                # Add to wishlist
+                #  to wishlist
                 Wishlist.objects.create(user=request.user, product=product)
                 in_wishlist = True
                 message = f'"{product.name}" added to wishlist!'
@@ -2671,6 +2363,24 @@ def toggle_wishlist(request, product_id):
             })
     
     return JsonResponse({'success': False, 'message': 'Invalid request'})
+
+@login_required
+def check_wishlist_status(request):
+    """Return list of product IDs that are in user's wishlist"""
+    try:
+        # Get all products in user's wishlist
+        wishlist_items = Wishlist.objects.filter(user=request.user)
+        wishlist_product_ids = [item.product.id for item in wishlist_items]
+        
+        return JsonResponse({
+            'status': 'success',
+            'wishlist_products': wishlist_product_ids
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        })
 
 @login_required
 @require_POST
@@ -2746,7 +2456,6 @@ def customer_received_orders(request):
             reviews = Review.objects.filter(user=request.user).values_list('product_id', flat=True)
             reviewed_product_ids = list(reviews)
         except (ImportError, AttributeError):
-            # If no review model, we'll skip this for now
             reviewed_product_ids = []
         
         # Count items pending review
@@ -2770,13 +2479,13 @@ def customer_received_orders(request):
 @login_required
 def update_order_status(request, order_id):
     """AJAX endpoint for sellers to update order status - WITH EMAIL NOTIFICATIONS"""
-    print(f"🔄 Order status update - Order ID: {order_id}, User: {request.user.username}")
+    print(f" Order status update - Order ID: {order_id}, User: {request.user.username}")
     
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
             new_status = data.get('status')
-            print(f"📝 Requested status: {new_status}")
+            print(f" Requested status: {new_status}")
             
             # Get order where current user is the seller
             try:
@@ -2791,7 +2500,7 @@ def update_order_status(request, order_id):
                         'message': 'Order not found or access denied'
                     })
                     
-                print(f"✅ Order found: #{order.id}, Current status: {order.order_status}")
+                print(f" Order found: #{order.id}, Current status: {order.order_status}")
                 
             except Exception as e:
                 print(f"❌ Error finding order: {e}")
@@ -2822,8 +2531,8 @@ def update_order_status(request, order_id):
             current_status = order.order_status
             allowed_transitions = valid_transitions.get(current_status, [])
             
-            print(f"🔄 Status check: {current_status} → {new_status}")
-            print(f"✅ Allowed transitions: {allowed_transitions}")
+            print(f" Status check: {current_status} → {new_status}")
+            print(f" Allowed transitions: {allowed_transitions}")
             
             if new_status not in allowed_transitions:
                 return JsonResponse({
@@ -2849,17 +2558,17 @@ def update_order_status(request, order_id):
                 order.completed_date = timezone.now()
             
             order.save()
-            print(f"✅ Order updated: {old_status} → {new_status}")
+            print(f" Order updated: {old_status} → {new_status}")
             
-            # 🔥 SEND EMAIL NOTIFICATIONS BASED ON STATUS
+            #  SEND EMAIL NOTIFICATIONS BASED ON STATUS
             email_sent = False
             try:
                 if new_status == 'shipped':
                     email_sent = send_order_shipped_email(order)
-                    print(f"📧 Shipped email sent: {email_sent}")
+                    print(f" Shipped email sent: {email_sent}")
                 elif new_status == 'delivered':
                     email_sent = send_order_delivered_email(order)
-                    print(f"📧 Delivered email sent: {email_sent}")
+                    print(f" Delivered email sent: {email_sent}")
             except Exception as e:
                 print(f"❌ Email sending failed: {e}")
             
@@ -2883,7 +2592,7 @@ def update_order_status(request, order_id):
                     url='/orders/my-orders/'
                 )
             except Exception as e:
-                print(f"⚠️ Notification failed: {e}")
+                print(f" Notification failed: {e}")
             
             # Create success message
             message = f'Order status updated to {new_status.title()}'
@@ -2949,11 +2658,11 @@ def mark_as_shipped(request, order_id):
             order.shipped_at = timezone.now()
             order.save()
             
-            # 🔥 SEND SHIPPING EMAIL
+            #  SEND SHIPPING EMAIL
             email_sent = False
             try:
                 email_sent = send_order_shipped_email(order)
-                print(f"📧 Shipping email sent: {email_sent}")
+                print(f" Shipping email sent: {email_sent}")
             except Exception as e:
                 print(f"❌ Shipping email failed: {e}")
             
@@ -2961,7 +2670,7 @@ def mark_as_shipped(request, order_id):
             create_notification(
                 user=order.user,
                 notification_type='order',
-                title='Order Shipped! 🚚',
+                title='Order Shipped! ',
                 message=f'Order #{order.order_number} has been shipped! Tracking: {tracking_number}',
                 icon='fa-truck',
                 color='info',
@@ -3027,7 +2736,7 @@ def order_details_modal(request, order_id):
 def mark_delivered(request, order_id):
     """Mark order as delivered with delivery details and send email - FIXED"""
     try:
-        print(f"📦 Marking order {order_id} as delivered by {request.user.username}")
+        print(f" Marking order {order_id} as delivered by {request.user.username}")
         
         # Get order using a more flexible approach
         order = Order.objects.filter(
@@ -3042,10 +2751,10 @@ def mark_delivered(request, order_id):
                 'message': 'Order not found or access denied'
             })
         
-        print(f"✅ Order found: #{order.id}")
-        print(f"📊 Current order status: {order.status}")
-        print(f"📊 Current order_status: {getattr(order, 'order_status', 'Not set')}")
-        print(f"📊 Current get_effective_status: {order.get_effective_status()}")
+        print(f" Order found: #{order.id}")
+        print(f" Current order status: {order.status}")
+        print(f" Current order_status: {getattr(order, 'order_status', 'Not set')}")
+        print(f" Current get_effective_status: {order.get_effective_status()}")
         
         # Check if order can be delivered
         current_status = order.get_effective_status()
@@ -3068,14 +2777,14 @@ def mark_delivered(request, order_id):
         delivery_date = data.get('delivery_date', '')
         notes = data.get('notes', '').strip()
         
-        print(f"📦 Delivery data: date={delivery_date}, notes={notes}")
+        print(f" Delivery data: date={delivery_date}, notes={notes}")
         
         # Update order with delivery details
-        print("📦 Updating order status...")
+        print(" Updating order status...")
         
         # Update BOTH status fields to ensure consistency
         order.status = 'Delivered'
-        order.order_status = 'delivered'  # If this field exists
+        order.order_status = 'delivered'  
         order.delivered_date = timezone.now()
         order.delivery_notes = notes
         order.updated_at = timezone.now()
@@ -3086,26 +2795,26 @@ def mark_delivered(request, order_id):
                 from datetime import datetime
                 parsed_date = datetime.strptime(delivery_date, '%Y-%m-%d')
                 order.delivery_date = parsed_date.date()
-                print(f"📅 Delivery date set to: {order.delivery_date}")
+                print(f" Delivery date set to: {order.delivery_date}")
             except ValueError as e:
-                print(f"⚠️ Error parsing date: {e}")
+                print(f" Error parsing date: {e}")
                 order.delivery_date = timezone.now().date()
         else:
             order.delivery_date = timezone.now().date()
         
         # Save the order
         order.save()
-        print(f"✅ Order saved with new status: {order.status}")
+        print(f" Order saved with new status: {order.status}")
         
         # Verify the save worked
         order.refresh_from_db()
-        print(f"🔄 After refresh - Status: {order.status}, Order_status: {getattr(order, 'order_status', 'Not set')}")
+        print(f" After refresh - Status: {order.status}, Order_status: {getattr(order, 'order_status', 'Not set')}")
         
         # Send delivery confirmation email
         email_sent = False
         try:
             email_sent = send_order_delivered_email(order)
-            print(f"📧 Delivery email sent: {email_sent}")
+            print(f" Delivery email sent: {email_sent}")
         except Exception as e:
             print(f"❌ Email sending failed: {e}")
         
@@ -3114,13 +2823,13 @@ def mark_delivered(request, order_id):
             create_notification(
                 user=order.user,
                 notification_type='order',
-                title='Order Delivered! 📦',
+                title='Order Delivered! ',
                 message=f'Order #{order.order_number} has been delivered successfully!',
                 icon='fa-box-check',
                 color='success',
                 url='/orders/my-orders/'
             )
-            print(f"✅ Notification created for {order.user.username}")
+            print(f" Notification created for {order.user.username}")
         except Exception as e:
             print(f"❌ Notification creation failed: {e}")
         
@@ -3168,13 +2877,9 @@ def user_logout(request):
 # ADMIN FUNCTIONS FOR SELLER MANAGEMENT
 
 @login_required
+@require_admin
 def approve_seller(request, user_id):
     """Admin function to approve seller application"""
-    # Add permission check
-    if not request.user.is_staff:
-        messages.error(request, 'Access denied.')
-        return redirect('dashboard')
-    
     try:
         user = get_object_or_404(User, id=user_id)
         profile = user.profile
@@ -3189,17 +2894,15 @@ def approve_seller(request, user_id):
         profile.save()
         
         # Send approval email
-        email_sent = send_seller_approval_email(user)
+        email_sent = send_user_email(user, 'seller_approval')
         
         # Create notification for the user
-        create_notification(
-            user=user,
-            notification_type='system',
-            title='🎉 Seller Application Approved!',
-            message='Congratulations! Your seller application has been approved. You can now start selling!',
+        notify_user(
+            user,
+            'Seller Application Approved!',
+            'Congratulations! Your seller application has been approved. You can now start selling!',
             icon='fa-check-circle',
-            color='success',
-            url='/dashboard/'
+            color='success'
         )
         
         if email_sent:
@@ -3213,13 +2916,9 @@ def approve_seller(request, user_id):
     return redirect('admin:users_profile_changelist')
 
 @login_required
+@require_admin
 def reject_seller(request, user_id):
     """Admin function to reject seller application"""
-    # Add permission check
-    if not request.user.is_staff:
-        messages.error(request, 'Access denied.')
-        return redirect('dashboard')
-    
     try:
         user = get_object_or_404(User, id=user_id)
         profile = user.profile
@@ -3241,17 +2940,15 @@ def reject_seller(request, user_id):
         profile.save()
         
         # Send rejection email
-        email_sent = send_seller_rejection_email(user, rejection_reason)
+        email_sent = send_user_email(user, 'seller_rejection', rejection_reason=rejection_reason)
         
         # Create notification for the user
-        create_notification(
-            user=user,
-            notification_type='system',
-            title='Seller Application Update',
-            message='Your seller application has been reviewed. Please check your email for details.',
+        notify_user(
+            user,
+            'Seller Application Update',
+            'Your seller application has been reviewed. Please check your email for details.',
             icon='fa-info-circle',
-            color='info',
-            url='/dashboard/'
+            color='info'
         )
         
         if email_sent:
@@ -3295,7 +2992,7 @@ def bulk_approve_sellers(request):
                     create_notification(
                         user=user,
                         notification_type='system',
-                        title='🎉 Seller Application Approved!',
+                        title='Seller Application Approved!',
                         message='Congratulations! Your seller application has been approved. You can now start selling!',
                         icon='fa-check-circle',
                         color='success',
@@ -3305,7 +3002,7 @@ def bulk_approve_sellers(request):
             except User.DoesNotExist:
                 continue
         
-        messages.success(request, f'✅ Approved {approved_count} sellers. {email_success_count} email notifications sent.')
+        messages.success(request, f' Approved {approved_count} sellers. {email_success_count} email notifications sent.')
     
     return redirect('admin:users_profile_changelist')
 
@@ -3321,3 +3018,388 @@ def contact_view(request):
         return redirect('contact')
     
     return render(request, 'marketplace/contact.html')
+
+def track_product_view(request, product):
+    """
+    Track product views properly - only count legitimate customer views
+    Uses session-based tracking to prevent refresh inflation
+    """
+    try:
+        
+        if request.user.is_authenticated:
+            # Don't count seller's own views
+            if product.seller == request.user:
+                return False
+            
+            # Don't count admin/staff views
+            if request.user.is_staff or request.user.is_superuser:
+                return False
+        
+        # Session-based tracking to prevent refresh inflation
+        session_key = f'viewed_product_{product.id}'
+        last_viewed = request.session.get(session_key)
+        
+        current_time = timezone.now().timestamp()
+        
+        # Only count if not viewed in last 30 minutes
+        if last_viewed:
+            time_diff = current_time - last_viewed
+            if time_diff < 1800:  # 30 minutes = 1800 seconds
+                return False
+        
+        # Update session
+        request.session[session_key] = current_time
+        
+        # Increment view count
+        product.view_count = (product.view_count or 0) + 1
+        product.save(update_fields=['view_count'])
+        
+        print(f" View tracked for {product.name}: {product.view_count}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error tracking view: {e}")
+        return False
+
+def update_order_analytics(order):
+    """
+    Update product analytics when order is CONFIRMED/PAID
+    This should be called ONLY ONCE per order
+    """
+    try:
+        print(f" Updating analytics for order #{order.order_number}")
+        
+        for item in order.items.filter(ordered=True):
+            product = item.product
+            
+            # Update order count
+            old_order_count = product.order_count or 0
+            product.order_count = old_order_count + item.quantity
+            
+            # Update revenue
+            item_revenue = item.quantity * item.price
+            old_revenue = float(product.total_revenue or 0)
+            product.total_revenue = old_revenue + item_revenue
+            
+            product.save(update_fields=['order_count', 'total_revenue'])
+            
+            print(f" {product.name}: orders {old_order_count} → {product.order_count}, revenue +Rs.{item_revenue}")
+        
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error updating analytics: {e}")
+        return False
+
+@login_required
+def dashboard(request):
+    """Fixed dashboard with accurate analytics"""
+    try:
+        profile = request.user.profile
+    except Profile.DoesNotExist:
+        profile = Profile.objects.create(user=request.user)
+
+    # Calculate orders count
+    orders_count = Order.objects.filter(user=request.user).count()
+    
+    # Calculate received orders count (for sellers)
+    received_orders_count = 0
+    if profile.seller_status == 'approved':
+        received_orders_count = OrderItem.objects.filter(seller=request.user).count()
+
+    # Real unread messages count
+    unread_messages_count = profile.get_unread_messages_count()
+    
+    # Wishlist count
+    wishlist_count = Wishlist.get_wishlist_count(request.user)
+
+    #  pending QR count for sidebar
+    pending_qr_count = 0
+    if profile.seller_status == 'approved':
+        pending_qr_count = Order.objects.filter(
+            items__seller=request.user,
+            payment_method='QR Payment',
+            payment_status='pending_verification'
+        ).distinct().count()
+
+    #  Seller analytics calculation with proper aggregation
+    seller_stats = {}
+    if profile.seller_status == 'approved':
+        seller_products = Product.objects.filter(
+            seller=request.user, 
+            approval_status='approved'
+        )
+        
+        # Aggregate analytics properly
+        from django.db.models import Sum
+        analytics = seller_products.aggregate(
+            total_views=Sum('view_count'),
+            total_orders=Sum('order_count'), 
+            total_revenue=Sum('total_revenue')
+        )
+        
+        total_views = analytics['total_views'] or 0
+        total_orders = analytics['total_orders'] or 0
+        total_revenue = float(analytics['total_revenue'] or 0)
+        
+        seller_stats = {
+            'total_products': seller_products.count(),
+            'total_views': total_views,
+            'total_orders': total_orders,
+            'total_revenue': total_revenue,
+            'avg_conversion': (total_orders / total_views * 100) if total_views > 0 else 0,
+        }
+
+    # Generate recent activities 
+    recent_activities = []
+    
+    # Recent orders
+    recent_orders = Order.objects.filter(user=request.user).order_by('-created_at')[:3]
+    for order in recent_orders:
+        recent_activities.append({
+            'message': f'Order #{order.id} placed successfully',
+            'created_at': order.created_at,
+            'icon': 'fa-shopping-cart',
+            'badge_color': 'primary'
+        })
+    
+    # Recent wishlist additions
+    recent_wishlist = Wishlist.objects.filter(user=request.user).order_by('-added_at')[:2]
+    for item in recent_wishlist:
+        recent_activities.append({
+            'message': f'Added "{item.product.name}" to wishlist',
+            'created_at': item.added_at,
+            'icon': 'fa-heart',
+            'badge_color': 'danger'
+        })
+    
+    # Recent chat messages 
+    recent_chat_messages = ChatMessage.objects.filter(
+        chat_room__participants=request.user
+    ).exclude(sender=request.user).order_by('-timestamp')[:2]
+    
+    for msg in recent_chat_messages:
+        recent_activities.append({
+            'message': f'New message from {msg.sender.get_full_name() or msg.sender.username}',
+            'created_at': msg.timestamp,
+            'icon': 'fa-comments',
+            'badge_color': 'info'
+        })
+
+    # Recent seller activities (if seller)
+    if profile.seller_status == 'approved':
+        # Recent products
+        recent_products = Product.objects.filter(seller=request.user).order_by('-created_at')[:2]
+        for product in recent_products:
+            recent_activities.append({
+                'message': f'Product "{product.name}" added for review',
+                'created_at': product.created_at,
+                'icon': 'fa-plus',
+                'badge_color': 'success'
+            })
+        
+        # Recent received orders
+        recent_received = OrderItem.objects.filter(seller=request.user).order_by('-order__created_at')[:2]
+        for item in recent_received:
+            recent_activities.append({
+                'message': f'New order received for "{item.product.name}"',
+                'created_at': item.order.created_at,
+                'icon': 'fa-bell',
+                'badge_color': 'warning'
+            })
+        
+        #  QR payment notifications to recent activities
+        if pending_qr_count > 0:
+            recent_activities.append({
+                'message': f'{pending_qr_count} QR payment(s) awaiting verification',
+                'created_at': timezone.now(),
+                'icon': 'fa-qrcode',
+                'badge_color': 'warning'
+            })
+    
+    # Sort activities by date
+    recent_activities.sort(key=lambda x: x['created_at'], reverse=True)
+    recent_activities = recent_activities[:5]
+
+
+    notifications = get_recent_notifications(request.user, limit=10)
+    total_notifications = get_unread_notification_count(request.user)
+
+    # Additional stats
+    context = {
+        'profile': profile,
+        'orders_count': orders_count,
+        'received_orders_count': received_orders_count,
+        'user': request.user,
+        'seller_stats': seller_stats,
+        'recent_activities': recent_activities,
+        'wishlist_count': wishlist_count,
+        'unread_messages_count': unread_messages_count, 
+        'pending_qr_count': pending_qr_count,
+        'notifications': notifications,
+        'total_notifications': total_notifications,
+    }
+    return render(request, 'users/dashboard.html', context)
+
+@login_required
+def verify_qr_payments(request):
+    """UPDATED QR verification - handles analytics for QR orders ONLY"""
+    profile = request.user.profile
+    
+    # Gate: Only approved sellers can access
+    if profile.seller_status != 'approved':
+        messages.error(request, 'You need to be an approved seller to access this page.')
+        return redirect('dashboard')
+
+    # Handle verification actions
+    if request.method == 'POST':
+        order_id = request.POST.get('order_id')
+        action = request.POST.get('action')
+        
+        try:
+            order = Order.objects.filter(
+                id=order_id, 
+                items__seller=request.user,
+                payment_method='QR Payment',
+                payment_status='pending_verification'
+            ).distinct().first()
+            
+            # Check if order exists
+            if not order:
+                messages.error(request, 'Order not found or unauthorized access.')
+                return redirect('verify_qr_payments')
+            
+            if action == 'verify':
+                order.payment_status = 'completed'
+                order.status = 'Confirmed'
+                order.order_status = 'confirmed'
+                order.qr_payment_verified_by = request.user
+                order.qr_payment_verified_at = timezone.now()
+                order.save()
+                
+                print(f" Payment verified - updating analytics for order #{order.order_number}")
+                analytics_updated = update_order_analytics(order)
+                
+                # Send confirmation email
+                from orders.views import send_order_confirmation_email
+                send_order_confirmation_email(order)
+                
+                # Create notification for payment verification
+                create_notification(
+                    user=order.user,
+                    notification_type='order',
+                    title='Payment Verified!',
+                    message=f'Your payment for Order #{order.order_number} has been verified and confirmed.',
+                    icon='fa-check-circle',
+                    color='success',
+                    url='/orders/my-orders/'
+                )
+                
+                message = f' Payment verified for Order #{order.order_number}. Customer notified!'
+                if analytics_updated:
+                    message += ' Analytics updated.'
+                else:
+                    message += ' (Analytics update failed)'
+                
+                messages.success(request, message)
+                
+            elif action == 'reject':
+                print(f"🚫 REJECTING ORDER #{order.order_number}")
+                
+                # Import the functions
+                from orders.views import send_order_rejection_email, revert_stock_after_rejection
+                
+                analytics_reverted = revert_analytics_after_rejection(order)
+                
+                # Revert stock
+                stock_reverted = revert_stock_after_rejection(order)
+                
+                # Update order status
+                order.payment_status = 'rejected'
+                order.status = 'Payment Rejected'
+                order.order_status = 'cancelled'
+                order.save()
+                
+                # Send rejection email
+                email_sent = send_order_rejection_email(order)
+                
+                # Create notification for payment rejection
+                create_notification(
+                    user=order.user,
+                    notification_type='order',
+                    title='Payment Rejected',
+                    message=f'Your payment for Order #{order.order_number} could not be verified and has been rejected.',
+                    icon='fa-times-circle',
+                    color='danger',
+                    url='/orders/my-orders/'
+                )
+                
+                # Success message with analytics tracking
+                message = f'❌ Payment rejected for Order #{order.order_number}.'
+                if analytics_reverted:
+                    message += ' Analytics reverted.'
+                if stock_reverted:
+                    message += ' Stock reverted.'
+                if email_sent:
+                    message += ' Customer notified.'
+                
+                messages.warning(request, message)
+                
+        except Exception as e:
+            print(f"❌ Error in verification: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            messages.error(request, f'Error: {str(e)}')
+
+    # Get pending orders for this seller 
+    pending_orders = Order.objects.filter(
+        items__seller=request.user,
+        payment_method='QR Payment',
+        payment_status='pending_verification'
+    ).distinct().order_by('-created_at')
+    
+    # Get recently verified orders 
+    verified_orders = Order.objects.filter(
+        items__seller=request.user,
+        payment_method='QR Payment',
+        payment_status='completed',
+        qr_payment_verified_by=request.user
+    ).distinct().order_by('-qr_payment_verified_at')[:10]
+    
+    # Calculate total pending amount
+    total_pending_amount = sum(order.grand_total for order in pending_orders)
+    
+    context = {
+        'pending_orders': pending_orders,
+        'verified_orders': verified_orders,
+        'total_pending_amount': total_pending_amount,
+    }
+    return render(request, 'users/verify_qr_payments.html', context)
+
+def update_order_analytics_for_completed_orders():
+    """One-time function to add analytics for existing completed orders that don't have them"""
+    
+    # Get all completed orders without analytics
+    completed_orders = Order.objects.filter(
+        payment_status__in=['completed', 'cod_pending'],
+        is_ordered=True
+    )
+    
+    print(f" Updating analytics for {completed_orders.count()} completed orders")
+    
+    for order in completed_orders:
+        # Check if analytics were already updated (to avoid double counting)
+        order_items = order.items.filter(ordered=True)
+        
+        for item in order_items:
+            product = item.product
+            print(f" Adding analytics for {product.name}: +{item.quantity} orders, +Rs.{item.quantity * item.price} revenue")
+            
+            # Update order count
+            product.order_count = (product.order_count or 0) + item.quantity
+            
+            # Update revenue
+            item_revenue = item.quantity * item.price
+            product.total_revenue = (product.total_revenue or 0) + item_revenue
+            
+            product.save(update_fields=['order_count', 'total_revenue'])

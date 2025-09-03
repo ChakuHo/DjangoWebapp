@@ -6,7 +6,6 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from .models import Order, OrderItem, Payment
 from cart.models import Cart, CartItem
-from cart.views import deduct_stock_after_checkout
 from django.middleware.csrf import get_token
 from .payment_utils import ESewaPayment
 import uuid, json, base64, hmac, hashlib, time, datetime
@@ -21,7 +20,7 @@ from django.db.models import Q, F
 
 logger = logging.getLogger(__name__)
 
-# Teacher's helper functions
+#  helper functions
 def _abs(request, name, *args, **kwargs):
     return request.build_absolute_uri(reverse(name, args=args, kwargs=kwargs))
 
@@ -52,7 +51,7 @@ def send_order_confirmation_email(order):
         
         # Determine email content based on payment method and status
         if order.payment_method == 'Cash on Delivery':
-            payment_status_text = "💰 Cash on Delivery"
+            payment_status_text = " Cash on Delivery"
             payment_note = "Payment will be collected when your order is delivered."
             subject = f'Order Confirmation #{order.id} - Cash on Delivery'
             order_status = "Confirmed"
@@ -64,13 +63,13 @@ def send_order_confirmation_email(order):
             order_status = "Payment Under Verification"
             
         elif order.payment_method == 'QR Payment' and order.payment_status == 'completed':
-            payment_status_text = "✅ QR Payment Verified & Completed"
+            payment_status_text = " QR Payment Verified & Completed"
             payment_note = f"Your QR payment has been verified and confirmed. Transaction ID: {getattr(order, 'qr_payment_transaction_id', 'N/A')}"
             subject = f'Order Confirmed #{order.id} - QR Payment Verified!'
             order_status = "Confirmed"
             
         else:
-            payment_status_text = "✅ Payment Completed"
+            payment_status_text = " Payment Completed"
             payment_note = "Your payment has been successfully processed."
             subject = f'Order Confirmation #{order.id} - Payment Successful!'
             order_status = "Confirmed"
@@ -79,9 +78,9 @@ def send_order_confirmation_email(order):
         message = f"""
 Dear {order.user.first_name or order.user.username},
 
-🎉 Thank you for your order!
+ Thank you for your order!
 
-📋 ORDER DETAILS:
+ ORDER DETAILS:
 ═══════════════════════════════════════
 Order ID: #{order.id}
 Order Number: {order.order_number}
@@ -90,20 +89,20 @@ Payment Method: {order.payment_method}
 Payment Status: {payment_status_text}
 Order Status: {order_status}
 
-📝 Note: {payment_note}
+ Note: {payment_note}
 """
 
         # Add QR payment specific details
         if order.payment_method == 'QR Payment':
             message += f"""
-🔍 QR PAYMENT DETAILS:
+ QR PAYMENT DETAILS:
 ═══════════════════════════════════════
 Payment Reference: {getattr(order, 'payment_reference', 'N/A')}
 Transaction ID: {getattr(order, 'qr_payment_transaction_id', 'Not provided')}
 """
             if order.payment_status == 'pending_verification':
                 message += """
-⏳ VERIFICATION PROCESS:
+ VERIFICATION PROCESS:
 ═══════════════════════════════════════
 • Your payment details are being verified
 • This usually takes 2-24 hours
@@ -112,7 +111,7 @@ Transaction ID: {getattr(order, 'qr_payment_transaction_id', 'Not provided')}
 """
             elif order.payment_status == 'completed':
                 message += """
-✅ VERIFICATION COMPLETED:
+ VERIFICATION COMPLETED:
 ═══════════════════════════════════════
 • Your payment has been successfully verified
 • Your order is now confirmed and being processed
@@ -120,7 +119,7 @@ Transaction ID: {getattr(order, 'qr_payment_transaction_id', 'Not provided')}
 """
 
         message += """
-📦 ITEMS ORDERED:
+ ITEMS ORDERED:
 ═══════════════════════════════════════"""
 
         for item in order_items:
@@ -134,13 +133,13 @@ Transaction ID: {getattr(order, 'qr_payment_transaction_id', 'Not provided')}
             message += f"\n  Quantity: {item.quantity} × Rs. {item.price/item.quantity:.2f} = Rs. {item.price:.2f}\n"
 
         message += f"""
-💰 PAYMENT SUMMARY:
+ PAYMENT SUMMARY:
 ═══════════════════════════════════════
 Subtotal: Rs. {order.total:.2f}
 Tax (13%): Rs. {order.tax:.2f}
 Total Amount: Rs. {order.grand_total:.2f}
 
-📍 DELIVERY ADDRESS:
+ DELIVERY ADDRESS:
 ═══════════════════════════════════════
 {order.address}
 {order.city}, {order.country}
@@ -150,14 +149,14 @@ Total Amount: Rs. {order.grand_total:.2f}
         # Add different next steps based on payment status
         if order.payment_method == 'QR Payment' and order.payment_status == 'pending_verification':
             message += f"""
-🔍 WHAT'S NEXT?
+ WHAT'S NEXT?
 ═══════════════════════════════════════
 ✓ We're verifying your payment details
 ✓ You'll receive confirmation within 24 hours
 ✓ Check your email for verification updates
 ✓ Contact support if you need assistance
 
-📞 NEED HELP?
+ NEED HELP?
 ═══════════════════════════════════════
 If you have questions about your payment verification,
 please contact our support team with your:
@@ -167,7 +166,7 @@ please contact our support team with your:
 """
         else:
             message += """
-🚚 WHAT'S NEXT?
+ WHAT'S NEXT?
 ═══════════════════════════════════════
 ✓ Your order is confirmed and being processed
 ✓ You'll receive shipping updates via email
@@ -192,7 +191,7 @@ Islington Marketplace Team
             fail_silently=False,
         )
         
-        print(f"✅ Order confirmation email sent to {order.user.email}")
+        print(f" Order confirmation email sent to {order.user.email}")
         return True
         
     except Exception as e:
@@ -215,7 +214,7 @@ Dear {order.user.first_name or order.user.username},
 
 ❌ Unfortunately, we were unable to verify your QR payment for the following order:
 
-📋 ORDER DETAILS:
+ ORDER DETAILS:
 ═══════════════════════════════════════
 Order ID: #{order.id}
 Order Number: {order.order_number}
@@ -225,7 +224,7 @@ Payment Reference: {getattr(order, 'payment_reference', 'N/A')}
 Transaction ID: {getattr(order, 'qr_payment_transaction_id', 'Not provided')}
 Amount: Rs. {order.grand_total:.2f}
 
-❌ REJECTION REASON:
+ REJECTION REASON:
 ═══════════════════════════════════════
 Your QR payment could not be verified by the seller. This could be due to:
 • Transaction ID not found in seller's payment history
@@ -233,14 +232,14 @@ Your QR payment could not be verified by the seller. This could be due to:
 • Invalid or unclear payment screenshot
 • Payment not received by seller
 
-💡 WHAT YOU CAN DO:
+ WHAT YOU CAN DO:
 ═══════════════════════════════════════
 1. Double-check your payment was successful in your digital wallet
 2. Contact the seller directly to resolve the issue
 3. Place a new order if the payment issue cannot be resolved
 4. Contact our support team for assistance
 
-📞 NEED HELP?
+ NEED HELP?
 ═══════════════════════════════════════
 If you believe this rejection is an error, please contact:
 • Seller: Contact them through our messaging system
@@ -263,7 +262,7 @@ Islington Marketplace Team
             fail_silently=False,
         )
         
-        print(f"✅ Order rejection email sent to {order.user.email}")
+        print(f" Order rejection email sent to {order.user.email}")
         return True
         
     except Exception as e:
@@ -286,15 +285,15 @@ def revert_stock_after_rejection(order):
             # Add stock back to main product
             product.stock += quantity
             product.save()
-            print(f"✅ Reverted {quantity} stock to {product.name} (New stock: {product.stock})")
+            print(f" Reverted {quantity} stock to {product.name} (New stock: {product.stock})")
             
             # Add stock back to variations if any
             for variation in item.variations.all():
                 variation.stock_quantity += quantity
                 variation.save()
-                print(f"✅ Reverted {quantity} stock to variation {variation.variation_option.value}")
+                print(f" Reverted {quantity} stock to variation {variation.variation_option.value}")
         
-        print(f"✅ Stock reverted successfully for Order #{order.id}")
+        print(f" Stock reverted successfully for Order #{order.id}")
         return True
         
     except Exception as e:
@@ -305,14 +304,14 @@ def revert_stock_after_rejection(order):
     
 def send_order_shipped_email(order):
     """Send email when order is shipped"""
-    print("🚚 SHIPPING EMAIL FUNCTION CALLED!")
-    print(f"🚚 Order ID: {order.id}")
-    print(f"🚚 User Email: {order.user.email}")
+    print(" SHIPPING EMAIL FUNCTION CALLED!")
+    print(f" Order ID: {order.id}")
+    print(f" User Email: {order.user.email}")
     
     try:
         order_items = order.items.all().prefetch_related('variations')
         
-        subject = f'Your Order #{order.order_number} Has Been Shipped! 📦'
+        subject = f'Your Order #{order.order_number} Has Been Shipped! '
         
         # Get shipping details if available
         tracking_number = getattr(order, 'tracking_number', 'Not provided')
@@ -322,17 +321,17 @@ def send_order_shipped_email(order):
         message = f"""
 Dear {order.user.first_name or order.user.username},
 
-🎉 Great news! Your order has been shipped!
+ Great news! Your order has been shipped!
 
-📋 ORDER DETAILS:
+ ORDER DETAILS:
 ═══════════════════════════════════════
 Order ID: #{order.id}
 Order Number: {order.order_number}
 Order Date: {order.created_at.strftime('%B %d, %Y at %I:%M %p')}
 Payment Method: {order.payment_method}
-Order Status: 🚚 Shipped
+Order Status:  Shipped
 
-🚚 SHIPPING INFORMATION:
+SHIPPING INFORMATION:
 ═══════════════════════════════════════
 Shipping Date: {shipping_date.strftime('%B %d, %Y at %I:%M %p') if shipping_date else 'Today'}
 Tracking Number: {tracking_number}
@@ -343,7 +342,7 @@ Estimated Delivery: 3-5 business days
             message += f"Shipping Notes: {shipping_notes}\n"
 
         message += """
-📦 ITEMS SHIPPED:
+ ITEMS SHIPPED:
 ═══════════════════════════════════════"""
 
         for item in order_items:
@@ -357,15 +356,15 @@ Estimated Delivery: 3-5 business days
             message += f"\n  Quantity: {item.quantity} × Rs. {item.price/item.quantity:.2f} = Rs. {item.price:.2f}\n"
 
         message += f"""
-💰 ORDER TOTAL: Rs. {order.grand_total:.2f}
+ ORDER TOTAL: Rs. {order.grand_total:.2f}
 
-📍 DELIVERY ADDRESS:
+ DELIVERY ADDRESS:
 ═══════════════════════════════════════
 {order.address}
 {order.city}, {order.country}
 {getattr(order, 'zip', '') or ''}
 
-📱 TRACK YOUR ORDER:
+ TRACK YOUR ORDER:
 ═══════════════════════════════════════"""
 
         if tracking_number and tracking_number != 'Not provided':
@@ -380,14 +379,14 @@ You can check your order status anytime from your account.
 """
 
         message += f"""
-🔔 WHAT'S NEXT?
+ WHAT'S NEXT?
 ═══════════════════════════════════════
 ✓ Your package is on its way!
 ✓ Expected delivery in 3-5 business days
 ✓ You'll receive a delivery confirmation email
 ✓ Contact seller if you have any questions
 
-📞 NEED HELP?
+ NEED HELP?
 ═══════════════════════════════════════
 If you have questions about your shipment:
 • Order ID: #{order.id}
@@ -400,7 +399,7 @@ Best regards,
 Islington Marketplace Team
         """
         
-        print("🚚 SENDING SHIPPING EMAIL NOW...")
+        print(" SENDING SHIPPING EMAIL NOW...")
         
         send_mail(
             subject=subject,
@@ -410,7 +409,7 @@ Islington Marketplace Team
             fail_silently=False,
         )
         
-        print(f"✅ Order shipped email sent to {order.user.email}")
+        print(f" Order shipped email sent to {order.user.email}")
         return True
         
     except Exception as e:
@@ -421,14 +420,14 @@ Islington Marketplace Team
 
 def send_order_delivered_email(order):
     """Send email when order is delivered"""
-    print("📦 DELIVERY EMAIL FUNCTION CALLED!")
-    print(f"📦 Order ID: {order.id}")
-    print(f"📦 User Email: {order.user.email}")
+    print(" DELIVERY EMAIL FUNCTION CALLED!")
+    print(f" Order ID: {order.id}")
+    print(f" User Email: {order.user.email}")
     
     try:
         order_items = order.items.all().prefetch_related('variations')
         
-        subject = f'Order #{order.order_number} Delivered Successfully! ✅'
+        subject = f'Order #{order.order_number} Delivered Successfully! '
         
         # Get delivery details if available
         delivery_date = getattr(order, 'delivery_date', order.updated_at)
@@ -438,17 +437,17 @@ def send_order_delivered_email(order):
         message = f"""
 Dear {order.user.first_name or order.user.username},
 
-🎉 Congratulations! Your order has been successfully delivered!
+ Congratulations! Your order has been successfully delivered!
 
-📋 ORDER DETAILS:
+ ORDER DETAILS:
 ═══════════════════════════════════════
 Order ID: #{order.id}
 Order Number: {order.order_number}
 Order Date: {order.created_at.strftime('%B %d, %Y at %I:%M %p')}
 Payment Method: {order.payment_method}
-Order Status: ✅ Delivered
+Order Status:  Delivered
 
-📦 DELIVERY INFORMATION:
+ DELIVERY INFORMATION:
 ═══════════════════════════════════════
 Delivery Date: {delivery_date.strftime('%B %d, %Y at %I:%M %p') if delivery_date else 'Today'}
 Tracking Number: {tracking_number}
@@ -458,7 +457,7 @@ Tracking Number: {tracking_number}
             message += f"Delivery Notes: {delivery_notes}\n"
 
         message += """
-📋 DELIVERED ITEMS:
+ DELIVERED ITEMS:
 ═══════════════════════════════════════"""
 
         for item in order_items:
@@ -472,29 +471,29 @@ Tracking Number: {tracking_number}
             message += f"\n  Quantity: {item.quantity} × Rs. {item.price/item.quantity:.2f} = Rs. {item.price:.2f}\n"
 
         message += f"""
-💰 ORDER TOTAL: Rs. {order.grand_total:.2f}
+ ORDER TOTAL: Rs. {order.grand_total:.2f}
 
-📍 DELIVERED TO:
+ DELIVERED TO:
 ═══════════════════════════════════════
 {order.address}
 {order.city}, {order.country}
 {getattr(order, 'zip', '') or ''}
 
-😊 HOW WAS YOUR EXPERIENCE?
+ HOW WAS YOUR EXPERIENCE?
 ═══════════════════════════════════════
 We hope you love your purchase! If you're satisfied with your order:
 • Consider leaving a review for the products
 • Rate your shopping experience
 • Share with friends and family
 
-❓ ISSUES WITH YOUR ORDER?
+ ISSUES WITH YOUR ORDER?
 ═══════════════════════════════════════
 If there are any issues with your delivered items:
 • Contact the seller through our messaging system
 • Report problems within 7 days of delivery
 • Our support team is here to help
 
-📞 NEED SUPPORT?
+ NEED SUPPORT?
 ═══════════════════════════════════════
 Order ID: #{order.id}
 Delivery Date: {delivery_date.strftime('%B %d, %Y') if delivery_date else 'Today'}
@@ -507,7 +506,7 @@ Best regards,
 Islington Marketplace Team
         """
         
-        print("📦 SENDING DELIVERY EMAIL NOW...")
+        print(" SENDING DELIVERY EMAIL NOW...")
         
         send_mail(
             subject=subject,
@@ -517,7 +516,7 @@ Islington Marketplace Team
             fail_silently=False,
         )
         
-        print(f"✅ Order delivered email sent to {order.user.email}")
+        print(f" Order delivered email sent to {order.user.email}")
         return True
         
     except Exception as e:
@@ -674,8 +673,6 @@ def place_order(request):
                 order.status = 'Confirmed'
                 order.is_ordered = True
                 order.save()
-
-                update_product_analytics_on_completion(order) # for analytics
                 
                 print(f"🔄 COD ORDER COMPLETED - ID: {order.id}")
                 
@@ -768,7 +765,7 @@ def place_order(request):
     print("🚀 NOT POST REQUEST - REDIRECTING")
     return redirect('checkout')
 
-# TEACHER'S ESEWA FUNCTIONS - FIXED
+#  ESEWA FUNCTIONS
 @login_required
 def esewa_start(request, order_id):
     """Teacher's eSewa start function"""
@@ -807,7 +804,7 @@ def esewa_start(request, order_id):
 
 @login_required
 def esewa_return(request, order_id):
-    """Teacher's eSewa return function - FIXED"""
+    """FIXED eSewa return function - NO ANALYTICS HERE (prevents double counting)"""
     order = get_object_or_404(Order, id=order_id, user=request.user)
 
     encoded = request.GET.get("data") or request.POST.get("data") \
@@ -819,12 +816,12 @@ def esewa_return(request, order_id):
             payload = json.loads(base64.b64decode(encoded).decode("utf-8"))
             status = str(payload.get("status", "")).upper()
             txn_code = payload.get("transaction_code", "")
-            print(f"✅ eSewa Response Decoded: {payload}")
+            print(f" eSewa Response Decoded: {payload}")
         except Exception as e:
             print(f"❌ Error decoding eSewa response: {e}")
             pass
 
-    print(f"✅ eSewa Response: Status={status}, TxnCode={txn_code}")
+    print(f" eSewa Response: Status={status}, TxnCode={txn_code}")
 
     if status == "COMPLETE":
         # Create Payment
@@ -839,7 +836,7 @@ def esewa_return(request, order_id):
             },
         )
         
-        print(f"✅ Payment created: {payment.payment_id}, Created: {created}")
+        print(f" Payment created: {payment.payment_id}, Created: {created}")
 
         # Get cart items correctly using cart relationship
         if not order.items.filter(ordered=True).exists():
@@ -847,7 +844,7 @@ def esewa_return(request, order_id):
                 cart = Cart.objects.get(user=order.user)
                 cart_items = CartItem.objects.filter(cart=cart).select_related("product")
                 
-                print(f"✅ Found {cart_items.count()} cart items to process")
+                print(f" Found {cart_items.count()} cart items to process")
                 
                 for item in cart_items:
                     # Find corresponding order item
@@ -856,16 +853,16 @@ def esewa_return(request, order_id):
                         order_item.payment = payment
                         order_item.ordered = True
                         order_item.save()
-                        print(f"✅ Updated order item: {order_item.product.name}")
+                        print(f" Updated order item: {order_item.product.name}")
                     
                     # Decrease stock using F() to avoid race conditions
                     Product = item.product.__class__
                     Product.objects.filter(pk=item.product_id).update(stock=F("stock") - item.quantity)
-                    print(f"✅ Decreased stock for: {item.product.name}")
+                    print(f" Decreased stock for: {item.product.name}")
                 
                 # Clear cart
                 cart_items.delete()
-                print("✅ Cart cleared")
+                print(" Cart cleared")
                 
             except Cart.DoesNotExist:
                 print("❌ No cart found for user")
@@ -873,7 +870,7 @@ def esewa_return(request, order_id):
 
         # Send email
         email_sent = send_order_confirmation_email(order)
-        print(f"✅ Email sent: {email_sent}")
+        print(f" Email sent: {email_sent}")
         
         # Mark order completed
         order.payment = payment
@@ -883,10 +880,8 @@ def esewa_return(request, order_id):
         order.payment_reference = txn_code
         order.payment_gateway_response = json.dumps(payload)
         order.save()
-
-        update_product_analytics_on_completion(order)
         
-        print(f"✅ Order completed: {order.id}")
+        print(f" Order completed: {order.id}")
         
         # Clear session
         if 'pending_order_id' in request.session:
@@ -900,24 +895,7 @@ def esewa_return(request, order_id):
     messages.error(request, "eSewa payment was not completed.")
     return redirect('checkout')
 
-def update_product_analytics_on_completion(order):
-    """Update product analytics when order is completed"""
-    print(f"📊 Updating analytics for completed order #{order.order_number}")
-    
-    for item in order.items.filter(ordered=True):
-        product = item.product
-        
-        # Update order count
-        product.order_count += item.quantity
-        
-        # Update total revenue  
-        item_revenue = item.quantity * item.price
-        product.total_revenue += item_revenue
-        
-        # Save changes
-        product.save(update_fields=['order_count', 'total_revenue'])
-        
-        print(f"📊 {product.name}: +{item.quantity} orders, +Rs.{item_revenue} revenue")
+
 
 @login_required
 def confirm_qr_payment(request, order_id):

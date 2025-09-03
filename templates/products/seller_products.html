@@ -100,7 +100,6 @@
                   {% endif %}
                 </div>
                 
-                <!-- Updated add to cart logic with out of stock handling -->
                 {% if product.stock <= 0 %}
                 <button class="btn btn-block btn-danger" disabled>Out of Stock</button>
                 {% elif product.id in in_cart_ids %}
@@ -180,7 +179,7 @@ function openChat(button) {
     }
 }
 
-// Function for product-specific chat (if you add the product chat buttons)
+
 function openProductChat(productId) {
     try {
         const chatUrl = "{% url 'start_chat_about_product' 0 %}".replace('0', productId);

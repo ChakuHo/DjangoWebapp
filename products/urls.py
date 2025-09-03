@@ -31,4 +31,8 @@ urlpatterns = [
     # Seller path 
     path('seller/<int:seller_id>/', views.seller_products, name='seller_products'),
 
+    path('variation-stock/<int:product_id>/', views.get_variation_stock, name='variation_stock'),
+
+    path('check-variant/<int:product_id>/', views.check_variant_combination, name='check_variant_combination'),
+
 ]

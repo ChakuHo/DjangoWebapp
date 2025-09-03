@@ -213,7 +213,6 @@ function clearAllMessages() {
     const messages = document.querySelectorAll('.message-item');
     const container = document.getElementById('messages-container');
     
-    // Add removing animation to all messages
     messages.forEach((message, index) => {
         setTimeout(() => {
             hideMessage(message);

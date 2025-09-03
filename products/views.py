@@ -1,16 +1,20 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.db.models import Q, Case, When, IntegerField
-from .models import Category, Product, Review, VariationOption, VariationType
+from .models import Category, Product, Review, VariationOption, VariationType, ProductVariation
 from django.http import Http404
-from cart.models import CartItem
+from cart.models import CartItem, Cart
 from cart.views import _cart_id
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
-from orders.models import Order
+from orders.models import Order, OrderItem
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from users.models import Wishlist
-
+from users.views import track_product_view
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+from django.contrib.auth.decorators import login_required
+import json
 
 def product(request, category_slug=None):
     """Display products with advanced filtering"""
@@ -332,188 +336,160 @@ def thrift_products(request, category_slug=None):
     return render(request, 'products/products.html', context)
 
 def product_detail(request, category_slug, product_slug):
-    """
-    Display individual product details
-    URL: /products/category/electronics/laptop-hp/
-    """
-    import json
-
     try:
-        product = Product.objects.get(
-            category__slug=category_slug, 
-            slug=product_slug,
-            status=True,
-            admin_approved=True,
-            approval_status='approved'
+        single_product = Product.objects.get(category__slug=category_slug, slug=product_slug)
+    except Product.DoesNotExist:
+        raise Http404("Product not found")
+
+    # Check if product is in user's cart
+    in_cart = False
+    if request.user.is_authenticated:
+        try:
+            cart = Cart.objects.get(user=request.user)
+            cart_item = CartItem.objects.get(product=single_product, cart=cart)
+            in_cart = True
+        except (Cart.DoesNotExist, CartItem.DoesNotExist):
+            in_cart = False
+
+    # Get user's wishlist product IDs
+    user_wishlist_ids = []
+    if request.user.is_authenticated:
+        user_wishlist_ids = list(
+            request.user.wishlist_items.values_list('product_id', flat=True)
         )
 
-        if request.user.is_authenticated:
-            in_cart = CartItem.objects.filter(cart__user=request.user, product=product).exists()
-        else:
-            in_cart = CartItem.objects.filter(cart__cart_id=_cart_id(request), product=product).exists()
+    reviews = Review.objects.filter(product=single_product, status=True).order_by('-created_at')
 
-
-        # TRACK VIEW - but don't count seller's own views
-        if request.user != product.seller:
-            product.increment_views()    
-
-    except Product.DoesNotExist:
-        raise Http404("Product Not Found")
-
-    related_products = Product.objects.filter(
-        category=product.category, 
-        status=True,
-        admin_approved=True,
-        approval_status='approved'
-    ).exclude(id=product.id)[:4]
-
-    reviews = Review.objects.filter(product=product, status=True).order_by('-created_at')
-
+    # Check if user can review and has already reviewed
     user_can_review = False
     user_has_reviewed = False
-
     if request.user.is_authenticated:
-        user_can_review = user_can_review_product(request.user, product)
-        user_has_reviewed = Review.objects.filter(user=request.user, product=product).exists()
+        user_can_review = OrderItem.objects.filter(
+            order__user=request.user,
+            product=single_product,
+            order__status='Delivered'
+        ).exists()
+        
+        user_has_reviewed = Review.objects.filter(
+            user=request.user,
+            product=single_product
+        ).exists()
 
+    # Build variation data for smart filtering
+    variation_images_dict = {}
+    variation_stock = {}
+    available_combinations = {}
+    
+    if single_product.has_variations():
+        # Get all active variations for this product
+        product_variations = single_product.variations.filter(is_active=True)
+        
+        # Group variations by type to build combinations
+        variations_by_type = {}
+        for pv in product_variations:
+            var_type = pv.variation_type.name
+            if var_type not in variations_by_type:
+                variations_by_type[var_type] = []
+            
+            variations_by_type[var_type].append({
+                'option_id': pv.variation_option.id,
+                'value': pv.variation_option.value,
+                'stock': pv.stock_quantity,
+                'price_adjustment': float(pv.price_adjustment),
+                'variation_obj': pv
+            })
+            
+            # Build individual stock data
+            option_key = f"{var_type}:{pv.variation_option.id}"
+            variation_stock[option_key] = {
+                'stock': pv.stock_quantity,
+                'price_adjustment': float(pv.price_adjustment),
+                'type': var_type,
+                'value': pv.variation_option.value
+            }
+            
+            # Get variation images
+            option_id = str(pv.variation_option.id)
+            if option_id not in variation_images_dict:
+                variation_images_dict[option_id] = []
+            
+            images = pv.get_all_images()
+            for image in images:
+                if hasattr(image, 'url'):
+                    variation_images_dict[option_id].append(image.url)
+
+        # Build actual combinations for smart filtering
+        if len(variations_by_type) > 1:
+            # Multi-variation product (e.g., Color + Size)
+            variation_types = list(variations_by_type.keys())
+            
+            if len(variation_types) == 2:
+                # Two variation types (most common case)
+                type1, type2 = variation_types
+                for var1 in variations_by_type[type1]:
+                    for var2 in variations_by_type[type2]:
+                        # Check if this combination actually exists and has stock
+                        combination_stock = min(var1['stock'], var2['stock'])
+                        if combination_stock > 0:
+                            combination_key = f"{type1}:{var1['option_id']}|{type2}:{var2['option_id']}"
+                            available_combinations[combination_key] = {
+                                type1: str(var1['option_id']),
+                                type2: str(var2['option_id']),
+                                'stock': combination_stock,
+                                'price_adjustment': var1['price_adjustment'] + var2['price_adjustment']
+                            }
+            
+            # Handle 3+ variation types if needed
+            elif len(variation_types) == 3:
+                type1, type2, type3 = variation_types
+                for var1 in variations_by_type[type1]:
+                    for var2 in variations_by_type[type2]:
+                        for var3 in variations_by_type[type3]:
+                            combination_stock = min(var1['stock'], var2['stock'], var3['stock'])
+                            if combination_stock > 0:
+                                combination_key = f"{type1}:{var1['option_id']}|{type2}:{var2['option_id']}|{type3}:{var3['option_id']}"
+                                available_combinations[combination_key] = {
+                                    type1: str(var1['option_id']),
+                                    type2: str(var2['option_id']),
+                                    type3: str(var3['option_id']),
+                                    'stock': combination_stock,
+                                    'price_adjustment': var1['price_adjustment'] + var2['price_adjustment'] + var3['price_adjustment']
+                                }
+        else:
+            # Single variation type (e.g., only Color or only Size)
+            for var_type, variations in variations_by_type.items():
+                for var in variations:
+                    if var['stock'] > 0:
+                        combination_key = f"{var_type}:{var['option_id']}"
+                        available_combinations[combination_key] = {
+                            var_type: str(var['option_id']),
+                            'stock': var['stock'],
+                            'price_adjustment': var['price_adjustment']
+                        }
+
+    # Seller information
     seller_product_count = 0
-    if product.seller:
+    if single_product.seller:
         seller_product_count = Product.objects.filter(
-            seller=product.seller, 
-            status=True, 
-            admin_approved=True,
-            approval_status='approved'
+            seller=single_product.seller,
+            status=True  
         ).count()
 
-    variation_images = {}
-
-    # Get all product variations for this product
-    from .models import ProductVariation
-    product_variations = ProductVariation.objects.filter(
-        product=product, 
-        is_active=True
-    ).select_related('variation_option')
-
-    for variation in product_variations:
-        option_id = str(variation.variation_option.id)
-        if option_id not in variation_images:
-            variation_images[option_id] = []
-        
-        if variation.image1:
-            variation_images[option_id].append(variation.image1.url)
-        if variation.image2:
-            variation_images[option_id].append(variation.image2.url)
-        if variation.image3:
-            variation_images[option_id].append(variation.image3.url)
-
-    available_variations = product.get_available_variations()
-    has_variations = product.has_variations()
-
     context = {
-        'product': product,
+        'single_product': single_product,
+        'product': single_product,  
         'in_cart': in_cart,
-        'related_products': related_products,
+        'user_wishlist_ids': user_wishlist_ids,
         'reviews': reviews,
         'user_can_review': user_can_review,
         'user_has_reviewed': user_has_reviewed,
+        'variation_images_json': json.dumps(variation_images_dict),
+        'variation_stock_json': json.dumps(variation_stock),
+        'available_combinations_json': json.dumps(available_combinations),
         'seller_product_count': seller_product_count,
-        'variation_images_json': json.dumps(variation_images),
-        'available_variations': available_variations,
-        'has_variations': has_variations,
-        'user_wishlist_ids': list(request.user.wishlist_items.values_list('product_id', flat=True)) if request.user.is_authenticated else [],
     }
+
     return render(request, 'products/details.html', context)
-
-def search(request):
-    """
-    Enhanced search for products by keyword
-    Searches in product name, description, brand, and category
-    """
-    products = Product.objects.none()
-    keyword = ''
-
-    if 'keyword' in request.GET:
-        keyword = request.GET.get('keyword', '').strip()
-        if keyword:
-            # ENHANCED: Create comprehensive search variations
-            search_terms = generate_search_variations(keyword)
-            
-            # Build comprehensive query
-            query = Q()
-            
-            # 1. EXACT MATCHES (highest priority)
-            for term in search_terms:
-                query |= Q(name__iexact=term)  # Exact name match
-                query |= Q(brand__iexact=term)  # Exact brand match
-            
-            # 2. STARTS WITH MATCHES (high priority)
-            for term in search_terms:
-                query |= Q(name__istartswith=term)  # Name starts with
-                query |= Q(description__istartswith=term)  # Description starts with
-                query |= Q(brand__istartswith=term)  # Brand starts with
-            
-            # 3. CONTAINS MATCHES (medium priority)
-            for term in search_terms:
-                query |= Q(name__icontains=term)  # Name contains
-                query |= Q(description__icontains=term)  # Description contains
-                query |= Q(brand__icontains=term)  # Brand contains
-                query |= Q(spec__icontains=term)  # Specifications contain
-            
-            # 4. CATEGORY MATCHES
-            for term in search_terms:
-                query |= Q(category__category_name__icontains=term)  # Category name contains
-            
-            # 5. INDIVIDUAL WORD MATCHES (for multi-word searches)
-            words = keyword.lower().split()
-            if len(words) > 1:
-                # First word priority
-                first_word = words[0]
-                first_word_variations = generate_search_variations(first_word)
-                for variation in first_word_variations:
-                    query |= Q(name__icontains=variation)
-                    query |= Q(description__icontains=variation)
-                
-                # Other words
-                for word in words[1:]:
-                    word_variations = generate_search_variations(word)
-                    for variation in word_variations:
-                        query |= Q(name__icontains=variation)
-                        query |= Q(description__icontains=variation)
-
-            # Apply security filters
-            products = Product.objects.filter(
-                query,
-                status=True,
-                admin_approved=True,
-                approval_status='approved'
-            ).order_by('-created_at').distinct()
-
-    cats = Category.objects.filter(status=True)
-    paginator = Paginator(products, 6)
-    page = request.GET.get('page')
-    paged_products = paginator.get_page(page)
-
-    if request.user.is_authenticated:
-        in_cart_ids = list(
-            CartItem.objects.filter(cart__user=request.user)
-            .values_list('product_id', flat=True)
-        )
-    else:
-        in_cart_ids = list(
-            CartItem.objects.filter(cart__cart_id=_cart_id(request))
-            .values_list('product_id', flat=True)
-        )
-
-    context = {
-        'products': paged_products,
-        'product_count': products.count(),
-        'categories': cats,
-        'links': cats,
-        'keyword': keyword,
-        'in_cart_ids': in_cart_ids,
-    }
-
-    return render(request, 'products/products.html', context)
 
 def generate_search_variations(keyword):
     """
@@ -535,7 +511,7 @@ def generate_search_variations(keyword):
     variations.add(keyword.replace('-', ' '))     # "t-shirt" -> "t shirt"
     variations.add(keyword.replace('_', ' '))     # "t_shirt" -> "t shirt"
 
-    # Add variations with different separators
+    #  variations with different separators
     if ' ' in keyword:
         # If search has spaces, also try with hyphens and underscores
         variations.add(keyword.replace(' ', '-'))
@@ -551,10 +527,10 @@ def generate_search_variations(keyword):
         variations.add(keyword.replace('_', ' '))
         variations.add(keyword.replace('_', '-'))
 
-    # Advanced variations for common cases
+    # variations for common cases
     advanced_variations = set()
     for var in variations:
-        # Add single character separations (for cases like "tshirt" -> "t shirt")
+        #  single character separations (for cases like "tshirt" -> "t shirt")
         if len(var) > 1 and ' ' not in var and '-' not in var:
             # Try inserting space after first character: "tshirt" -> "t shirt"
             advanced_variations.add(var[0] + ' ' + var[1:])
@@ -575,14 +551,14 @@ def generate_search_variations(keyword):
 
 def products_by_category(request, slug):
     """
-    Alternative view for category products (if needed)
+    Alternative view for category products 
     This is just a wrapper around the main product view
     """
     return product(request, category_slug=slug)
 
 def product_list(request):
     """
-    Alternative view for all products (if needed)
+    Alternative view for all products 
     This is just a wrapper around the main product view
     """
     return product(request)
@@ -700,3 +676,169 @@ def submit_review(request, product_id):
             messages.error(request, "There was an error submitting your review. Please try again.")
 
     return redirect('products:product_detail', product.category.slug, product.slug)
+
+@require_http_methods(["GET"])
+def get_variation_stock(request, product_id):
+    """AJAX endpoint to get stock information for all variation combinations"""
+    try:
+        product = get_object_or_404(Product, id=product_id)
+        
+        # Get all variation combinations with stock
+        stock_data = {}
+        
+        if hasattr(product, 'variations'):
+            combinations = product.variations.filter(is_active=True) 
+            
+            for combination in combinations:
+                #  ProductVariation has direct access to variation_type and variation_option
+                combination_key = f"{combination.variation_type.name}:{combination.variation_option.id}"
+                
+                stock_data[combination_key] = {
+                    'stock': combination.stock_quantity, 
+                    'price': float(combination.price_adjustment),  
+                    'available': combination.stock_quantity > 0  
+                }
+        
+        return JsonResponse({
+            'success': True,
+            'stock_data': stock_data
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': str(e)
+        })
+    
+@require_http_methods(["POST"])
+def check_variant_combination(request, product_id):
+    """
+    AJAX endpoint to check stock for specific variant combinations
+    """
+    try:
+        import json
+        
+        product = get_object_or_404(Product, id=product_id)
+        data = json.loads(request.body)
+        selected_options = data.get('selected_options', [])
+        
+        if not selected_options:
+            return JsonResponse({
+                'success': True,
+                'stock': product.stock,
+                'price': float(product.price),
+                'available': product.stock > 0,
+                'message': 'Select variants to check availability'
+            })
+        
+        # Get variations for selected options
+        variations = ProductVariation.objects.filter(
+            product=product,
+            variation_option_id__in=selected_options,
+            is_active=True
+        )
+        
+        if not variations.exists():
+            return JsonResponse({
+                'success': True,
+                'stock': 0,
+                'price': float(product.price),
+                'available': False,
+                'message': 'This combination is not available'
+            })
+        
+        # Calculate minimum stock and total price adjustment
+        min_stock = min([v.stock_quantity for v in variations])
+        total_price_adjustment = sum([float(v.price_adjustment) for v in variations])
+        final_price = float(product.price) + total_price_adjustment
+        
+        # Check if all required variation types are selected
+        required_types_count = product.get_category_variations().filter(is_required=True).count()
+        selected_types_count = variations.values('variation_type').distinct().count()
+        
+        is_complete = selected_types_count >= required_types_count
+        is_available = min_stock > 0 and is_complete
+        
+        # Generate appropriate message
+        if not is_complete:
+            message = 'Please select all required options'
+        elif min_stock == 0:
+            message = 'This combination is out of stock'
+        elif min_stock <= 5:
+            message = f'Only {min_stock} left in stock!'
+        else:
+            message = f'{min_stock} in stock'
+        
+        return JsonResponse({
+            'success': True,
+            'stock': min_stock,
+            'price': final_price,
+            'available': is_available,
+            'message': message,
+            'is_complete': is_complete
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': str(e)
+        })
+    
+
+def search(request):
+    """search for products by keyword"""
+    products = Product.objects.none()
+    keyword = ''
+
+    if 'keyword' in request.GET:
+        keyword = request.GET.get('keyword', '').strip()
+        if keyword:
+            search_terms = generate_search_variations(keyword)
+            
+            query = Q()
+            
+            for term in search_terms:
+                query |= Q(name__iexact=term)
+                query |= Q(brand__iexact=term)
+                query |= Q(name__istartswith=term)
+                query |= Q(description__istartswith=term)
+                query |= Q(brand__istartswith=term)
+                query |= Q(name__icontains=term)
+                query |= Q(description__icontains=term)
+                query |= Q(brand__icontains=term)
+                query |= Q(spec__icontains=term)
+                query |= Q(category__category_name__icontains=term)
+
+            products = Product.objects.filter(
+                query,
+                status=True,
+                admin_approved=True,
+                approval_status='approved'
+            ).order_by('-created_at').distinct()
+
+    cats = Category.objects.filter(status=True)
+    paginator = Paginator(products, 6)
+    page = request.GET.get('page')
+    paged_products = paginator.get_page(page)
+
+    if request.user.is_authenticated:
+        in_cart_ids = list(
+            CartItem.objects.filter(cart__user=request.user)
+            .values_list('product_id', flat=True)
+        )
+    else:
+        in_cart_ids = list(
+            CartItem.objects.filter(cart__cart_id=_cart_id(request))
+            .values_list('product_id', flat=True)
+        )
+
+    context = {
+        'products': paged_products,
+        'product_count': products.count(),
+        'categories': cats,
+        'links': cats,
+        'keyword': keyword,
+        'in_cart_ids': in_cart_ids,
+    }
+
+    return render(request, 'products/products.html', context)

@@ -6,17 +6,17 @@ from django.contrib import messages
 import json
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
-from django.http import HttpResponseRedirect
-from django.http import JsonResponse
+from django.http import HttpResponseRedirect, JsonResponse
 
 def _cart_id(request):
+    """Get or create session cart ID"""
     cart = request.session.session_key
     if not cart:
         cart = request.session.create()
     return cart
 
 def _get_cart(request):
-    """Get cart based on user status"""
+    """Get cart based on user authentication status"""
     if request.user.is_authenticated:
         cart, created = Cart.objects.get_or_create(user=request.user)
     else:
@@ -26,6 +26,18 @@ def _get_cart(request):
             cart = Cart.objects.create(cart_id=_cart_id(request))
     return cart
 
+def get_available_stock(product, variations):
+    """Calculate available stock considering variations"""
+    if not variations:
+        return product.stock
+    
+    min_stock = product.stock
+    for variation in variations:
+        if variation.stock_quantity < min_stock:
+            min_stock = variation.stock_quantity
+    
+    return max(0, min_stock)
+
 def add_cart(request, product_id):
     """Enhanced add to cart with variation support and seller validation"""
     product = get_object_or_404(Product, id=product_id)
@@ -33,13 +45,11 @@ def add_cart(request, product_id):
 
     # Prevent seller from buying their own products
     if request.user.is_authenticated and product.seller == request.user:
+        error_message = '❌ You cannot buy your own product!'
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': False,
-                'message': '❌ You cannot buy your own product!'
-            }, status=400)
+            return JsonResponse({'success': False, 'message': error_message}, status=400)
         else:
-            messages.error(request, "❌ You cannot buy your own product!")
+            messages.error(request, error_message)
             return redirect('products:product_detail', product.category.slug, product.slug)
     
     # Parse variations from request (if any)
@@ -101,10 +111,7 @@ def add_cart(request, product_id):
                 error_message = f"Sorry, only {available_stock} available!"
                 
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return JsonResponse({
-                        'success': False,
-                        'message': error_message
-                    }, status=400)
+                    return JsonResponse({'success': False, 'message': error_message}, status=400)
                 else:
                     messages.error(request, error_message)
                     return redirect('cart')
@@ -136,38 +143,20 @@ def add_cart(request, product_id):
                 error_message = f"Sorry, {product.name} is out of stock!"
                 
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return JsonResponse({
-                        'success': False,
-                        'message': error_message
-                    }, status=400)
+                    return JsonResponse({'success': False, 'message': error_message}, status=400)
                 else:
                     messages.error(request, error_message)
                     return redirect('cart')
                 
     except Exception as e:
-        print(f"Error in add_cart: {e}")  # For debugging
+        print(f"Error in add_cart: {e}")
         error_message = "Error adding to cart. Please try again."
         
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': False,
-                'message': error_message
-            }, status=500)
+            return JsonResponse({'success': False, 'message': error_message}, status=500)
         else:
             messages.error(request, error_message)
             return redirect('cart')
-
-def get_available_stock(product, variations):
-    """Calculate available stock considering variations"""
-    if not variations:
-        return product.stock
-    
-    min_stock = product.stock
-    for variation in variations:
-        if variation.stock_quantity < min_stock:
-            min_stock = variation.stock_quantity
-    
-    return max(0, min_stock)
 
 def remove_cart(request, product_id, cart_item_id=None):
     """Remove one quantity"""
@@ -218,7 +207,7 @@ def cart(request, total=0, quantity=0, cart_items=None):
             'variations__variation_option'
         )
         
-        # ✅ FIXED: Remove user's own products from cart if any
+        # Remove seller's own products from cart
         if request.user.is_authenticated:
             own_products = cart_items.filter(product__seller=request.user)
             if own_products.exists():
@@ -252,163 +241,81 @@ def cart(request, total=0, quantity=0, cart_items=None):
     
     return render(request, 'cart/cart.html', context)
 
-def deduct_stock_after_checkout(cart_items):
-    """Call this after successful checkout"""
-    for item in cart_items:
-        product = item.product
-        quantity = item.quantity
+# 🔄 UNIFIED CART MERGE FUNCTION (replaces 2 duplicate functions)
+def merge_carts_on_login(request):
+    """Unified cart merging when user logs in"""
+    if not request.user.is_authenticated:
+        return
         
-        if product.stock >= quantity:
-            product.stock -= quantity
-            product.save()
+    session_cart_id = request.session.session_key
+    if not session_cart_id:
+        return
         
-        for variation in item.variations.all():
-            if variation.stock_quantity >= quantity:
-                variation.stock_quantity -= quantity
-                variation.save()
-
-def merge_cart_on_login(request):
-    """Call this when user logs in to merge session cart with user cart"""
-    if request.user.is_authenticated:
-        try:
-            session_cart = Cart.objects.get(cart_id=_cart_id(request))
-            session_cart_items = CartItem.objects.filter(cart=session_cart, is_active=True)
-            
+    try:
+        session_cart = Cart.objects.get(cart_id=session_cart_id)
+        session_items = CartItem.objects.filter(cart=session_cart, is_active=True)
+        
+        if session_items.exists():
             user_cart, created = Cart.objects.get_or_create(user=request.user)
             
-            for session_item in session_cart_items:
-                # ✅ FIXED: Skip own products during merge
+            for session_item in session_items:
+                # Skip seller's own products
                 if session_item.product.seller == request.user:
                     continue
                     
-                try:
-                    user_item = CartItem.objects.get(product=session_item.product, cart=user_cart)
-                    user_item.quantity += session_item.quantity
-                    user_item.save()
-                except CartItem.DoesNotExist:
-                    CartItem.objects.create(
+                # Try to find existing user cart item with same variations
+                existing_item = None
+                for user_item in CartItem.objects.filter(product=session_item.product, cart=user_cart):
+                    if set(user_item.variations.all()) == set(session_item.variations.all()):
+                        existing_item = user_item
+                        break
+                
+                if existing_item:
+                    existing_item.quantity += session_item.quantity
+                    existing_item.save()
+                else:
+                    new_item = CartItem.objects.create(
                         product=session_item.product,
                         cart=user_cart,
                         quantity=session_item.quantity
                     )
+                    if session_item.variations.exists():
+                        new_item.variations.set(session_item.variations.all())
             
-            session_cart_items.delete()
+            session_items.delete()
             session_cart.delete()
             
-        except Cart.DoesNotExist:
-            pass
-
-def merge_session_cart_to_user(request):
-    """Merge session cart into user cart when user logs in"""
-    if request.user.is_authenticated:
-        session_cart_id = request.session.session_key
-        if session_cart_id:
-            try:
-                session_cart = Cart.objects.get(cart_id=session_cart_id)
-                session_items = CartItem.objects.filter(cart=session_cart, is_active=True)
-                
-                if session_items.exists():
-                    user_cart, created = Cart.objects.get_or_create(user=request.user)
-                    
-                    for session_item in session_items:
-                        # ✅ FIXED: Skip own products during merge
-                        if session_item.product.seller == request.user:
-                            continue
-                            
-                        try:
-                            user_item = CartItem.objects.get(product=session_item.product, cart=user_cart)
-                            user_item.quantity += session_item.quantity
-                            user_item.save()
-                        except CartItem.DoesNotExist:
-                            CartItem.objects.create(
-                                product=session_item.product,
-                                cart=user_cart,
-                                quantity=session_item.quantity
-                            )
-                    
-                    session_items.delete()
-                    session_cart.delete()
-                    
-            except Cart.DoesNotExist:
-                pass
-
-def checkout(request):
-    """Enhanced checkout with guest handling"""
-    if not request.user.is_authenticated:
-        # Store cart in session for later retrieval
-        request.session['redirect_after_login'] = 'checkout'
-        messages.info(request, 'Please login or register to continue with checkout.')
-        return redirect('login')
-    
-    # Get user's cart
-    try:
-        cart = Cart.objects.get(user=request.user)
-        cart_items = CartItem.objects.filter(cart=cart, is_active=True)
-        
-        if not cart_items.exists():
-            messages.warning(request, 'Your cart is empty!')
-            return redirect('cart')
-            
-        # Calculate totals
-        total = sum(item.sub_total() for item in cart_items)
-        tax = 0.13 * total
-        grand_total = total + tax
-        
-        # Check stock availability before checkout
-        stock_issues = []
-        for item in cart_items:
-            available_stock = item.get_available_stock()
-            if item.quantity > available_stock:
-                stock_issues.append(f"{item.product.name}: only {available_stock} available")
-        
-        if stock_issues:
-            for issue in stock_issues:
-                messages.error(request, issue)
-            return redirect('cart')
-        
-        context = {
-            'cart_items': cart_items,
-            'total': total,
-            'tax': tax,
-            'grand_total': grand_total,
-        }
-        
-        return render(request, 'checkout/checkout.html', context)
-        
     except Cart.DoesNotExist:
-        messages.warning(request, 'Your cart is empty!')
-        return redirect('cart')
+        pass
 
-def preserve_guest_cart(request):
-    """Preserve guest cart data in session before authentication"""
-    if not request.user.is_authenticated:
+# 🔄 UNIFIED GUEST CART HANDLER (replaces multiple scattered functions)
+def handle_guest_cart_transition(request, action='preserve'):
+    """Handle guest cart during authentication transitions"""
+    
+    if action == 'preserve' and not request.user.is_authenticated:
+        # Preserve cart before authentication
         try:
             session_cart = Cart.objects.get(cart_id=_cart_id(request))
             session_items = CartItem.objects.filter(cart=session_cart, is_active=True)
             
-            # Store cart data in session
-            cart_data = []
-            for item in session_items:
-                variation_ids = list(item.variations.values_list('id', flat=True))
-                cart_data.append({
-                    'product_id': item.product.id,
-                    'quantity': item.quantity,
-                    'variation_ids': variation_ids
-                })
-            
-            if cart_data:
+            if session_items.exists():
+                cart_data = []
+                for item in session_items:
+                    variation_ids = list(item.variations.values_list('id', flat=True))
+                    cart_data.append({
+                        'product_id': item.product.id,
+                        'quantity': item.quantity,
+                        'variation_ids': variation_ids
+                    })
                 request.session['guest_cart_data'] = cart_data
-                
+                request.session['redirect_after_login'] = 'checkout'
         except Cart.DoesNotExist:
             pass
-
-def restore_cart_after_login(request):
-    """Restore cart after user logs in"""
-    if request.user.is_authenticated:
-        # First, merge any existing session cart
-        merge_session_cart_to_user(request)
+    
+    elif action == 'restore' and request.user.is_authenticated:
+        # Restore after authentication
+        merge_carts_on_login(request)
         
-        # Then restore from preserved cart data if exists
         guest_cart_data = request.session.get('guest_cart_data')
         if guest_cart_data:
             user_cart, created = Cart.objects.get_or_create(user=request.user)
@@ -416,6 +323,10 @@ def restore_cart_after_login(request):
             for item_data in guest_cart_data:
                 try:
                     product = Product.objects.get(id=item_data['product_id'])
+                    
+                    # Skip seller's own products
+                    if product.seller == request.user:
+                        continue
                     
                     # Get variations if any
                     variations = []
@@ -460,3 +371,14 @@ def restore_cart_after_login(request):
             # Clear the preserved cart data
             del request.session['guest_cart_data']
             messages.success(request, 'Your cart has been restored!')
+
+def checkout_redirect(request):
+    """Redirect to orders checkout with guest cart preservation"""
+    if not request.user.is_authenticated:
+        # Preserve guest cart
+        handle_guest_cart_transition(request, action='preserve')
+        messages.info(request, 'Please login or register to continue with checkout. Your cart will be preserved!')
+        return redirect('login')
+    else:
+
+        return redirect('checkout')  

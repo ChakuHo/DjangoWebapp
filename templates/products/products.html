@@ -280,7 +280,6 @@ const PLACEHOLDER_IMAGE = "{% static 'images/placeholder.png' %}";
                 </a>
                 {% endif %}
                 
-                <!-- WISHLIST HEART BUTTON - NEW -->
                 {% if user.is_authenticated %}
                 <div class="wishlist-btn-container">
                   <button class="btn btn-wishlist wishlist-toggle" 
@@ -432,7 +431,6 @@ const PLACEHOLDER_IMAGE = "{% static 'images/placeholder.png' %}";
   object-fit: cover;
 }
 
-/* WISHLIST HEART BUTTON STYLING - NEW */
 .wishlist-btn-container {
   position: absolute;
   top: 10px;
@@ -568,7 +566,6 @@ const PLACEHOLDER_IMAGE = "{% static 'images/placeholder.png' %}";
   background-color: var(--swatch-color, #cccccc);
 }
 
-/* Toast notification styling - NEW */
 .toast-notification {
   animation: slideIn 0.3s ease;
 }
@@ -637,7 +634,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // WISHLIST FUNCTIONALITY - NEW
     document.addEventListener('click', function(e) {
         if (e.target.closest('.wishlist-toggle')) {
             e.preventDefault();
