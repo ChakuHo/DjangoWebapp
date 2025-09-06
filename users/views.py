@@ -333,6 +333,10 @@ Need help? Contact us at {settings.DEFAULT_FROM_EMAIL}
 
 
 def login_view(request):
+    # Redirect if already logged in
+    if request.user.is_authenticated:
+        return redirect('dashboard')
+        
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
@@ -348,20 +352,31 @@ def login_view(request):
         if user:
             login(request, user)
             
+            # Handle cart merging
             try:
-                from cart.views import merge_session_cart_to_user
-                merge_session_cart_to_user(request)
+                from cart.views import handle_guest_cart_transition
+                handle_guest_cart_transition(request, action='restore')
             except ImportError:
                 try:
-                    from cart.views import merge_cart_on_login
-                    merge_cart_on_login(request)
+                    from cart.views import merge_session_cart_to_user
+                    merge_session_cart_to_user(request)
                 except ImportError:
-                    pass  # Cart merge function not available
+                    pass
             
-            messages.success(request, 'Logged in successfully!')
-            return redirect('dashboard')
+            # Handle redirect to intended page
+            next_url = request.GET.get('next') or request.session.get('next')
+            if next_url:
+                # Clear the next URL from session
+                if 'next' in request.session:
+                    del request.session['next']
+                messages.success(request, f'Welcome back, {user.first_name or user.username}!')
+                return redirect(next_url)
+            else:
+                messages.success(request, f'Welcome back, {user.first_name or user.username}!')
+                return redirect('dashboard')
         else:
             return render(request, 'users/login.html', {'error': 'Invalid credentials'})
+            
     return render(request, 'users/login.html')
 
 def register_view(request):
@@ -587,16 +602,17 @@ def change_password(request):
     return render(request, 'users/change_password.html')
 
 def logout_view(request):
+    """ logout with complete session cleanup"""
+    user_name = request.user.first_name or request.user.username if request.user.is_authenticated else "User"
+    
     # Store cart items before logout
     cart_items_to_preserve = []
-
     if request.user.is_authenticated:
         try:
             from cart.models import Cart, CartItem
             user_cart = Cart.objects.get(user=request.user)
             user_cart_items = CartItem.objects.filter(cart=user_cart, is_active=True)
-
-            # Store the items we want to preserve i.e. products_id and quantity
+            
             for item in user_cart_items:
                 cart_items_to_preserve.append({
                     'product_id': item.product.id,
@@ -605,25 +621,25 @@ def logout_view(request):
         except Cart.DoesNotExist:
             pass
     
+    # COMPLETE LOGOUT WITH SESSION CLEANUP
     logout(request)
-
+    
+    # Clear ALL session data to prevent any residual access
+    request.session.flush()  # This completely clears the session
+    
+    # Create new session for flash message
+    if not request.session.session_key:
+        request.session.create()
+    
     # Recreate cart items in new session
     if cart_items_to_preserve:
         from cart.models import Cart, CartItem
         from products.models import Product
-
-        # Ensure session exists after logout
-        if not request.session.session_key:
-            request.session.create()
-
-        # Get cart_id - use session key directly to avoid None
+        
         cart_id = request.session.session_key
-
-        # Making sure cart_id is not None before creating
         if cart_id:
             session_cart = Cart.objects.create(cart_id=cart_id)
             
-            # Adding preserved items to session cart
             for item_data in cart_items_to_preserve:
                 try:
                     product = Product.objects.get(id=item_data['product_id'])
@@ -635,7 +651,7 @@ def logout_view(request):
                 except Product.DoesNotExist:
                     pass
     
-    messages.success(request, 'Logged out successfully!')
+    messages.success(request, f'Goodbye {user_name}! You have been logged out successfully.')
     return redirect('home')
 
 @login_required
@@ -2985,7 +3001,7 @@ def bulk_approve_sellers(request):
                     approved_count += 1
                     
                     # Send approval email
-                    if send_seller_approval_email(user):
+                    if send_user_email(user, 'seller_approval'):
                         email_success_count += 1
                     
                     # Create notification

@@ -59,7 +59,9 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
-    'middleware.message_middleware.MessageCleanupMiddleware',]
+    'middleware.message_middleware.MessageCleanupMiddleware',
+    'middleware.security_middleware.LoginRequiredMiddleware',
+]
 
 ROOT_URLCONF = 'marketplace.urls'
 
@@ -248,3 +250,18 @@ STATICFILES_FINDERS = [
     'django.contrib.staticfiles.finders.FileSystemFinder',
     'django.contrib.staticfiles.finders.AppDirectoriesFinder',
 ]
+
+# LOGIN/LOGOUT SECURITY SETTINGS
+LOGIN_URL = '/users/login/'  # Where to redirect when login required
+LOGIN_REDIRECT_URL = '/users/dashboard/'  # Where to go after successful login
+LOGOUT_REDIRECT_URL = '/'  # Where to go after logout
+
+# SESSION SECURITY
+SESSION_COOKIE_AGE = 86400  # 24 hours
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_SAVE_EVERY_REQUEST = True
+SESSION_COOKIE_SECURE = False  # Set to True in production with HTTPS
+SESSION_COOKIE_HTTPONLY = True
+
+# FORCE LOGOUT ON SESSION EXPIRE
+SESSION_COOKIE_SAMESITE = 'Lax'

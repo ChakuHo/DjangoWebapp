@@ -10,15 +10,15 @@
             {% include 'users/includes/sidebar.html' %}
             
             <main class="col-md-9">
-                <div class="chat-list-container">
-                    <div class="chat-list-header">
-                        <h5 class="mb-0">
-                            <i class="fa fa-comments text-primary"></i> My Conversations
+                <div class="chatlist-container">
+                    <div class="chatlist-header">
+                        <h5 class="chatlist-title">
+                            <i class="fa fa-comments"></i> My Conversations
                         </h5>
-                        <div class="header-actions">
-                            <small class="text-muted">{{ chat_data|length }} conversation{{ chat_data|length|pluralize }}</small>
+                        <div class="chatlist-header-actions">
+                            <small class="chatlist-count">{{ chat_data|length }} conversation{{ chat_data|length|pluralize }}</small>
                             {% if chat_data %}
-                                <button class="btn btn-sm btn-outline-primary ml-2" onclick="markAllAsRead()">
+                                <button class="chatlist-btn chatlist-btn-outline" onclick="markAllAsRead()">
                                     <i class="fa fa-check"></i> Mark All Read
                                 </button>
                             {% endif %}
@@ -26,61 +26,61 @@
                     </div>
                     
                     {% if chat_data %}
-                        <div class="conversations-list">
+                        <div class="chatlist-conversations">
                             {% for data in chat_data %}
                             {% if data.other_participant %}
-                            <a href="{% url 'chat_detail' data.chat.id %}" class="conversation-item {% if data.unread_count > 0 %}unread{% endif %}">
-                                <div class="conversation-content">
-                                    <div class="participant-info">
-                                        <div class="avatar-container">
+                            <a href="{% url 'chat_detail' data.chat.id %}" class="chatlist-conversation-item {% if data.unread_count > 0 %}chatlist-unread{% endif %}">
+                                <div class="chatlist-conversation-content">
+                                    <div class="chatlist-participant-info">
+                                        <div class="chatlist-avatar-container">
                                             {% if data.other_participant.profile.profile_picture %}
                                                 <img src="{{ data.other_participant.profile.profile_picture.url }}" 
-                                                     class="participant-avatar" 
+                                                     class="chatlist-participant-avatar" 
                                                      alt="{{ data.other_participant.get_full_name|default:data.other_participant.username }}">
                                             {% else %}
-                                                <div class="avatar-placeholder">
+                                                <div class="chatlist-avatar-placeholder">
                                                     <i class="fa fa-user"></i>
                                                 </div>
                                             {% endif %}
                                             {% if data.unread_count > 0 %}
-                                                <div class="unread-indicator"></div>
+                                                <div class="chatlist-unread-indicator"></div>
                                             {% endif %}
                                         </div>
                                         
-                                        <div class="participant-details">
-                                            <div class="participant-name">
+                                        <div class="chatlist-participant-details">
+                                            <div class="chatlist-participant-name">
                                                 {{ data.other_participant.get_full_name|default:data.other_participant.username }}
                                                 {% if data.other_participant.profile.seller_status == 'approved' %}
-                                                    <span class="seller-badge">
+                                                    <span class="chatlist-seller-badge">
                                                         <i class="fa fa-store"></i>
                                                     </span>
                                                 {% endif %}
                                             </div>
                                             
                                             {% if data.chat.product %}
-                                                <div class="product-context">
+                                                <div class="chatlist-product-context">
                                                     <i class="fa fa-tag"></i> {{ data.chat.product.name|truncatechars:25 }}
                                                 </div>
                                             {% endif %}
                                             
-                                            <div class="last-message">
+                                            <div class="chatlist-last-message">
                                                 {% if data.last_message %}
                                                     {% if data.last_message.sender == user %}
-                                                        <span class="sender-indicator">You: </span>
+                                                        <span class="chatlist-sender-indicator">You: </span>
                                                     {% endif %}
-                                                    <span class="message-preview">{{ data.last_message.message|truncatechars:40 }}</span>
+                                                    <span class="chatlist-message-preview">{{ data.last_message.message|truncatechars:40 }}</span>
                                                 {% else %}
-                                                    <span class="no-messages">No messages yet</span>
+                                                    <span class="chatlist-no-messages">No messages yet</span>
                                                 {% endif %}
                                             </div>
                                         </div>
                                     </div>
                                     
-                                    <div class="conversation-meta">
+                                    <div class="chatlist-conversation-meta">
                                         {% if data.unread_count > 0 %}
-                                            <div class="unread-count">{{ data.unread_count }}</div>
+                                            <div class="chatlist-unread-count">{{ data.unread_count }}</div>
                                         {% endif %}
-                                        <div class="timestamp">
+                                        <div class="chatlist-timestamp">
                                             {% if data.last_message %}
                                                 {{ data.last_message.timestamp|timesince }} ago
                                             {% else %}
@@ -94,13 +94,13 @@
                             {% endfor %}
                         </div>
                     {% else %}
-                        <div class="empty-conversations">
-                            <div class="empty-icon">
+                        <div class="chatlist-empty-conversations">
+                            <div class="chatlist-empty-icon">
                                 <i class="fa fa-comments"></i>
                             </div>
                             <h5>No Conversations Yet</h5>
                             <p>Start chatting with sellers about products you're interested in!</p>
-                            <a href="{% url 'products:product' %}" class="btn btn-primary btn-lg">
+                            <a href="{% url 'products:product' %}" class="chatlist-btn chatlist-btn-primary chatlist-btn-lg">
                                 <i class="fa fa-shopping-bag"></i> Browse Products
                             </a>
                         </div>
@@ -112,129 +112,210 @@
 </section>
 
 <style>
-.chat-list-container {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+/* SCOPED CHATLIST STYLES - Won't interfere with other components */
+
+.chatlist-container {
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
     overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
-.chat-list-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+.chatlist-header {
+    background: #007bff;
     color: white;
     padding: 20px 24px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    border-bottom: 1px solid #0056b3;
 }
 
-.header-actions {
+.chatlist-title {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
     display: flex;
     align-items: center;
+    gap: 10px;
 }
 
-.conversations-list {
+.chatlist-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.chatlist-count {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.85rem;
+}
+
+.chatlist-btn {
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.chatlist-btn-outline {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.chatlist-btn-outline:hover {
+    background: rgba(255, 255, 255, 0.25);
+    color: white;
+}
+
+.chatlist-btn-primary {
+    background: #007bff;
+    color: white;
+}
+
+.chatlist-btn-primary:hover {
+    background: #0056b3;
+    color: white;
+    text-decoration: none;
+}
+
+.chatlist-btn-lg {
+    padding: 12px 24px;
+    font-size: 1rem;
+}
+
+.chatlist-conversations {
     max-height: 70vh;
     overflow-y: auto;
 }
 
-.conversation-item {
+.chatlist-conversations::-webkit-scrollbar {
+    width: 8px;
+}
+
+.chatlist-conversations::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.chatlist-conversations::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.chatlist-conversation-item {
     display: block;
     padding: 16px 24px;
     border-bottom: 1px solid #f1f3f4;
     text-decoration: none;
     color: inherit;
-    transition: all 0.3s ease;
+    transition: background-color 0.2s ease;
     position: relative;
 }
 
-.conversation-item:hover {
+.chatlist-conversation-item:hover {
     background: #f8f9fa;
     text-decoration: none;
     color: inherit;
 }
 
-.conversation-item.unread {
-    background: #f0f8ff;
-    border-left: 4px solid #007bff;
+.chatlist-conversation-item:last-child {
+    border-bottom: none;
 }
 
-.conversation-item.unread:hover {
+.chatlist-conversation-item.chatlist-unread {
+    background: #f0f8ff;
+    border-left: 3px solid #007bff;
+}
+
+.chatlist-conversation-item.chatlist-unread:hover {
     background: #e8f4f8;
 }
 
-.conversation-content {
+.chatlist-conversation-content {
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
-.participant-info {
+.chatlist-participant-info {
     display: flex;
     align-items: center;
     flex: 1;
+    min-width: 0;
 }
 
-.avatar-container {
+.chatlist-avatar-container {
     position: relative;
     margin-right: 16px;
+    flex-shrink: 0;
 }
 
-.participant-avatar, .avatar-placeholder {
-    width: 54px;
-    height: 54px;
+.chatlist-participant-avatar,
+.chatlist-avatar-placeholder {
+    width: 50px;
+    height: 50px;
     border-radius: 50%;
 }
 
-.participant-avatar {
+.chatlist-participant-avatar {
     object-fit: cover;
-    border: 3px solid #e9ecef;
+    border: 2px solid #e9ecef;
 }
 
-.avatar-placeholder {
+.chatlist-avatar-placeholder {
     background: #e9ecef;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #6c757d;
-    font-size: 20px;
+    font-size: 18px;
 }
 
-.unread-indicator {
+.chatlist-unread-indicator {
     position: absolute;
     top: 0;
     right: 0;
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     background: #007bff;
-    border: 3px solid white;
+    border: 2px solid white;
     border-radius: 50%;
 }
 
-.participant-details {
+.chatlist-participant-details {
     flex: 1;
     min-width: 0;
 }
 
-.participant-name {
+.chatlist-participant-name {
     font-weight: 600;
-    font-size: 1.1rem;
+    font-size: 1rem;
     margin-bottom: 4px;
     display: flex;
     align-items: center;
     gap: 8px;
+    color: #333;
 }
 
-.seller-badge {
+.chatlist-seller-badge {
     background: #28a745;
     color: white;
     font-size: 0.7rem;
     padding: 2px 6px;
-    border-radius: 8px;
+    border-radius: 6px;
+    font-weight: 500;
 }
 
-.product-context {
-    font-size: 0.85rem;
+.chatlist-product-context {
+    font-size: 0.8rem;
     color: #6c757d;
     margin-bottom: 4px;
     display: flex;
@@ -242,104 +323,189 @@
     gap: 4px;
 }
 
-.last-message {
-    font-size: 0.9rem;
+.chatlist-last-message {
+    font-size: 0.85rem;
     color: #6c757d;
     display: flex;
     align-items: center;
+    overflow: hidden;
 }
 
-.sender-indicator {
+.chatlist-sender-indicator {
     font-weight: 500;
     color: #495057;
+    flex-shrink: 0;
 }
 
-.message-preview {
+.chatlist-message-preview {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.no-messages {
+.chatlist-no-messages {
     font-style: italic;
     color: #adb5bd;
 }
 
-.conversation-meta {
+.chatlist-conversation-meta {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
     gap: 8px;
+    flex-shrink: 0;
 }
 
-.unread-count {
+.chatlist-unread-count {
     background: #007bff;
     color: white;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 600;
-    padding: 4px 8px;
-    border-radius: 12px;
-    min-width: 20px;
+    padding: 3px 7px;
+    border-radius: 10px;
+    min-width: 18px;
     text-align: center;
+    line-height: 1.2;
 }
 
-.timestamp {
-    font-size: 0.75rem;
+.chatlist-timestamp {
+    font-size: 0.7rem;
     color: #adb5bd;
     white-space: nowrap;
 }
 
-.empty-conversations {
+.chatlist-empty-conversations {
     text-align: center;
     padding: 80px 40px;
     color: #6c757d;
 }
 
-.empty-icon i {
-    font-size: 64px;
+.chatlist-empty-icon i {
+    font-size: 60px;
     color: #dee2e6;
     margin-bottom: 24px;
 }
 
-.empty-conversations h5 {
+.chatlist-empty-conversations h5 {
     margin-bottom: 16px;
     color: #495057;
+    font-size: 1.3rem;
+    font-weight: 600;
 }
 
-.empty-conversations p {
+.chatlist-empty-conversations p {
     margin-bottom: 32px;
-    font-size: 1.1rem;
+    font-size: 1rem;
+    color: #6c757d;
+    line-height: 1.5;
 }
 
-/* Responsive */
+/* Responsive Design */
 @media (max-width: 768px) {
-    .chat-list-header {
+    .chatlist-header {
         padding: 16px 20px;
         flex-direction: column;
-        gap: 8px;
+        gap: 12px;
         text-align: center;
     }
     
-    .conversation-item {
-        padding: 12px 16px;
+    .chatlist-title {
+        font-size: 1.1rem;
     }
     
-    .participant-avatar, .avatar-placeholder {
-        width: 48px;
-        height: 48px;
+    .chatlist-header-actions {
+        gap: 10px;
     }
     
-    .participant-name {
-        font-size: 1rem;
+    .chatlist-conversation-item {
+        padding: 14px 16px;
     }
     
-    .conversation-meta {
+    .chatlist-participant-avatar,
+    .chatlist-avatar-placeholder {
+        width: 45px;
+        height: 45px;
+    }
+    
+    .chatlist-participant-name {
+        font-size: 0.95rem;
+    }
+    
+    .chatlist-conversation-meta {
         align-items: center;
     }
     
-    .empty-conversations {
+    .chatlist-empty-conversations {
         padding: 60px 20px;
     }
+    
+    .chatlist-empty-icon i {
+        font-size: 50px;
+    }
+    
+    .chatlist-empty-conversations h5 {
+        font-size: 1.2rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .chatlist-header {
+        padding: 12px 16px;
+    }
+    
+    .chatlist-conversation-item {
+        padding: 12px 16px;
+    }
+    
+    .chatlist-participant-avatar,
+    .chatlist-avatar-placeholder {
+        width: 42px;
+        height: 42px;
+    }
+    
+    .chatlist-avatar-container {
+        margin-right: 12px;
+    }
+    
+    .chatlist-participant-name {
+        font-size: 0.9rem;
+    }
+    
+    .chatlist-product-context,
+    .chatlist-last-message {
+        font-size: 0.8rem;
+    }
+    
+    .chatlist-timestamp {
+        font-size: 0.65rem;
+    }
+    
+    .chatlist-empty-conversations {
+        padding: 40px 16px;
+    }
+}
+
+/* Loading states and hover effects */
+@media (hover: hover) {
+    .chatlist-conversation-item:hover .chatlist-participant-avatar {
+        transform: scale(1.05);
+        transition: transform 0.2s ease;
+    }
+    
+    .chatlist-conversation-item:hover .chatlist-participant-name {
+        color: #007bff;
+    }
+}
+
+/* Focus states for accessibility */
+.chatlist-conversation-item:focus {
+    outline: 2px solid #007bff;
+    outline-offset: -2px;
+}
+
+.chatlist-btn:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.5);
+    outline-offset: 2px;
 }
 </style>
 
@@ -351,24 +517,50 @@ function markAllAsRead() {
             'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
         }
     })
-    .then(response => response.json())
-    .then(data => {
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
         if (data.success) {
             // Remove unread indicators
-            document.querySelectorAll('.conversation-item.unread').forEach(item => {
-                item.classList.remove('unread');
-            });
-            document.querySelectorAll('.unread-count').forEach(count => {
-                count.remove();
-            });
-            document.querySelectorAll('.unread-indicator').forEach(indicator => {
-                indicator.remove();
-            });
+            const unreadItems = document.querySelectorAll('.chatlist-conversation-item.chatlist-unread');
+            for (let i = 0; i < unreadItems.length; i++) {
+                unreadItems[i].classList.remove('chatlist-unread');
+            }
             
-            // Update header
-            document.querySelector('.header-actions button').style.display = 'none';
+            const unreadCounts = document.querySelectorAll('.chatlist-unread-count');
+            for (let i = 0; i < unreadCounts.length; i++) {
+                unreadCounts[i].remove();
+            }
+            
+            const unreadIndicators = document.querySelectorAll('.chatlist-unread-indicator');
+            for (let i = 0; i < unreadIndicators.length; i++) {
+                unreadIndicators[i].remove();
+            }
+            
+            // Hide the mark all read button
+            const markAllBtn = document.querySelector('.chatlist-header-actions .chatlist-btn-outline');
+            if (markAllBtn) {
+                markAllBtn.style.display = 'none';
+            }
+            
+            // Update conversation count display
+            const countElement = document.querySelector('.chatlist-count');
+            if (countElement) {
+                const currentText = countElement.textContent;
+                countElement.textContent = currentText.replace(/\d+/, '{{ chat_data|length }}');
+            }
         }
+    })
+    .catch(function(error) {
+        console.error('Error marking messages as read:', error);
     });
 }
+
+// Add smooth scrolling for better UX
+document.addEventListener('DOMContentLoaded', function() {
+    const conversationsList = document.querySelector('.chatlist-conversations');
+    if (conversationsList) {
+        conversationsList.style.scrollBehavior = 'smooth';
+    }
+});
 </script>
 {% endblock %}

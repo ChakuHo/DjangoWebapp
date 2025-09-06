@@ -102,4 +102,32 @@
   </body>
 </html>
 
+<script>
+
+function checkAuthStatus() {
+    // Only run on protected pages
+    const protectedPaths = ['/users/dashboard/', '/users/my-selling-items/', '/orders/my-orders/'];
+    const currentPath = window.location.pathname;
+    
+    if (protectedPaths.some(path => currentPath.startsWith(path))) {
+        fetch('/users/notifications/ajax/', {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (response.status === 401 || response.status === 403) {
+                alert('Your session has expired. Please login again.');
+                window.location.href = '/users/login/';
+            }
+        })
+        .catch(error => {
+            // Silently handle errors
+        });
+    }
+}
+
+// Check every 5 minutes
+setInterval(checkAuthStatus, 300000);
 </script>

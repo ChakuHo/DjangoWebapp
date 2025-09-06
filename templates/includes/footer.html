@@ -1,188 +1,145 @@
 {% load static %}
 
-<!-- ========================= IMPROVED MODERN FOOTER ========================= -->
-<footer class="modern-footer">
+<footer class="site-footer">
   <!-- Newsletter Section -->
-  <div class="newsletter-section">
+  <div class="footer-newsletter">
     <div class="container">
       <div class="newsletter-content">
-        <div class="newsletter-left">
-          <div class="newsletter-icon">
-            <i class="fas fa-paper-plane"></i>
-          </div>
-          <div class="newsletter-text">
-            <h3>Stay in the Loop!</h3>
-            <p>Get exclusive deals, new arrivals, and insider updates delivered straight to your inbox.</p>
-          </div>
+        <div class="newsletter-info">
+          <h4>Stay Updated</h4>
+          <p>Get the latest deals and updates delivered to your inbox.</p>
         </div>
-        <div class="newsletter-right">
+        <div class="newsletter-form-wrapper">
           <form class="newsletter-form" id="newsletterForm">
-            <div class="input-wrapper">
-              <input type="email" class="newsletter-input" placeholder="Enter your email address" required>
-              <button type="submit" class="newsletter-btn">
-                <span>Subscribe</span>
-                <i class="fas fa-arrow-right"></i>
+            <div class="form-group">
+              <input type="email" class="form-control" placeholder="Enter your email" required>
+              <button type="submit" class="btn-subscribe">
+                Subscribe
               </button>
             </div>
-            <p class="newsletter-privacy">We respect your privacy. Unsubscribe anytime.</p>
           </form>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Main Footer Content -->
+  <!-- Main Footer -->
   <div class="footer-main">
     <div class="container">
       <div class="row">
         <!-- Company Info -->
-        <div class="col-lg-3 col-md-6 footer-column">
-          <div class="footer-widget">
-            <div class="footer-brand">
+        <div class="col-lg-3 col-md-6 mb-4">
+          <div class="footer-section">
+            <div class="footer-logo">
               {% if site_settings and site_settings.logo %}
-              <div class="brand-logo-container">
-                <img src="{{ site_settings.logo.url }}" class="brand-logo" alt="Logo">
-              </div>
+                <img src="{{ site_settings.logo.url }}" alt="Logo" class="logo-img">
               {% endif %}
-              <h4 class="brand-name">
+              <h5>
                 {% if site_settings and site_settings.site_title %}
                   {{ site_settings.site_title }}
                 {% else %}
                   ISLINGTON MARKETPLACE
                 {% endif %}
-              </h4>
+              </h5>
             </div>
-            <p class="brand-description">
-              Your trusted marketplace for quality products. Discover amazing deals from verified sellers across Nepal.
+            <p class="footer-desc">
+              Your trusted marketplace for quality products. Discover amazing deals from verified sellers.
             </p>
             
-            <!-- Social Links -->
-            <div class="social-section">
+            <div class="social-links">
               <h6>Follow Us</h6>
-              <div class="social-links">
-                <a href="#" class="social-link facebook" title="Facebook">
-                  <i class="fab fa-facebook-f"></i>
-                </a>
-                <a href="#" class="social-link instagram" title="Instagram">
-                  <i class="fab fa-instagram"></i>
-                </a>
-                <a href="#" class="social-link twitter" title="Twitter">
-                  <i class="fab fa-twitter"></i>
-                </a>
-                <a href="#" class="social-link youtube" title="YouTube">
-                  <i class="fab fa-youtube"></i>
-                </a>
-                <a href="#" class="social-link tiktok" title="TikTok">
-                  <i class="fab fa-tiktok"></i>
-                </a>
+              <div class="social-icons">
+                <a href="#" class="social-icon facebook"><i class="fab fa-facebook-f"></i></a>
+                <a href="#" class="social-icon instagram"><i class="fab fa-instagram"></i></a>
+                <a href="#" class="social-icon twitter"><i class="fab fa-twitter"></i></a>
+                <a href="#" class="social-icon youtube"><i class="fab fa-youtube"></i></a>
               </div>
             </div>
           </div>
         </div>
 
         <!-- Quick Links -->
-        <div class="col-lg-2 col-md-6 footer-column">
-          <div class="footer-widget">
-            <h5 class="widget-title">Quick Links</h5>
+        <div class="col-lg-2 col-md-6 mb-4">
+          <div class="footer-section">
+            <h6 class="footer-title">Quick Links</h6>
             <ul class="footer-links">
-              <li><a href="{% url 'home' %}"><i class="fas fa-home"></i>Home</a></li>
-              <li><a href="{% url 'products:product' %}"><i class="fas fa-shopping-bag"></i>Shop Now</a></li>
-              <li><a href="{% url 'about' %}"><i class="fas fa-info-circle"></i>About Us</a></li>
-              <li><a href="{% url 'contact' %}"><i class="fas fa-envelope"></i>Contact</a></li>
+              <li><a href="{% url 'home' %}">Home</a></li>
+              <li><a href="{% url 'products:product' %}">Shop Now</a></li>
+              <li><a href="{% url 'about' %}">About Us</a></li>
+              <li><a href="{% url 'contact' %}">Contact</a></li>
               {% if user.is_authenticated %}
-                <li><a href="{% url 'dashboard' %}"><i class="fas fa-user-circle"></i>My Account</a></li>
-                <li><a href="{% url 'become_seller' %}"><i class="fas fa-store"></i>Become Seller</a></li>
+                <li><a href="{% url 'dashboard' %}">My Account</a></li>
+                <li><a href="{% url 'become_seller' %}">Become Seller</a></li>
               {% else %}
-                <li><a href="{% url 'login' %}"><i class="fas fa-sign-in-alt"></i>Login</a></li>
-                <li><a href="{% url 'register' %}"><i class="fas fa-user-plus"></i>Join Us</a></li>
+                <li><a href="{% url 'login' %}">Login</a></li>
+                <li><a href="{% url 'register' %}">Sign Up</a></li>
               {% endif %}
             </ul>
           </div>
         </div>
 
-        <!-- Customer Care -->
-        <div class="col-lg-2 col-md-6 footer-column">
-          <div class="footer-widget">
-            <h5 class="widget-title">Customer Care</h5>
+        <!-- Customer Service -->
+        <div class="col-lg-2 col-md-6 mb-4">
+          <div class="footer-section">
+            <h6 class="footer-title">Customer Service</h6>
             <ul class="footer-links">
-              <li><a href="#" onclick="openModal('helpModal')"><i class="fas fa-question-circle"></i>Help Center</a></li>
-              <li><a href="#" onclick="openModal('shippingModal')"><i class="fas fa-shipping-fast"></i>Shipping Info</a></li>
-              <li><a href="#" onclick="openModal('returnsModal')"><i class="fas fa-undo"></i>Returns</a></li>
-              <li><a href="#" onclick="openModal('trackModal')"><i class="fas fa-map-marked-alt"></i>Track Order</a></li>
-              <li><a href="#" onclick="openModal('supportModal')"><i class="fas fa-headset"></i>24/7 Support</a></li>
-              <li><a href="#" onclick="openModal('warrantyModal')"><i class="fas fa-shield-alt"></i>Warranty</a></li>
+              <li><a href="#" data-toggle="modal" data-target="#helpModal">Help Center</a></li>
+              <li><a href="#" data-toggle="modal" data-target="#shippingModal">Shipping Info</a></li>
+              <li><a href="#" data-toggle="modal" data-target="#returnsModal">Returns</a></li>
+              <li><a href="#" data-toggle="modal" data-target="#trackModal">Track Order</a></li>
+              <li><a href="#" data-toggle="modal" data-target="#supportModal">Support</a></li>
             </ul>
           </div>
         </div>
 
         <!-- Categories -->
-        <div class="col-lg-2 col-md-6 footer-column">
-          <div class="footer-widget">
-            <h5 class="widget-title">Categories</h5>
+        <div class="col-lg-2 col-md-6 mb-4">
+          <div class="footer-section">
+            <h6 class="footer-title">Categories</h6>
             <ul class="footer-links">
-              {% for category in categories|slice:":6" %}
+              {% for category in categories|slice:":5" %}
               <li>
                 <a href="{% url 'products:products_by_category' category.slug %}">
-                  <i class="fas fa-tag"></i>{{ category.category_name }}
+                  {{ category.category_name }}
                 </a>
               </li>
               {% endfor %}
-              {% if categories|length > 6 %}
-              <li><a href="{% url 'products:product' %}"><i class="fas fa-th"></i>All Categories</a></li>
+              {% if categories|length > 5 %}
+              <li><a href="{% url 'products:product' %}">View All</a></li>
               {% endif %}
             </ul>
           </div>
         </div>
 
         <!-- Contact Info -->
-        <div class="col-lg-3 col-md-12 footer-column">
-          <div class="footer-widget">
-            <h5 class="widget-title">Get in Touch</h5>
+        <div class="col-lg-3 col-md-6 mb-4">
+          <div class="footer-section">
+            <h6 class="footer-title">Contact Info</h6>
             <div class="contact-info">
               {% if site_settings and site_settings.phone %}
               <div class="contact-item">
-                <div class="contact-icon">
-                  <i class="fas fa-phone-alt"></i>
-                </div>
-                <div class="contact-details">
-                  <span class="contact-label">Call Us</span>
-                  <a href="tel:{{ site_settings.phone }}" class="contact-value">{{ site_settings.phone }}</a>
-                </div>
+                <i class="fas fa-phone"></i>
+                <span>{{ site_settings.phone }}</span>
               </div>
               {% endif %}
               
               {% if site_settings and site_settings.email %}
               <div class="contact-item">
-                <div class="contact-icon">
-                  <i class="fas fa-envelope"></i>
-                </div>
-                <div class="contact-details">
-                  <span class="contact-label">Email Us</span>
-                  <a href="mailto:{{ site_settings.email }}" class="contact-value">{{ site_settings.email }}</a>
-                </div>
+                <i class="fas fa-envelope"></i>
+                <span>{{ site_settings.email }}</span>
               </div>
               {% endif %}
               
               {% if site_settings and site_settings.address %}
               <div class="contact-item">
-                <div class="contact-icon">
-                  <i class="fas fa-map-marker-alt"></i>
-                </div>
-                <div class="contact-details">
-                  <span class="contact-label">Visit Us</span>
-                  <span class="contact-value">{{ site_settings.address }}</span>
-                </div>
+                <i class="fas fa-map-marker-alt"></i>
+                <span>{{ site_settings.address }}</span>
               </div>
               {% endif %}
 
               <div class="contact-item">
-                <div class="contact-icon">
-                  <i class="fas fa-clock"></i>
-                </div>
-                <div class="contact-details">
-                  <span class="contact-label">Hours</span>
-                  <span class="contact-value">24/7 Online Support</span>
-                </div>
+                <i class="fas fa-clock"></i>
+                <span>24/7 Online Support</span>
               </div>
             </div>
           </div>
@@ -194,8 +151,8 @@
   <!-- Footer Bottom -->
   <div class="footer-bottom">
     <div class="container">
-      <div class="bottom-content">
-        <div class="bottom-left">
+      <div class="row align-items-center">
+        <div class="col-md-6">
           <p class="copyright">
             &copy; 2025 
             {% if site_settings and site_settings.site_title %}
@@ -207,30 +164,21 @@
           </p>
         </div>
         
-        <div class="bottom-center">
+        <div class="col-md-3">
           <div class="footer-bottom-links">
-            <a href="#" onclick="openModal('privacyModal')">Privacy Policy</a>
-            <a href="#" onclick="openModal('termsModal')">Terms of Service</a>
+            <a href="#" data-toggle="modal" data-target="#privacyModal">Privacy</a>
+            <a href="#" data-toggle="modal" data-target="#termsModal">Terms</a>
             <a href="{% url 'contact' %}">Support</a>
           </div>
         </div>
         
-        <div class="bottom-right">
+        <div class="col-md-3">
           <div class="payment-methods">
-            <span class="payment-label">Payment Options</span>
+            <span>Payment:</span>
             <div class="payment-icons">
-              <div class="payment-icon qr" title="QR Payment">
-                <i class="fas fa-qrcode"></i>
-              </div>
-              <div class="payment-icon fonepay" title="FonePay">
-                <span>FonePay</span>
-              </div>
-              <div class="payment-icon cod" title="Cash on Delivery">
-                <i class="fas fa-money-bill-wave"></i>
-              </div>
-              <div class="payment-icon esewa" title="eSewa">
-                <span>eSewa</span>
-              </div>
+              <span class="payment-icon">QR</span>
+              <span class="payment-icon">eSewa</span>
+              <span class="payment-icon">COD</span>
             </div>
           </div>
         </div>
@@ -238,56 +186,31 @@
     </div>
   </div>
 
-  <!-- Floating Action Buttons -->
-  <div class="floating-actions">
-    <button class="float-btn back-to-top" id="backToTop" title="Back to Top">
-      <i class="fas fa-chevron-up"></i>
-    </button>
-    <button class="float-btn help-btn" onclick="openModal('supportModal')" title="Need Help?">
-      <i class="fas fa-question"></i>
-    </button>
-  </div>
+  <!-- Back to Top Button -->
+  <button class="back-to-top" id="backToTop">
+    <i class="fas fa-chevron-up"></i>
+  </button>
 </footer>
 
-<!-- ALL MODALS RESTORED! -->
-
-<!-- Enhanced Modals -->
+<!-- Modals -->
 <div class="modal fade" id="helpModal" tabindex="-1">
-  <div class="modal-dialog modal-lg">
+  <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="fas fa-question-circle"></i> Help Center</h5>
+        <h5 class="modal-title">Help Center</h5>
         <button type="button" class="close" data-dismiss="modal">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="help-sections">
-          <div class="help-section">
-            <h6><i class="fas fa-shopping-cart"></i> Shopping & Orders</h6>
-            <ul>
-              <li>How to place an order?</li>
-              <li>Payment methods available</li>
-              <li>Order tracking guide</li>
-              <li>Modifying your order</li>
-            </ul>
-          </div>
-          <div class="help-section">
-            <h6><i class="fas fa-truck"></i> Shipping & Delivery</h6>
-            <ul>
-              <li>Delivery timeframes</li>
-              <li>Shipping costs</li>
-              <li>Express delivery options</li>
-              <li>International shipping</li>
-            </ul>
-          </div>
-          <div class="help-section">
-            <h6><i class="fas fa-user"></i> Account & Profile</h6>
-            <ul>
-              <li>Creating an account</li>
-              <li>Managing your profile</li>
-              <li>Password reset</li>
-              <li>Becoming a seller</li>
-            </ul>
-          </div>
+        <div class="help-topics">
+          <h6>Frequently Asked Questions</h6>
+          <ul>
+            <li>How to place an order?</li>
+            <li>Payment methods available</li>
+            <li>How to track my order?</li>
+            <li>Return and refund policy</li>
+            <li>How to become a seller?</li>
+          </ul>
+          <p>For more assistance, please contact our support team.</p>
         </div>
       </div>
     </div>
@@ -298,25 +221,22 @@
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="fas fa-shipping-fast"></i> Shipping Information</h5>
+        <h5 class="modal-title">Shipping Information</h5>
         <button type="button" class="close" data-dismiss="modal">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="shipping-options">
+        <div class="shipping-info">
           <div class="shipping-option">
-            <h6>🚚 Standard Delivery</h6>
-            <p><strong>3-5 business days</strong> - Rs. 100</p>
-            <small>Available across Nepal</small>
+            <h6>Standard Delivery</h6>
+            <p>3-5 business days - Rs. 100</p>
           </div>
           <div class="shipping-option">
-            <h6>⚡ Express Delivery</h6>
-            <p><strong>1-2 business days</strong> - Rs. 200</p>
-            <small>Major cities only</small>
+            <h6>Express Delivery</h6>
+            <p>1-2 business days - Rs. 200</p>
           </div>
           <div class="shipping-option">
-            <h6>🎁 Free Delivery</h6>
-            <p><strong>Orders over Rs. 2000</strong> - Free</p>
-            <small>Standard delivery timeframe applies</small>
+            <h6>Free Delivery</h6>
+            <p>Orders over Rs. 2000 - Free</p>
           </div>
         </div>
       </div>
@@ -328,32 +248,18 @@
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="fas fa-undo"></i> Returns & Exchanges</h5>
+        <h5 class="modal-title">Returns & Exchanges</h5>
         <button type="button" class="close" data-dismiss="modal">&times;</button>
       </div>
       <div class="modal-body">
         <div class="return-policy">
-          <div class="policy-item">
-            <i class="fas fa-calendar-alt"></i>
-            <div>
-              <h6>30-Day Return Window</h6>
-              <p>Return items within 30 days of delivery</p>
-            </div>
-          </div>
-          <div class="policy-item">
-            <i class="fas fa-box"></i>
-            <div>
-              <h6>Original Packaging</h6>
-              <p>Items must be unused and in original packaging</p>
-            </div>
-          </div>
-          <div class="policy-item">
-            <i class="fas fa-shipping-fast"></i>
-            <div>
-              <h6>Free Returns</h6>
-              <p>Free return shipping for defective items</p>
-            </div>
-          </div>
+          <h6>Return Policy</h6>
+          <ul>
+            <li>30-day return window</li>
+            <li>Items must be unused and in original packaging</li>
+            <li>Free returns for defective items</li>
+            <li>Return shipping costs may apply for non-defective items</li>
+          </ul>
         </div>
       </div>
     </div>
@@ -364,46 +270,38 @@
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="fas fa-map-marked-alt"></i> Track Your Order</h5>
+        <h5 class="modal-title">Track Your Order</h5>
         <button type="button" class="close" data-dismiss="modal">&times;</button>
       </div>
       <div class="modal-body">
         <div class="track-order">
-          <div class="input-group mb-3">
-            <input type="text" class="form-control" placeholder="Enter your order number" id="trackingNumber">
-            <div class="input-group-append">
-              <button class="btn btn-primary" type="button" onclick="trackOrder()">Track</button>
+          <div class="form-group">
+            <label>Enter Order Number:</label>
+            <div class="input-group">
+              <input type="text" class="form-control" placeholder="e.g. ORD123456" id="trackingNumber">
+              <div class="input-group-append">
+                <button class="btn btn-primary" type="button" onclick="trackOrder()">Track</button>
+              </div>
             </div>
           </div>
-          <div class="tracking-info" id="trackingInfo" style="display: none;">
-            <div class="timeline">
-              <div class="timeline-item completed">
-                <div class="timeline-icon"><i class="fas fa-check"></i></div>
-                <div class="timeline-content">
-                  <h6>Order Confirmed</h6>
-                  <p>Your order has been placed successfully</p>
-                </div>
+          <div class="tracking-result" id="trackingResult" style="display: none;">
+            <h6>Order Status</h6>
+            <div class="status-timeline">
+              <div class="status-item completed">
+                <span class="status-dot"></span>
+                <span class="status-text">Order Placed</span>
               </div>
-              <div class="timeline-item active">
-                <div class="timeline-icon"><i class="fas fa-box"></i></div>
-                <div class="timeline-content">
-                  <h6>Processing</h6>
-                  <p>Your order is being prepared</p>
-                </div>
+              <div class="status-item active">
+                <span class="status-dot"></span>
+                <span class="status-text">Processing</span>
               </div>
-              <div class="timeline-item">
-                <div class="timeline-icon"><i class="fas fa-truck"></i></div>
-                <div class="timeline-content">
-                  <h6>Shipped</h6>
-                  <p>Your order is on the way</p>
-                </div>
+              <div class="status-item">
+                <span class="status-dot"></span>
+                <span class="status-text">Shipped</span>
               </div>
-              <div class="timeline-item">
-                <div class="timeline-icon"><i class="fas fa-home"></i></div>
-                <div class="timeline-content">
-                  <h6>Delivered</h6>
-                  <p>Order delivered successfully</p>
-                </div>
+              <div class="status-item">
+                <span class="status-dot"></span>
+                <span class="status-text">Delivered</span>
               </div>
             </div>
           </div>
@@ -417,28 +315,20 @@
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="fas fa-headset"></i> 24/7 Customer Support</h5>
+        <h5 class="modal-title">Customer Support</h5>
         <button type="button" class="close" data-dismiss="modal">&times;</button>
       </div>
       <div class="modal-body">
         <div class="support-options">
           <div class="support-option">
-            <i class="fas fa-comments"></i>
-            <h6>Live Chat</h6>
-            <p>Get instant help from our support team</p>
-            <button class="btn btn-primary btn-sm">Start Chat</button>
-          </div>
-          <div class="support-option">
-            <i class="fas fa-envelope"></i>
             <h6>Email Support</h6>
-            <p>Send us your questions anytime</p>
+            <p>Get help via email</p>
             <a href="mailto:support@marketplace.com" class="btn btn-outline-primary btn-sm">Send Email</a>
           </div>
           <div class="support-option">
-            <i class="fas fa-phone"></i>
             <h6>Phone Support</h6>
-            <p>Call us for immediate assistance</p>
-            <a href="tel:+977-1-234567" class="btn btn-success btn-sm">Call Now</a>
+            <p>Call us for immediate help</p>
+            <a href="tel:+977-1-234567" class="btn btn-primary btn-sm">Call Now</a>
           </div>
         </div>
       </div>
@@ -446,63 +336,23 @@
   </div>
 </div>
 
-<div class="modal fade" id="warrantyModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="fas fa-shield-alt"></i> Warranty Information</h5>
-        <button type="button" class="close" data-dismiss="modal">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="warranty-info">
-          <div class="warranty-item">
-            <i class="fas fa-laptop"></i>
-            <div>
-              <h6>Electronics</h6>
-              <p>1-2 years manufacturer warranty</p>
-            </div>
-          </div>
-          <div class="warranty-item">
-            <i class="fas fa-tshirt"></i>
-            <div>
-              <h6>Clothing</h6>
-              <p>30 days quality guarantee</p>
-            </div>
-          </div>
-          <div class="warranty-item">
-            <i class="fas fa-home"></i>
-            <div>
-              <h6>Home & Garden</h6>
-              <p>6 months to 1 year warranty</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Privacy and Terms Modals -->
 <div class="modal fade" id="privacyModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="fas fa-shield-alt"></i> Privacy Policy</h5>
+        <h5 class="modal-title">Privacy Policy</h5>
         <button type="button" class="close" data-dismiss="modal">&times;</button>
       </div>
       <div class="modal-body">
         <div class="policy-content">
-          <h6>Information We Collect</h6>
-          <p>We collect information you provide directly to us, such as when you create an account, make a purchase, or contact us for support.</p>
+          <h6>Information Collection</h6>
+          <p>We collect information you provide when creating an account, making purchases, or contacting us.</p>
           
-          <h6>How We Use Your Information</h6>
-          <p>We use the information to provide, maintain, and improve our services, process transactions, and communicate with you about your orders.</p>
+          <h6>Information Use</h6>
+          <p>We use your information to provide services, process orders, and improve user experience.</p>
           
-          <h6>Information Sharing</h6>
-          <p>We do not sell, trade, or rent your personal information to third parties without your consent.</p>
-          
-          <h6>Data Security</h6>
-          <p>We implement appropriate security measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction.</p>
+          <h6>Data Protection</h6>
+          <p>We implement security measures to protect your personal information.</p>
         </div>
       </div>
     </div>
@@ -513,22 +363,19 @@
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="fas fa-file-contract"></i> Terms of Service</h5>
+        <h5 class="modal-title">Terms of Service</h5>
         <button type="button" class="close" data-dismiss="modal">&times;</button>
       </div>
       <div class="modal-body">
         <div class="terms-content">
-          <h6>Acceptance of Terms</h6>
-          <p>By using our marketplace, you agree to be bound by these Terms of Service and all applicable laws and regulations.</p>
+          <h6>User Agreement</h6>
+          <p>By using our service, you agree to these terms and conditions.</p>
           
-          <h6>User Accounts</h6>
-          <p>You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account.</p>
+          <h6>Account Responsibilities</h6>
+          <p>Users are responsible for maintaining account security and following our guidelines.</p>
           
-          <h6>Prohibited Uses</h6>
-          <p>You may not use our service for any unlawful purpose or to solicit others to perform unlawful acts.</p>
-          
-          <h6>Limitation of Liability</h6>
-          <p>We shall not be liable for any indirect, incidental, special, consequential, or punitive damages.</p>
+          <h6>Service Usage</h6>
+          <p>Our platform should be used for legitimate purposes only.</p>
         </div>
       </div>
     </div>
@@ -536,240 +383,119 @@
 </div>
 
 <style>
-/* ========================= IMPROVED FOOTER STYLES ========================= */
+/* SCOPED FOOTER STYLES */
 
-.modern-footer {
-  margin-top: 80px;
-  position: relative;
-  overflow: hidden;
+.site-footer {
+  margin-top: 60px;
+  background: #f8f9fa;
 }
 
 /* Newsletter Section */
-.newsletter-section {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  position: relative;
-  padding: 60px 0;
-  overflow: hidden;
-}
-
-.newsletter-section::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.1"/></pattern></defs><rect width="100%" height="100%" fill="url(%23grain)"/></svg>');
+.footer-newsletter {
+  background: #007bff;
+  color: white;
+  padding: 40px 0;
 }
 
 .newsletter-content {
   display: flex;
   align-items: center;
-  gap: 40px;
-  position: relative;
-  z-index: 2;
+  justify-content: space-between;
+  gap: 30px;
 }
 
-.newsletter-left {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 25px;
-}
-
-.newsletter-icon {
-  width: 80px;
-  height: 80px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-.newsletter-icon i {
-  font-size: 32px;
-  color: white;
-}
-
-.newsletter-text h3 {
-  color: white;
-  font-size: 32px;
-  font-weight: 700;
-  margin-bottom: 8px;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.newsletter-text p {
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 16px;
-  margin: 0;
-  line-height: 1.5;
-}
-
-.newsletter-right {
-  flex: 1;
-  max-width: 500px;
-}
-
-.input-wrapper {
-  position: relative;
-  margin-bottom: 12px;
-}
-
-.newsletter-input {
-  width: 100%;
-  padding: 16px 140px 16px 20px;
-  border: none;
-  border-radius: 50px;
-  font-size: 16px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-}
-
-.newsletter-input:focus {
-  outline: none;
-  background: white;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.15);
-  transform: translateY(-2px);
-}
-
-.newsletter-btn {
-  position: absolute;
-  right: 4px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
-  border: none;
-  border-radius: 50px;
-  padding: 12px 24px;
-  color: white;
+.newsletter-info h4 {
+  margin: 0 0 8px 0;
+  font-size: 1.5rem;
   font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
-.newsletter-btn:hover {
-  transform: translateY(-50%) scale(1.05);
-  box-shadow: 0 6px 20px rgba(238, 90, 36, 0.4);
-}
-
-.newsletter-privacy {
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 12px;
+.newsletter-info p {
   margin: 0;
-  text-align: center;
+  opacity: 0.9;
+}
+
+.newsletter-form-wrapper {
+  max-width: 400px;
+  width: 100%;
+}
+
+.newsletter-form .form-group {
+  display: flex;
+  margin: 0;
+}
+
+.newsletter-form .form-control {
+  border: none;
+  border-radius: 4px 0 0 4px;
+  padding: 12px 16px;
+  flex: 1;
+}
+
+.newsletter-form .form-control:focus {
+  box-shadow: none;
+  border-color: transparent;
+}
+
+.btn-subscribe {
+  background: #0056b3;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 0 4px 4px 0;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btn-subscribe:hover {
+  background: #004085;
 }
 
 /* Main Footer */
 .footer-main {
-  background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-  padding: 80px 0 40px;
-  position: relative;
+  background: white;
+  padding: 50px 0 30px;
+  border-bottom: 1px solid #dee2e6;
 }
 
-.footer-main::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: radial-gradient(circle at 20% 80%, rgba(52, 152, 219, 0.1) 0%, transparent 50%),
-              radial-gradient(circle at 80% 20%, rgba(155, 89, 182, 0.1) 0%, transparent 50%);
-}
-
-.footer-column {
-  position: relative;
-  z-index: 2;
-  margin-bottom: 40px;
-}
-
-.footer-widget {
+.footer-section {
   height: 100%;
-  max-width: 100%;
-  overflow: hidden;
 }
 
-/* Brand Section with proper logo sizing */
-.footer-brand {
+.footer-logo {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 12px;
   margin-bottom: 20px;
-  flex-wrap: wrap;
 }
 
-.brand-logo-container {
-  width: 60px;
-  height: 60px;
-  border-radius: 12px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  flex-shrink: 0;
-}
-
-.brand-logo {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  object-position: center;
-}
-
-.brand-name {
-  color: white;
-  font-size: 20px;
-  font-weight: 700;
-  margin: 0;
-  background: linear-gradient(135deg, #3498db 0%, #9b59b6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  flex: 1;
-  min-width: 0;
-}
-
-.brand-description {
-  color: #ecf0f1;
-  line-height: 1.6;
-  margin-bottom: 30px;
-  font-size: 14px;
-}
-
-/* Widget Titles */
-.widget-title {
-  color: white;
-  font-size: 18px;
-  font-weight: 600;
-  margin-bottom: 25px;
-  position: relative;
-  padding-bottom: 10px;
-}
-
-.widget-title::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
+.footer-logo .logo-img {
   width: 40px;
-  height: 3px;
-  background: linear-gradient(135deg, #3498db 0%, #9b59b6 100%);
-  border-radius: 2px;
+  height: 40px;
+  object-fit: contain;
 }
 
-/* Footer Links */
+.footer-logo h5 {
+  margin: 0;
+  color: #007bff;
+  font-weight: 600;
+  font-size: 1.2rem;
+}
+
+.footer-desc {
+  color: #6c757d;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin-bottom: 25px;
+}
+
+.footer-title {
+  color: #333;
+  font-weight: 600;
+  margin-bottom: 20px;
+  font-size: 1.1rem;
+}
+
 .footer-links {
   list-style: none;
   padding: 0;
@@ -777,726 +503,346 @@
 }
 
 .footer-links li {
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .footer-links a {
-  color: #ecf0f1;
+  color: #6c757d;
   text-decoration: none;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  transition: all 0.3s ease;
-  padding: 6px 0;
-  border-radius: 6px;
-  position: relative;
-  font-size: 14px;
+  font-size: 0.9rem;
+  transition: color 0.3s ease;
 }
 
 .footer-links a:hover {
-  color: #3498db;
+  color: #007bff;
   text-decoration: none;
-  transform: translateX(8px);
-}
-
-.footer-links a i {
-  width: 16px;
-  font-size: 14px;
-  color: #3498db;
-  transition: all 0.3s ease;
-  flex-shrink: 0;
-}
-
-.footer-links a:hover i {
-  transform: scale(1.2);
 }
 
 /* Social Links */
-.social-section h6 {
-  color: white;
-  font-size: 16px;
+.social-links h6 {
+  color: #333;
   font-weight: 600;
   margin-bottom: 15px;
+  font-size: 1rem;
 }
 
-.social-links {
+.social-icons {
   display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 10px;
 }
 
-.social-link {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
+.social-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
   text-decoration: none;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
+  transition: transform 0.3s ease;
 }
 
-.social-link::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.1) 100%);
-  transition: all 0.3s ease;
+.social-icon:hover {
+  transform: translateY(-2px);
+  text-decoration: none;
+  color: white;
 }
 
-.social-link.facebook { background: linear-gradient(135deg, #1877f2 0%, #166fe5 100%); }
-.social-link.instagram { background: linear-gradient(135deg, #e4405f 0%, #c13584 100%); }
-.social-link.twitter { background: linear-gradient(135deg, #1da1f2 0%, #0d8bd9 100%); }
-.social-link.youtube { background: linear-gradient(135deg, #ff0000 0%, #cc0000 100%); }
-.social-link.tiktok { background: linear-gradient(135deg, #000000 0%, #333333 100%); }
-
-.social-link:hover {
-  transform: translateY(-4px) scale(1.1);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-}
-
-.social-link:hover::before {
-  background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%);
-}
+.social-icon.facebook { background: #1877f2; }
+.social-icon.instagram { background: #e4405f; }
+.social-icon.twitter { background: #1da1f2; }
+.social-icon.youtube { background: #ff0000; }
 
 /* Contact Info */
 .contact-info {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  max-width: 100%;
-  overflow: hidden;
+  gap: 12px;
 }
 
 .contact-item {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 10px;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  transition: all 0.3s ease;
-  min-height: 60px;
-  max-width: 100%;
-  overflow: hidden;
-}
-
-.contact-item:hover {
-  background: rgba(255, 255, 255, 0.08);
-  transform: translateY(-2px);
-}
-
-.contact-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #3498db 0%, #9b59b6 100%);
-  display: flex;
   align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+  gap: 10px;
+  color: #6c757d;
+  font-size: 0.9rem;
 }
 
-.contact-icon i {
-  color: white;
+.contact-item i {
+  color: #007bff;
+  width: 16px;
   font-size: 14px;
-}
-
-.contact-details {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.contact-label {
-  display: block;
-  color: #bdc3c7;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 4px;
-}
-
-.contact-value {
-  color: #ecf0f1;
-  font-weight: 500;
-  text-decoration: none;
-  transition: color 0.3s ease;
-  font-size: 13px;
-  word-break: break-word;
-  line-height: 1.3;
-}
-
-.contact-value:hover {
-  color: #3498db;
-  text-decoration: none;
 }
 
 /* Footer Bottom */
 .footer-bottom {
-  background: rgba(0, 0, 0, 0.3);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 25px 0;
-}
-
-.bottom-content {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  flex-wrap: wrap;
+  background: #f8f9fa;
+  padding: 20px 0;
+  border-top: 1px solid #dee2e6;
 }
 
 .copyright {
-  color: #bdc3c7;
   margin: 0;
-  font-size: 14px;
+  color: #6c757d;
+  font-size: 0.9rem;
 }
 
 .footer-bottom-links {
   display: flex;
-  gap: 25px;
-  flex-wrap: wrap;
+  gap: 15px;
+  justify-content: center;
 }
 
 .footer-bottom-links a {
-  color: #ecf0f1;
+  color: #6c757d;
   text-decoration: none;
-  font-size: 14px;
-  transition: color 0.3s ease;
-  position: relative;
-}
-
-.footer-bottom-links a::after {
-  content: '';
-  position: absolute;
-  bottom: -4px;
-  left: 0;
-  width: 0;
-  height: 2px;
-  background: #3498db;
-  transition: width 0.3s ease;
+  font-size: 0.9rem;
 }
 
 .footer-bottom-links a:hover {
-  color: #3498db;
+  color: #007bff;
   text-decoration: none;
 }
 
-.footer-bottom-links a:hover::after {
-  width: 100%;
-}
-
-/* UPDATED: Payment Methods */
 .payment-methods {
   text-align: right;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
-.payment-label {
-  display: block;
-  color: #bdc3c7;
-  font-size: 12px;
-  margin-bottom: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+.payment-methods span {
+  color: #6c757d;
+  font-size: 0.9rem;
 }
 
 .payment-icons {
   display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  flex-wrap: wrap;
+  gap: 5px;
 }
 
 .payment-icon {
-  width: 45px;
-  height: 28px;
   background: white;
-  border-radius: 5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #2c3e50;
-  font-size: 13px;
-  font-weight: 600;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border: 1px solid #dee2e6;
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  color: #6c757d;
+  font-weight: 500;
 }
 
-.payment-icon:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-}
-
-.payment-icon.qr { 
-  color: #2c3e50; 
-  font-size: 16px;
-}
-
-.payment-icon.fonepay { 
-  font-size: 8px; 
-  color: #1e88e5; 
-  font-weight: 700;
-}
-
-.payment-icon.cod { 
-  color: #4caf50; 
-  font-size: 14px;
-}
-
-.payment-icon.esewa { 
-  font-size: 9px; 
-  color: #60bb46; 
-  font-weight: 700;
-}
-
-/* Floating Action Buttons */
-.floating-actions {
+/* Back to Top */
+.back-to-top {
   position: fixed;
   bottom: 30px;
   right: 30px;
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  z-index: 1000;
-}
-
-.float-btn {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  border: none;
+  width: 50px;
+  height: 50px;
+  background: #007bff;
   color: white;
-  font-size: 18px;
+  border: none;
+  border-radius: 50%;
   cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(20px);
+  z-index: 1000;
+  transition: all 0.3s ease;
 }
 
-.float-btn.show {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
+.back-to-top:hover {
+  background: #0056b3;
+  transform: translateY(-3px);
 }
 
-.back-to-top {
-  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
-}
-
-.help-btn {
-  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-}
-
-.float-btn:hover {
-  transform: translateY(-4px) scale(1.1);
-  box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+.back-to-top.show {
+  display: flex;
 }
 
 /* Modal Enhancements */
-.modal-content {
-  border-radius: 20px;
-  border: none;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-  overflow: hidden;
-}
-
 .modal-header {
-  background: linear-gradient(135deg, #3498db 0%, #9b59b6 100%);
+  background: #007bff;
   color: white;
-  border: none;
-  padding: 20px 30px;
-}
-
-.modal-header .modal-title {
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  border-bottom: none;
 }
 
 .modal-header .close {
   color: white;
   opacity: 0.8;
-  font-size: 24px;
-  text-shadow: none;
 }
 
 .modal-body {
-  padding: 30px;
+  padding: 25px;
 }
 
-.help-sections {
-  display: grid;
-  gap: 25px;
-}
-
-.help-section h6 {
-  color: #2c3e50;
-  font-weight: 600;
-  margin-bottom: 15px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.help-section ul {
+.help-topics ul,
+.return-policy ul {
   list-style: none;
   padding: 0;
-  margin: 0;
 }
 
-.help-section li {
-  padding: 8px 0;
-  color: #7f8c8d;
-  border-bottom: 1px solid #ecf0f1;
+.help-topics li,
+.return-policy li {
+  padding: 5px 0;
+  border-bottom: 1px solid #f1f1f1;
 }
 
-.help-section li:last-child {
-  border-bottom: none;
-}
-
-.shipping-options {
-  display: grid;
-  gap: 20px;
-}
-
-.shipping-option {
-  padding: 20px;
-  background: #f8f9fa;
-  border-radius: 12px;
-  border-left: 4px solid #3498db;
-}
-
-.shipping-option h6 {
-  color: #2c3e50;
-  margin-bottom: 8px;
-}
-
-.shipping-option p {
-  margin-bottom: 5px;
-  color: #2c3e50;
-}
-
-.shipping-option small {
-  color: #7f8c8d;
-}
-
-.return-policy, .warranty-info {
-  display: grid;
-  gap: 20px;
-}
-
-.policy-item, .warranty-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 15px;
-  padding: 20px;
-  background: #f8f9fa;
-  border-radius: 12px;
-}
-
-.policy-item i, .warranty-item i {
-  color: #3498db;
-  font-size: 24px;
-  margin-top: 5px;
-}
-
-.policy-item h6, .warranty-item h6 {
-  color: #2c3e50;
-  margin-bottom: 5px;
-}
-
-.policy-item p, .warranty-item p {
-  color: #7f8c8d;
-  margin: 0;
-}
-
-.support-options {
-  display: grid;
-  gap: 20px;
-}
-
+.shipping-option,
 .support-option {
-  text-align: center;
-  padding: 25px;
+  padding: 15px;
   background: #f8f9fa;
-  border-radius: 15px;
-  transition: all 0.3s ease;
-}
-
-.support-option:hover {
-  background: #e9ecef;
-  transform: translateY(-5px);
-}
-
-.support-option i {
-  color: #3498db;
-  font-size: 32px;
+  border-radius: 5px;
   margin-bottom: 15px;
 }
 
+.shipping-option h6,
 .support-option h6 {
-  color: #2c3e50;
-  margin-bottom: 10px;
+  margin-bottom: 5px;
+  color: #333;
 }
 
-/* Track Order Styles */
-.track-order .input-group {
-  margin-bottom: 20px;
+.status-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 20px;
 }
 
-.timeline {
-  position: relative;
-  padding-left: 30px;
-}
-
-.timeline::before {
-  content: '';
-  position: absolute;
-  left: 15px;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: #ecf0f1;
-}
-
-.timeline-item {
-  position: relative;
-  margin-bottom: 30px;
-}
-
-.timeline-item:last-child {
-  margin-bottom: 0;
-}
-
-.timeline-icon {
-  position: absolute;
-  left: -22px;
-  top: 0;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: #ecf0f1;
+.status-item {
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: #95a5a6;
-  font-size: 12px;
+  gap: 15px;
 }
 
-.timeline-item.completed .timeline-icon {
-  background: #27ae60;
-  color: white;
+.status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #dee2e6;
+  flex-shrink: 0;
 }
 
-.timeline-item.active .timeline-icon {
-  background: #3498db;
-  color: white;
+.status-item.completed .status-dot {
+  background: #28a745;
 }
 
-.timeline-content h6 {
-  color: #2c3e50;
-  margin-bottom: 5px;
+.status-item.active .status-dot {
+  background: #007bff;
 }
 
-.timeline-content p {
-  color: #7f8c8d;
-  margin: 0;
-  font-size: 14px;
+.status-text {
+  color: #6c757d;
+  font-size: 0.9rem;
 }
 
-/* Responsive Design */
-@media (max-width: 991px) {
+.status-item.completed .status-text,
+.status-item.active .status-text {
+  color: #333;
+  font-weight: 500;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
   .newsletter-content {
-    flex-direction: column;
-    text-align: center;
-    gap: 30px;
-  }
-  
-  .newsletter-left {
-    justify-content: center;
-  }
-  
-  .newsletter-text h3 {
-    font-size: 28px;
-  }
-  
-  .bottom-content {
     flex-direction: column;
     text-align: center;
     gap: 20px;
   }
   
-  .payment-methods {
-    text-align: center;
+  .newsletter-info h4 {
+    font-size: 1.3rem;
   }
   
-  .payment-icons {
-    justify-content: center;
-  }
-  
-  .footer-bottom-links {
-    justify-content: center;
-    gap: 15px;
-  }
-}
-
-@media (max-width: 768px) {
-  .newsletter-section {
-    padding: 40px 0;
-  }
-  
-  .newsletter-text h3 {
-    font-size: 24px;
-  }
-  
-  .footer-main {
-    padding: 60px 0 30px;
-  }
-  
-  .floating-actions {
-    bottom: 20px;
-    right: 20px;
-  }
-  
-  .float-btn {
-    width: 50px;
-    height: 50px;
-    font-size: 16px;
-  }
-  
-  .newsletter-input {
-    padding: 14px 120px 14px 16px;
-    font-size: 14px;
-  }
-  
-  .newsletter-btn {
-    padding: 10px 20px;
-    font-size: 14px;
-  }
-  
-  .footer-brand {
-    flex-direction: column;
-    text-align: center;
-    gap: 10px;
-  }
-  
-  .brand-name {
-    font-size: 18px;
-  }
-  
-  .contact-item {
-    padding: 10px;
-    gap: 10px;
-  }
-  
-  .contact-icon {
-    width: 32px;
-    height: 32px;
-  }
-  
-  .contact-value {
-    font-size: 12px;
-  }
-}
-
-@media (max-width: 576px) {
   .footer-main {
     padding: 40px 0 20px;
   }
   
-  .newsletter-section {
-    padding: 30px 0;
-  }
-  
-  .contact-info {
-    gap: 12px;
+  .footer-bottom .row {
+    text-align: center;
   }
   
   .footer-bottom-links {
-    flex-direction: column;
-    gap: 10px;
+    justify-content: center;
+    margin: 10px 0;
   }
   
-  .payment-icons {
-    flex-wrap: wrap;
-    gap: 6px;
+  .payment-methods {
+    justify-content: center;
+  }
+  
+  .back-to-top {
+    bottom: 20px;
+    right: 20px;
+    width: 45px;
+    height: 45px;
   }
 }
 
-/* Animation Classes */
-@keyframes slideInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
+@media (max-width: 576px) {
+  .newsletter-form .form-group {
+    flex-direction: column;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  
+  .newsletter-form .form-control {
+    border-radius: 4px;
+    margin-bottom: 10px;
+  }
+  
+  .btn-subscribe {
+    border-radius: 4px;
+    width: 100%;
+  }
+  
+  .social-icons {
+    justify-content: center;
+  }
+  
+  .footer-bottom .row > div {
+    margin-bottom: 15px;
   }
 }
-
-.footer-column {
-  animation: slideInUp 0.6s ease forwards;
-}
-
-.footer-column:nth-child(1) { animation-delay: 0.1s; }
-.footer-column:nth-child(2) { animation-delay: 0.2s; }
-.footer-column:nth-child(3) { animation-delay: 0.3s; }
-.footer-column:nth-child(4) { animation-delay: 0.4s; }
-.footer-column:nth-child(5) { animation-delay: 0.5s; }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Newsletter form
+    // Newsletter form handling
     const newsletterForm = document.getElementById('newsletterForm');
     if (newsletterForm) {
         newsletterForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            const email = this.querySelector('input[type="email"]').value;
-            const btn = this.querySelector('.newsletter-btn');
-            const originalText = btn.innerHTML;
             
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Subscribing...';
-            btn.disabled = true;
+            const submitBtn = this.querySelector('.btn-subscribe');
+            const originalText = submitBtn.textContent;
             
-            setTimeout(() => {
-                btn.innerHTML = '<i class="fas fa-check"></i> Subscribed!';
-                setTimeout(() => {
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                    this.reset();
+            submitBtn.textContent = 'Subscribing...';
+            submitBtn.disabled = true;
+            
+            // Simulate API call
+            setTimeout(function() {
+                submitBtn.textContent = 'Subscribed!';
+                setTimeout(function() {
+                    submitBtn.textContent = originalText;
+                    submitBtn.disabled = false;
+                    newsletterForm.reset();
                 }, 2000);
-            }, 1500);
+            }, 1000);
         });
     }
 
-    // Floating action buttons
+    // Back to top button
     const backToTopBtn = document.getElementById('backToTop');
-    const helpBtn = document.querySelector('.help-btn');
     
-    function toggleFloatingButtons() {
-        const scrolled = window.pageYOffset > 300;
-        backToTopBtn.classList.toggle('show', scrolled);
-        helpBtn.classList.toggle('show', scrolled);
+    function toggleBackToTop() {
+        if (window.pageYOffset > 300) {
+            backToTopBtn.classList.add('show');
+        } else {
+            backToTopBtn.classList.remove('show');
+        }
     }
 
-    window.addEventListener('scroll', toggleFloatingButtons);
+    window.addEventListener('scroll', toggleBackToTop);
     
     backToTopBtn.addEventListener('click', function() {
         window.scrollTo({
@@ -1505,127 +851,39 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Smooth scroll for anchor links
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function (e) {
-            e.preventDefault();
-            const target = document.querySelector(this.getAttribute('href'));
-            if (target) {
-                target.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
-            }
-        });
-    });
-
-    // Social links tracking
-    document.querySelectorAll('.social-link').forEach(link => {
+    // Social link tracking (for analytics)
+    document.querySelectorAll('.social-icon').forEach(function(link) {
         link.addEventListener('click', function(e) {
-            e.preventDefault();
-            const platform = this.className.split(' ')[1];
-            console.log(`Social link clicked: ${platform}`);
+            const platform = this.classList[1];
+            console.log('Social click:', platform);
+            // Add analytics tracking here
         });
     });
-
-    // Contact item interactions
-    document.querySelectorAll('.contact-item').forEach(item => {
-        item.addEventListener('mouseenter', function() {
-            this.style.transform = 'translateY(-4px)';
-        });
-        
-        item.addEventListener('mouseleave', function() {
-            this.style.transform = 'translateY(-2px)';
-        });
-    });
-
-    // Newsletter input focus effect
-    const newsletterInput = document.querySelector('.newsletter-input');
-    if (newsletterInput) {
-        newsletterInput.addEventListener('focus', function() {
-            this.parentElement.style.transform = 'scale(1.02)';
-        });
-        
-        newsletterInput.addEventListener('blur', function() {
-            this.parentElement.style.transform = 'scale(1)';
-        });
-    }
-
-    // Initialize tooltips if Bootstrap is available
-    if (typeof $ !== 'undefined' && $.fn.tooltip) {
-        $('[title]').tooltip();
-    }
 });
 
-// Modal functions
-function openModal(modalId) {
-    if (typeof $ !== 'undefined') {
-        $('#' + modalId).modal('show');
-    }
-}
-
-// Track Order Function
+// Track order function
 function trackOrder() {
-    const trackingNumber = document.getElementById('trackingNumber').value;
-    const trackingInfo = document.getElementById('trackingInfo');
+    const trackingNumber = document.getElementById('trackingNumber').value.trim();
+    const trackingResult = document.getElementById('trackingResult');
     
-    if (trackingNumber.trim() !== '') {
-        trackingInfo.style.display = 'block';
-        // Here you would normally make an API call to get real tracking data
+    if (trackingNumber) {
+        trackingResult.style.display = 'block';
         console.log('Tracking order:', trackingNumber);
+        // Here you would make an actual API call to track the order
     } else {
-        alert('Please enter a tracking number');
+        alert('Please enter a valid tracking number');
     }
 }
 
-// Add some interactive particles effect to newsletter section
-function createParticle() {
-    const particle = document.createElement('div');
-    particle.style.cssText = `
-        position: absolute;
-        width: 4px;
-        height: 4px;
-        background: rgba(255,255,255,0.3);
-        border-radius: 50%;
-        pointer-events: none;
-        animation: float 6s linear infinite;
-    `;
-    
-    particle.style.left = Math.random() * 100 + '%';
-    particle.style.animationDelay = Math.random() * 6 + 's';
-    
-    const newsletterSection = document.querySelector('.newsletter-section');
-    if (newsletterSection) {
-        newsletterSection.appendChild(particle);
-        
-        setTimeout(() => {
-            particle.remove();
-        }, 6000);
-    }
+// Simple email validation
+function validateEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
 }
 
-// Create particles periodically
-setInterval(createParticle, 2000);
-
-// Add floating animation CSS
-const style = document.createElement('style');
-style.textContent = `
-@keyframes float {
-    0% {
-        transform: translateY(100vh) scale(0);
-        opacity: 0;
-    }
-    10% {
-        opacity: 1;
-    }
-    90% {
-        opacity: 1;
-    }
-    100% {
-        transform: translateY(-100px) scale(1);
-        opacity: 0;
-    }
+// Contact form handler (if you add one later)
+function handleContactForm(formData) {
+    console.log('Contact form submitted:', formData);
+    // Handle contact form submission
 }
-`;
-document.head.appendChild(style);
 </script>

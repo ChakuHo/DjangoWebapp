@@ -9,13 +9,13 @@
     <div class="contact-header">
         <div class="container">
             <div class="row align-items-center">
-                <div class="col-lg-6">
-                    <h1 class="page-title">Get in Touch</h1>
-                    <p class="page-subtitle">We'd love to hear from you. Drop us a line and we'll get back to you as soon as possible.</p>
+                <div class="col-lg-8">
+                    <h1 class="page-title">Contact Us</h1>
+                    <p class="page-subtitle">We'd love to hear from you. Send us a message and we'll respond as soon as possible.</p>
                 </div>
-                <div class="col-lg-6">
-                    <div class="contact-illustration">
-                        <i class="fas fa-comments"></i>
+                <div class="col-lg-4">
+                    <div class="contact-icon">
+                        <i class="fas fa-envelope"></i>
                     </div>
                 </div>
             </div>
@@ -27,26 +27,24 @@
         <div class="container">
             <div class="row">
                 <!-- Contact Form -->
-                <div class="col-lg-7">
+                <div class="col-lg-8">
                     <div class="contact-form-section">
                         <h3>Send us a Message</h3>
-                        <p>Fill out the form below and we'll respond within 24 hours.</p>
+                        <p class="mb-4">Fill out the form below and we'll get back to you within 24 hours.</p>
                         
                         <form class="contact-form" id="contactForm" method="post">
                             {% csrf_token %}
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="form-group">
-                                        <label for="name">Full Name</label>
+                                        <label for="name">Full Name *</label>
                                         <input type="text" id="name" name="name" class="form-control" required>
-                                        <i class="fas fa-user form-icon"></i>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-group">
-                                        <label for="email">Email Address</label>
+                                        <label for="email">Email Address *</label>
                                         <input type="email" id="email" name="email" class="form-control" required>
-                                        <i class="fas fa-envelope form-icon"></i>
                                     </div>
                                 </div>
                             </div>
@@ -56,12 +54,11 @@
                                     <div class="form-group">
                                         <label for="phone">Phone Number</label>
                                         <input type="tel" id="phone" name="phone" class="form-control">
-                                        <i class="fas fa-phone form-icon"></i>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-group">
-                                        <label for="subject">Subject</label>
+                                        <label for="subject">Subject *</label>
                                         <select id="subject" name="subject" class="form-control" required>
                                             <option value="">Select a subject</option>
                                             <option value="general">General Inquiry</option>
@@ -71,38 +68,35 @@
                                             <option value="partnership">Partnership</option>
                                             <option value="other">Other</option>
                                         </select>
-                                        <i class="fas fa-tag form-icon"></i>
                                     </div>
                                 </div>
                             </div>
                             
                             <div class="form-group">
-                                <label for="message">Message</label>
-                                <textarea id="message" name="message" class="form-control" rows="6" placeholder="Tell us how we can help you..." required></textarea>
-                                <i class="fas fa-comment-dots form-icon"></i>
+                                <label for="message">Message *</label>
+                                <textarea id="message" name="message" class="form-control" rows="5" placeholder="Tell us how we can help you..." required></textarea>
                             </div>
                             
                             <button type="submit" class="btn btn-primary submit-btn">
                                 <span class="btn-text">Send Message</span>
-                                <i class="fas fa-paper-plane btn-icon"></i>
+                                <i class="fas fa-paper-plane ml-2"></i>
                             </button>
                         </form>
                     </div>
                 </div>
 
                 <!-- Contact Info -->
-                <div class="col-lg-5">
+                <div class="col-lg-4">
                     <div class="contact-info-section">
                         <h3>Contact Information</h3>
-                        <p>Get in touch through any of these channels. We're here to help!</p>
                         
                         <div class="contact-items">
                             <div class="contact-item">
-                                <div class="contact-icon">
+                                <div class="contact-item-icon">
                                     <i class="fas fa-map-marker-alt"></i>
                                 </div>
-                                <div class="contact-details">
-                                    <h5>Address</h5>
+                                <div class="contact-item-content">
+                                    <h6>Address</h6>
                                     <p>
                                         {% if site_settings and site_settings.address %}
                                             {{ site_settings.address }}
@@ -116,11 +110,11 @@
                             </div>
 
                             <div class="contact-item">
-                                <div class="contact-icon">
-                                    <i class="fas fa-phone-alt"></i>
+                                <div class="contact-item-icon">
+                                    <i class="fas fa-phone"></i>
                                 </div>
-                                <div class="contact-details">
-                                    <h5>Phone</h5>
+                                <div class="contact-item-content">
+                                    <h6>Phone</h6>
                                     <p>
                                         {% if site_settings and site_settings.phone %}
                                             <a href="tel:{{ site_settings.phone }}">{{ site_settings.phone }}</a>
@@ -132,11 +126,11 @@
                             </div>
 
                             <div class="contact-item">
-                                <div class="contact-icon">
+                                <div class="contact-item-icon">
                                     <i class="fas fa-envelope"></i>
                                 </div>
-                                <div class="contact-details">
-                                    <h5>Email</h5>
+                                <div class="contact-item-content">
+                                    <h6>Email</h6>
                                     <p>
                                         {% if site_settings and site_settings.email %}
                                             <a href="mailto:{{ site_settings.email }}">{{ site_settings.email }}</a>
@@ -148,11 +142,11 @@
                             </div>
 
                             <div class="contact-item">
-                                <div class="contact-icon">
+                                <div class="contact-item-icon">
                                     <i class="fas fa-clock"></i>
                                 </div>
-                                <div class="contact-details">
-                                    <h5>Business Hours</h5>
+                                <div class="contact-item-content">
+                                    <h6>Business Hours</h6>
                                     <p>
                                         Monday - Friday: 9:00 AM - 6:00 PM<br>
                                         Saturday: 10:00 AM - 4:00 PM<br>
@@ -161,43 +155,22 @@
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Quick Links -->
-                        <div class="quick-links">
-                            <h5>Quick Support</h5>
-                            <div class="support-buttons">
-                                {% if user.is_authenticated %}
-                                <a href="{% url 'dashboard' %}" class="support-btn">
-                                    <i class="fas fa-user-circle"></i>
-                                    My Account
-                                </a>
-                                {% endif %}
-                                <a href="#" class="support-btn" onclick="openFAQ()">
-                                    <i class="fas fa-question-circle"></i>
-                                    FAQ
-                                </a>
-                                <a href="#" class="support-btn" onclick="openLiveChat()">
-                                    <i class="fas fa-comments"></i>
-                                    Live Chat
-                                </a>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Map Section (Optional) -->
+    <!-- Map Section -->
     <div class="map-section">
         <div class="container">
-            <h3 class="text-center mb-4">Find Us Here</h3>
+            <h3 class="text-center mb-4">Our Location</h3>
             <div class="map-container">
                 <iframe 
                     src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1557.0100111336753!2d85.32492166212126!3d27.708884953915007!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39eb1908434cb3c5%3A0x1fdf1a6d41d2512d!2sIslington%20College!5e0!3m2!1sen!2snp!4v1756790464471!5m2!1sen!2snp" 
                     width="100%" 
-                    height="400" 
-                    style="border:0; border-radius: 10px;" 
+                    height="350" 
+                    style="border:0; border-radius: 8px;" 
                     allowfullscreen="" 
                     loading="lazy">
                 </iframe>
@@ -207,277 +180,274 @@
 </div>
 
 <style>
-/* Contact Page Styles */
+/* SCOPED CONTACT PAGE STYLES */
+
 .contact-page {
     padding-top: 20px;
 }
 
+/* Header Section */
 .contact-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #007bff;
     color: white;
     padding: 60px 0;
 }
 
-.page-title {
-    font-size: 48px;
-    font-weight: 700;
+.contact-header .page-title {
+    font-size: 2.5rem;
+    font-weight: 600;
     margin-bottom: 15px;
 }
 
-.page-subtitle {
-    font-size: 18px;
+.contact-header .page-subtitle {
+    font-size: 1.1rem;
     opacity: 0.9;
     margin-bottom: 0;
 }
 
-.contact-illustration {
+.contact-header .contact-icon {
     text-align: center;
 }
 
-.contact-illustration i {
-    font-size: 120px;
+.contact-header .contact-icon i {
+    font-size: 80px;
     opacity: 0.3;
 }
 
+/* Content Section */
 .contact-content {
-    padding: 80px 0;
+    padding: 60px 0;
     background: #f8f9fa;
 }
 
 .contact-form-section {
     background: white;
     padding: 40px;
-    border-radius: 15px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 30px;
 }
 
 .contact-form-section h3 {
-    color: #2c3e50;
+    color: #333;
     margin-bottom: 10px;
     font-weight: 600;
 }
 
 .contact-form-section p {
-    color: #7f8c8d;
-    margin-bottom: 30px;
+    color: #6c757d;
 }
 
-.form-group {
-    position: relative;
-    margin-bottom: 25px;
+.contact-form .form-group {
+    margin-bottom: 20px;
 }
 
-.form-group label {
-    color: #2c3e50;
+.contact-form .form-group label {
+    color: #333;
     font-weight: 500;
-    margin-bottom: 8px;
+    margin-bottom: 5px;
     display: block;
 }
 
-.form-control {
-    padding: 12px 15px 12px 45px;
-    border: 2px solid #e9ecef;
-    border-radius: 8px;
-    font-size: 16px;
-    transition: all 0.3s ease;
+.contact-form .form-control {
+    padding: 12px 15px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
 }
 
-.form-control:focus {
-    border-color: #667eea;
-    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+.contact-form .form-control:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
     outline: none;
 }
 
-.form-icon {
-    position: absolute;
-    left: 15px;
-    top: 45px;
-    color: #95a5a6;
-    font-size: 16px;
-}
-
-.submit-btn {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+.contact-form .submit-btn {
+    background: #007bff;
     border: none;
-    padding: 15px 40px;
-    border-radius: 8px;
+    padding: 12px 30px;
+    border-radius: 4px;
     color: white;
-    font-weight: 600;
-    font-size: 16px;
-    transition: all 0.3s ease;
-    display: flex;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    display: inline-flex;
     align-items: center;
-    gap: 10px;
 }
 
-.submit-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+.contact-form .submit-btn:hover {
+    background: #0056b3;
 }
 
+.contact-form .submit-btn:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+}
+
+/* Contact Info Section */
 .contact-info-section {
-    padding: 40px 30px;
+    background: white;
+    padding: 40px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    height: fit-content;
 }
 
 .contact-info-section h3 {
-    color: #2c3e50;
-    margin-bottom: 10px;
+    color: #333;
+    margin-bottom: 30px;
     font-weight: 600;
 }
 
-.contact-info-section > p {
-    color: #7f8c8d;
-    margin-bottom: 40px;
-}
-
 .contact-items {
-    margin-bottom: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
 }
 
 .contact-item {
     display: flex;
     align-items: flex-start;
-    margin-bottom: 30px;
     padding: 20px;
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-    transition: all 0.3s ease;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #007bff;
 }
 
-.contact-item:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+.contact-item i {
+    color: #ffffff;
+    width: 11px;
+    font-size: 14px;
 }
 
-.contact-icon {
-    width: 50px;
-    height: 50px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 10px;
+.contact-item-icon {
+    width: 40px;
+    height: 40px;
+    background: #007bff;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-right: 20px;
+    margin-right: 15px;
     flex-shrink: 0;
 }
 
-.contact-icon i {
+.contact-item-icon i {
     color: white;
-    font-size: 20px;
+    font-size: 16px;
 }
 
-.contact-details h5 {
-    color: #2c3e50;
-    margin-bottom: 8px;
+.contact-item-content h6 {
+    color: #333;
+    margin-bottom: 5px;
     font-weight: 600;
+    font-size: 0.9rem;
 }
 
-.contact-details p {
-    color: #7f8c8d;
+.contact-item-content p {
+    color: #6c757d;
     margin: 0;
-    line-height: 1.6;
+    font-size: 0.9rem;
+    line-height: 1.5;
 }
 
-.contact-details a {
-    color: #667eea;
-    text-decoration: none;
-    transition: color 0.3s ease;
-}
-
-.contact-details a:hover {
-    color: #764ba2;
+.contact-item-content a {
+    color: #007bff;
     text-decoration: none;
 }
 
-.quick-links h5 {
-    color: #2c3e50;
-    margin-bottom: 20px;
-    font-weight: 600;
-}
-
-.support-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.support-btn {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 20px;
-    background: white;
-    color: #2c3e50;
+.contact-item-content a:hover {
+    color: #0056b3;
     text-decoration: none;
-    border-radius: 8px;
-    border: 2px solid #e9ecef;
-    transition: all 0.3s ease;
-    font-weight: 500;
 }
 
-.support-btn:hover {
-    background: #667eea;
-    color: white;
-    text-decoration: none;
-    border-color: #667eea;
-    transform: translateX(5px);
-}
-
+/* Map Section */
 .map-section {
     padding: 60px 0;
     background: white;
 }
 
 .map-section h3 {
-    color: #2c3e50;
+    color: #333;
     font-weight: 600;
 }
 
 .map-container {
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
     overflow: hidden;
 }
 
-/* Loading state */
+/* Loading and Success States */
+.submit-btn.loading {
+    background: #6c757d;
+}
+
 .submit-btn.loading .btn-text {
-    opacity: 0;
+    display: none;
 }
 
-.submit-btn.loading .btn-icon {
-    animation: spin 1s linear infinite;
+.submit-btn.loading::after {
+    content: 'Sending...';
 }
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* Success state */
 .submit-btn.success {
-    background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+    background: #28a745;
 }
 
-/* Responsive */
+.submit-btn.success .btn-text {
+    display: none;
+}
+
+.submit-btn.success::after {
+    content: 'Message Sent!';
+}
+
+/* Alert Messages */
+.alert {
+    padding: 12px 20px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    border: 1px solid transparent;
+}
+
+.alert-success {
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+}
+
+.alert-danger {
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
-    .page-title {
-        font-size: 36px;
+    .contact-header {
+        padding: 40px 0;
+        text-align: center;
     }
     
-    .contact-illustration {
-        margin-top: 30px;
+    .contact-header .page-title {
+        font-size: 2rem;
     }
     
-    .contact-illustration i {
-        font-size: 80px;
+    .contact-header .contact-icon {
+        margin-top: 20px;
     }
     
-    .contact-form-section {
-        padding: 30px 20px;
-        margin-bottom: 30px;
+    .contact-header .contact-icon i {
+        font-size: 60px;
     }
     
+    .contact-content {
+        padding: 40px 0;
+    }
+    
+    .contact-form-section,
     .contact-info-section {
         padding: 30px 20px;
     }
@@ -487,15 +457,28 @@
         text-align: center;
     }
     
-    .contact-icon {
+    .contact-item-icon {
         margin-right: 0;
-        margin-bottom: 15px;
+        margin-bottom: 10px;
+    }
+
+    .map-section {
+        padding: 40px 0;
+    }
+}
+
+@media (max-width: 576px) {
+    .contact-header .page-title {
+        font-size: 1.8rem;
     }
     
-    .support-buttons {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 10px;
+    .contact-form-section,
+    .contact-info-section {
+        padding: 20px 15px;
+    }
+    
+    .contact-form .form-control {
+        font-size: 16px;
     }
 }
 </style>
@@ -505,69 +488,132 @@ document.addEventListener('DOMContentLoaded', function() {
     const contactForm = document.getElementById('contactForm');
     const submitBtn = contactForm.querySelector('.submit-btn');
     
+    // Form submission handler
     contactForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
-        // Validation
-        const name = document.getElementById('name').value.trim();
-        const email = document.getElementById('email').value.trim();
-        const subject = document.getElementById('subject').value;
-        const message = document.getElementById('message').value.trim();
-        
-        if (!name || !email || !subject || !message) {
-            alert('Please fill in all required fields.');
+        // Basic validation
+        if (!validateForm()) {
             return;
         }
         
-        // Email validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            alert('Please enter a valid email address.');
-            return;
-        }
-        
-        // Loading state
+        // Show loading state
         submitBtn.classList.add('loading');
         submitBtn.disabled = true;
         
-        // Simulate form submission (replace with actual submission)
-        setTimeout(() => {
+        // Simulate form submission (replace with actual AJAX call)
+        setTimeout(function() {
             submitBtn.classList.remove('loading');
             submitBtn.classList.add('success');
-            submitBtn.innerHTML = '<span class="btn-text">Message Sent!</span><i class="fas fa-check btn-icon"></i>';
             
-            // Reset form
-            setTimeout(() => {
+            // Show success message
+            showAlert('Your message has been sent successfully! We\'ll get back to you soon.', 'success');
+            
+            // Reset form after 3 seconds
+            setTimeout(function() {
                 contactForm.reset();
                 submitBtn.classList.remove('success');
-                submitBtn.innerHTML = '<span class="btn-text">Send Message</span><i class="fas fa-paper-plane btn-icon"></i>';
                 submitBtn.disabled = false;
             }, 3000);
             
         }, 2000);
     });
     
-    // Form field animations
+    // Form validation
+    function validateForm() {
+        const name = document.getElementById('name').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const subject = document.getElementById('subject').value;
+        const message = document.getElementById('message').value.trim();
+        
+        if (!name) {
+            showAlert('Please enter your name.', 'danger');
+            document.getElementById('name').focus();
+            return false;
+        }
+        
+        if (!email) {
+            showAlert('Please enter your email address.', 'danger');
+            document.getElementById('email').focus();
+            return false;
+        }
+        
+        if (!isValidEmail(email)) {
+            showAlert('Please enter a valid email address.', 'danger');
+            document.getElementById('email').focus();
+            return false;
+        }
+        
+        if (!subject) {
+            showAlert('Please select a subject.', 'danger');
+            document.getElementById('subject').focus();
+            return false;
+        }
+        
+        if (!message) {
+            showAlert('Please enter your message.', 'danger');
+            document.getElementById('message').focus();
+            return false;
+        }
+        
+        return true;
+    }
+    
+    // Email validation
+    function isValidEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
+    
+    // Show alert messages
+    function showAlert(message, type) {
+        // Remove existing alerts
+        const existingAlert = document.querySelector('.alert');
+        if (existingAlert) {
+            existingAlert.remove();
+        }
+        
+        // Create new alert
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-' + type;
+        alert.textContent = message;
+        
+        // Insert alert at the top of the form
+        const formSection = document.querySelector('.contact-form-section');
+        formSection.insertBefore(alert, formSection.querySelector('h3').nextSibling);
+        
+        // Auto-remove alert after 5 seconds
+        setTimeout(function() {
+            if (alert.parentNode) {
+                alert.remove();
+            }
+        }, 5000);
+    }
+    
+    // Add input focus effects
     const formControls = document.querySelectorAll('.form-control');
-    formControls.forEach(control => {
+    formControls.forEach(function(control) {
         control.addEventListener('focus', function() {
-            this.parentElement.classList.add('focused');
+            this.style.borderColor = '#007bff';
         });
         
         control.addEventListener('blur', function() {
             if (!this.value) {
-                this.parentElement.classList.remove('focused');
+                this.style.borderColor = '#dee2e6';
             }
         });
     });
 });
 
-function openFAQ() {
-    alert('FAQ section coming soon!');
-}
-
-function openLiveChat() {
-    alert('Live chat feature coming soon!');
-}
+// Phone number formatting (optional)
+document.getElementById('phone').addEventListener('input', function(e) {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length > 0) {
+        if (value.length <= 10) {
+            value = value.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
+        }
+        e.target.value = value;
+    }
+});
 </script>
 {% endblock %}

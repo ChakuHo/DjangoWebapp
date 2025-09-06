@@ -10,12 +10,14 @@
           <article class="gallery-wrap">
             <div class="img-big-wrap">
               <div class="main-image-container">
-                <img
+                <center>
+                  <img
                   id="main-product-image"
                   src="{% if product.image %}{{ product.image.url }}{% else %}https://via.placeholder.com/500x500?text=No+Image{% endif %}"
                   alt="{{ product.name }}"
                   class="main-product-img"
-                />
+                  />
+                </center>
                 <div class="image-overlay">
                   <button class="zoom-btn" onclick="openImageModal()">
                     <i class="fa fa-search-plus"></i>
